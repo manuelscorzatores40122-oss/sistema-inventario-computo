@@ -196,3 +196,4 @@ MIT
 ## 👨‍💻 Autor
 
 Sistema creado para colegios - 2024
+# sistema-inventario-computo
