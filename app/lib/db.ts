@@ -4,19 +4,25 @@ let pool: Pool;
 
 export const initializePool = () => {
   if (!pool) {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error('DATABASE_URL no está definida en .env.local');
+    }
+
     pool = new Pool({
-      connectionString: process.env.POSTGRES_URL,
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      connectionString,
     });
   }
+
   return pool;
 };
 
 export const query = async (text: string, params?: any[]) => {
   const pool = initializePool();
+
   const client = await pool.connect();
+
   try {
     const result = await client.query(text, params);
     return result;
