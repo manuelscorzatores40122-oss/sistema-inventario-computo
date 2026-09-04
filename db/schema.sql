@@ -30,8 +30,9 @@ CREATE TABLE IF NOT EXISTS inventario (
 CREATE TABLE IF NOT EXISTS solicitudes (
   id SERIAL PRIMARY KEY,
   profesor_id INTEGER NOT NULL REFERENCES usuarios(id),
-  inventario_id INTEGER NOT NULL REFERENCES inventario(id),
-  cantidad_solicitada INTEGER NOT NULL,
+  inventario_id INTEGER REFERENCES inventario(id),
+  disponibilidad_id INTEGER,
+  cantidad_solicitada INTEGER NOT NULL DEFAULT 1,
   motivo TEXT,
   estado VARCHAR(50) DEFAULT 'pendiente',
   fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS solicitudes (
 -- Tabla de disponibilidad
 CREATE TABLE IF NOT EXISTS disponibilidad (
   id SERIAL PRIMARY KEY,
-  profesor_id INTEGER NOT NULL REFERENCES usuarios(id),
+  sala_nombre VARCHAR(255) NOT NULL DEFAULT 'Sala de Cómputo',
   dia_semana VARCHAR(20) NOT NULL,
   hora_inicio VARCHAR(10) NOT NULL,
   hora_fin VARCHAR(10) NOT NULL,
@@ -55,6 +56,19 @@ CREATE TABLE IF NOT EXISTS disponibilidad (
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'solicitudes_disponibilidad_id_fkey'
+  ) THEN
+    ALTER TABLE solicitudes
+      ADD CONSTRAINT solicitudes_disponibilidad_id_fkey
+      FOREIGN KEY (disponibilidad_id) REFERENCES disponibilidad(id);
+  END IF;
+END $$;
 
 -- Tabla de movimientos de inventario
 CREATE TABLE IF NOT EXISTS movimientos_inventario (
@@ -85,5 +99,7 @@ CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE INDEX idx_usuarios_role ON usuarios(role);
 CREATE INDEX idx_solicitudes_profesor ON solicitudes(profesor_id);
 CREATE INDEX idx_solicitudes_estado ON solicitudes(estado);
-CREATE INDEX idx_disponibilidad_profesor ON disponibilidad(profesor_id);
+CREATE INDEX idx_solicitudes_disponibilidad ON solicitudes(disponibilidad_id);
+CREATE INDEX idx_disponibilidad_estado ON disponibilidad(estado);
 CREATE INDEX idx_inventario_categoria ON inventario(categoria);
+CREATE INDEX idx_notificaciones_usuario ON notificaciones_whatsapp(usuario_id);

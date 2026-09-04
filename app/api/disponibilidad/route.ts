@@ -5,15 +5,16 @@ import { query } from '@/app/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const profesor_id = searchParams.get('profesor_id');
+    const reservado_por = searchParams.get('reservado_por');
     const dia_semana = searchParams.get('dia_semana');
+    const estado = searchParams.get('estado');
 
-    let sql = 'SELECT d.*, u.nombre as profesor_nombre, u.apellido, ru.nombre as reservado_por_nombre FROM disponibilidad d JOIN usuarios u ON d.profesor_id = u.id LEFT JOIN usuarios ru ON d.reservado_por = ru.id WHERE 1=1';
+    let sql = 'SELECT d.*, ru.nombre as reservado_por_nombre, ru.apellido as reservado_por_apellido FROM disponibilidad d LEFT JOIN usuarios ru ON d.reservado_por = ru.id WHERE 1=1';
     const params: any[] = [];
 
-    if (profesor_id) {
-      sql += ' AND d.profesor_id = $' + (params.length + 1);
-      params.push(profesor_id);
+    if (reservado_por) {
+      sql += ' AND d.reservado_por = $' + (params.length + 1);
+      params.push(reservado_por);
     }
 
     if (dia_semana) {
@@ -21,7 +22,12 @@ export async function GET(request: NextRequest) {
       params.push(dia_semana);
     }
 
-    sql += ' ORDER BY CASE WHEN d.dia_semana = \'Lunes\' THEN 1 WHEN d.dia_semana = \'Martes\' THEN 2 WHEN d.dia_semana = \'Miércoles\' THEN 3 WHEN d.dia_semana = \'Jueves\' THEN 4 WHEN d.dia_semana = \'Viernes\' THEN 5 END, d.hora_inicio';
+    if (estado) {
+      sql += ' AND d.estado = $' + (params.length + 1);
+      params.push(estado);
+    }
+
+    sql += ' ORDER BY d.sala_nombre, CASE WHEN d.dia_semana = \'Lunes\' THEN 1 WHEN d.dia_semana = \'Martes\' THEN 2 WHEN d.dia_semana = \'Miércoles\' THEN 3 WHEN d.dia_semana = \'Jueves\' THEN 4 WHEN d.dia_semana = \'Viernes\' THEN 5 END, d.hora_inicio';
 
     const result = await query(sql, params);
 
@@ -38,12 +44,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Crear o actualizar disponibilidad (profesor)
+// POST - Crear disponibilidad de sala (admin)
 export async function POST(request: NextRequest) {
   try {
-    const { profesor_id, dia_semana, hora_inicio, hora_fin } = await request.json();
+    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible' } = await request.json();
 
-    if (!profesor_id || !dia_semana || !hora_inicio || !hora_fin) {
+    if (!sala_nombre || !dia_semana || !hora_inicio || !hora_fin) {
       return NextResponse.json(
         { error: 'Campos requeridos' },
         { status: 400 }
@@ -51,8 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(
-      'INSERT INTO disponibilidad (profesor_id, dia_semana, hora_inicio, hora_fin, estado) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (profesor_id, dia_semana) DO UPDATE SET hora_inicio = $3, hora_fin = $4 RETURNING *',
-      [profesor_id, dia_semana, hora_inicio, hora_fin, 'disponible']
+      'INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [sala_nombre, dia_semana, hora_inicio, hora_fin, estado]
     );
 
     return NextResponse.json({

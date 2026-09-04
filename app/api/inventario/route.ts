@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const categoria = searchParams.get('categoria');
-    const estado = searchParams.get('estado') || 'disponible';
+    const estado = searchParams.get('estado');
 
     let sql = 'SELECT * FROM inventario WHERE 1=1';
     const params: any[] = [];
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       params.push(categoria);
     }
 
-    if (estado) {
+    if (estado && estado !== 'todos') {
       sql += ' AND estado = $' + (params.length + 1);
       params.push(estado);
     }
@@ -41,18 +41,29 @@ export async function GET(request: NextRequest) {
 // POST - Crear item de inventario (solo admin)
 export async function POST(request: NextRequest) {
   try {
-    const { nombre, descripcion, categoria, cantidad_total, ubicacion } = await request.json();
+    const { nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado = 'disponible' } = await request.json();
+    const total = Number(cantidad_total);
+    const disponible = cantidad_disponible === undefined || cantidad_disponible === ''
+      ? total
+      : Number(cantidad_disponible);
 
-    if (!nombre || !categoria || !cantidad_total) {
+    if (!nombre || !categoria || !Number.isInteger(total) || total < 0) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, categoria, cantidad_total' },
+        { error: 'Campos requeridos: nombre, categoria y cantidad_total válida' },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isInteger(disponible) || disponible < 0 || disponible > total) {
+      return NextResponse.json(
+        { error: 'La cantidad disponible debe estar entre 0 y la cantidad total' },
         { status: 400 }
       );
     }
 
     const result = await query(
-      'INSERT INTO inventario (nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion) VALUES ($1, $2, $3, $4, $4, $5) RETURNING *',
-      [nombre, descripcion, categoria, cantidad_total, ubicacion]
+      'INSERT INTO inventario (nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [nombre, descripcion, categoria, total, disponible, ubicacion, estado]
     );
 
     return NextResponse.json({

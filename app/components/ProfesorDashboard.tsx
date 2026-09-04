@@ -97,6 +97,17 @@ export default function ProfesorDashboard() {
         </h1>
         <p className="text-gray-600 mb-6">Hola, {user?.nombre}</p>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <a href="/profesor/solicitudes" className="bg-white rounded-lg shadow p-5 hover:shadow-md transition">
+            <h3 className="font-bold text-gray-800">Mis solicitudes</h3>
+            <p className="mt-1 text-sm text-gray-600">Crear pedidos, revisar estados y cancelar pendientes.</p>
+          </a>
+          <a href="/profesor/disponibilidad" className="bg-white rounded-lg shadow p-5 hover:shadow-md transition">
+            <h3 className="font-bold text-gray-800">Mi disponibilidad</h3>
+            <p className="mt-1 text-sm text-gray-600">Agregar, editar o eliminar horarios disponibles.</p>
+          </a>
+        </div>
+
         {/* Sección de Disponibilidad */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b border-gray-200">
@@ -193,6 +204,12 @@ export default function ProfesorDashboard() {
             >
               Enviar Solicitud
             </button>
+            <a
+              href="/profesor/solicitudes"
+              className="ml-3 inline-block rounded-lg border border-gray-300 px-5 py-2 font-bold text-gray-700 hover:bg-gray-50"
+            >
+              Ver mis solicitudes
+            </a>
           </div>
         </div>
       </div>

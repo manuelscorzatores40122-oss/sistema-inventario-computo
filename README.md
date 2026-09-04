@@ -2,24 +2,24 @@
 
 Sistema web completo de gestión de inventarios, solicitudes y disponibilidades para colegio con autenticación de roles (Admin y Profesor).
 
-## 🚀 Características
+##  Características
 
-- ✅ Autenticación con roles (Admin y Profesor)
-- ✅ Gestión de inventarios (CRUD)
-- ✅ Sistema de solicitudes de artículos
-- ✅ Control de disponibilidad de profesores
-- ✅ Aprobación/Rechazo de solicitudes por admin
-- ✅ Integración WhatsApp (base preparada)
-- ✅ Recuperación de contraseña
-- ✅ Dashboard responsivo
+-  Autenticación con roles (Admin y Profesor)
+-  Gestión de inventarios (CRUD)
+-  Sistema de solicitudes de artículos
+-  Control de disponibilidad de profesores
+-  Aprobación/Rechazo de solicitudes por admin
+-  Integración WhatsApp (base preparada)
+-  Recuperación de contraseña
+-  Dashboard responsivo
 
-## 📋 Requisitos
+##  Requisitos
 
 - Node.js >= 16
 - PostgreSQL (o Neon)
 - npm o yarn
 
-## 🔧 Instalación
+##  Instalación
 
 1. **Clonar el proyecto**
 ```bash
@@ -61,8 +61,10 @@ La aplicación estará disponible en `http://localhost:3000`
 ## 📱 Usuarios de Prueba
 
 ### Admin
-- Email: `admin@colegio.com`
-- Contraseña: `admin123`
+- Email: `.
+admin@colegio.com
+- Contraseña: `
+admin123`
 
 ### Profesor
 - Email: `profesor@colegio.com`
@@ -77,7 +79,7 @@ VALUES
 ('profesor@colegio.com', 'Juan', 'Pérez', '$2a$10$...', 'profesor', '+51987654322');
 ```
 
-## 🏗️ Estructura del Proyecto
+##  Estructura del Proyecto
 
 ```
 colegio-system/
@@ -100,7 +102,7 @@ colegio-system/
 └── package.json
 ```
 
-## 🔑 Endpoints de API
+##  Endpoints de API
 
 ### Autenticación
 - `POST /api/auth/login` - Iniciar sesión
@@ -128,14 +130,14 @@ colegio-system/
 - `GET /api/notificaciones/whatsapp` - Obtener notificaciones
 - `POST /api/notificaciones/whatsapp` - Enviar notificación
 
-## 🚀 Desplegar en Vercel
+##  Desplegar en Vercel
 
 1. Push del código a GitHub
 2. Conectar repositorio en Vercel
 3. Configurar variables de entorno en Vercel
 4. Deploy automático
 
-## 📞 Integración WhatsApp (Twilio)
+## Integración WhatsApp (Twilio)
 
 Para activar notificaciones por WhatsApp:
 
@@ -144,14 +146,14 @@ Para activar notificaciones por WhatsApp:
 3. Agregar variables en `.env.local`:
 
 ```
-TWILIO_ACCOUNT_SID=your_sid
+LIO_ACCOUNT_SID=your_sid
 TWILIO_AUTH_TOKEN=your_token
 TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890
 ```
 
 4. Descommentar código en `/api/notificaciones/whatsapp/route.ts`
 
-## 🛠️ Personalización
+## Personalización
 
 ### Agregar nuevas categorías de inventario
 Editar en base de datos o agregar selector en UI
@@ -164,7 +166,7 @@ Editar `app/globals.css` y componentes
 2. Crear nuevas páginas en `app/[rol]/`
 3. Crear middleware de autorización
 
-## 📝 Notas Importantes
+## Notas Importantes
 
 - Las contraseñas se hashean con bcryptjs
 - Los tokens JWT expiran en 7 días
@@ -172,7 +174,7 @@ Editar `app/globals.css` y componentes
 - Usar HTTPS en producción
 - Configurar CORS si es necesario
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Error de conexión a BD
 - Verificar `POSTGRES_URL`
@@ -189,11 +191,11 @@ Editar `app/globals.css` y componentes
 - Asegurar números con formato internacional
 - Revisar logs de Twilio
 
-## 📄 Licencia
+##  Licencia
 
 MIT
 
-## 👨‍💻 Autor
+## Autor
 
 Sistema creado para colegios - 2024
 # sistema-inventario-computo

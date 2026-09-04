@@ -11,6 +11,13 @@ interface Solicitud {
   fecha_solicitud: string;
 }
 
+const adminLinks = [
+  { href: '/admin/inventario', title: 'Inventario', text: 'Crear, editar y controlar stock' },
+  { href: '/admin/profesores', title: 'Profesores', text: 'Usuarios, teléfonos y accesos' },
+  { href: '/admin/disponibilidad', title: 'Disponibilidad', text: 'Horarios y reservas' },
+  { href: '/admin/solicitudes', title: 'Solicitudes', text: 'Historial y aprobaciones' },
+];
+
 export default function AdminDashboard() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +89,7 @@ export default function AdminDashboard() {
         </h1>
         <p className="text-gray-600 mb-6">Hola, {user?.nombre}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-600 text-sm font-semibold">
               Solicitudes Pendientes
@@ -91,35 +98,25 @@ export default function AdminDashboard() {
               {solicitudes.length}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-gray-600 text-sm font-semibold">
-              Gestionar Inventario
-            </h3>
-            <a
-              href="/admin/inventario"
-              className="text-blue-600 hover:text-blue-800 mt-2 inline-block"
-            >
-              Ir →
+          {adminLinks.map((link) => (
+            <a key={link.href} href={link.href} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
+              <h3 className="text-gray-800 text-sm font-bold">{link.title}</h3>
+              <p className="mt-2 text-sm text-gray-600">{link.text}</p>
+              <span className="text-blue-600 hover:text-blue-800 mt-3 inline-block text-sm font-semibold">Abrir</span>
             </a>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-gray-600 text-sm font-semibold">
-              Disponibilidades
-            </h3>
-            <a
-              href="/admin/disponibilidad"
-              className="text-blue-600 hover:text-blue-800 mt-2 inline-block"
-            >
-              Ir →
-            </a>
-          </div>
+          ))}
         </div>
 
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
-              Solicitudes Pendientes
-            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Solicitudes Pendientes
+              </h2>
+              <a href="/admin/solicitudes" className="text-sm font-semibold text-blue-600 hover:text-blue-800">
+                Ver todas
+              </a>
+            </div>
           </div>
 
           {loading ? (

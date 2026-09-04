@@ -35,16 +35,43 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { nombre, descripcion, categoria, cantidad_total, ubicacion, estado } = await request.json();
+    const { nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado } = await request.json();
+    const total = cantidad_total === undefined || cantidad_total === '' ? undefined : Number(cantidad_total);
+    const disponible = cantidad_disponible === undefined || cantidad_disponible === '' ? undefined : Number(cantidad_disponible);
+
+    if (total !== undefined && (!Number.isInteger(total) || total < 0)) {
+      return NextResponse.json(
+        { error: 'Cantidad total inválida' },
+        { status: 400 }
+      );
+    }
+
+    if (disponible !== undefined && (!Number.isInteger(disponible) || disponible < 0)) {
+      return NextResponse.json(
+        { error: 'Cantidad disponible inválida' },
+        { status: 400 }
+      );
+    }
 
     const result = await query(
-      'UPDATE inventario SET nombre = COALESCE($1, nombre), descripcion = COALESCE($2, descripcion), categoria = COALESCE($3, categoria), cantidad_total = COALESCE($4, cantidad_total), ubicacion = COALESCE($5, ubicacion), estado = COALESCE($6, estado), updated_at = CURRENT_TIMESTAMP WHERE id = $7 RETURNING *',
-      [nombre, descripcion, categoria, cantidad_total, ubicacion, estado, params.id]
+      `UPDATE inventario
+       SET nombre = COALESCE($1, nombre),
+           descripcion = COALESCE($2, descripcion),
+           categoria = COALESCE($3, categoria),
+           cantidad_total = COALESCE($4, cantidad_total),
+           cantidad_disponible = COALESCE($5, cantidad_disponible),
+           ubicacion = COALESCE($6, ubicacion),
+           estado = COALESCE($7, estado),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8
+         AND COALESCE($5, cantidad_disponible) <= COALESCE($4, cantidad_total)
+       RETURNING *`,
+      [nombre, descripcion, categoria, total, disponible, ubicacion, estado, params.id]
     );
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Item no encontrado' },
+        { error: 'Item no encontrado o cantidades inválidas' },
         { status: 404 }
       );
     }
