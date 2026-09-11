@@ -99,7 +99,7 @@ export default function Login() {
 
         <div className="mt-3 text-center">
           <a href="/auth/register" className="text-decoration-none">
-            ¿No tienes cuenta? Regístrate
+            ING YERSON  DARWIN
           </a>
         </div>
       </div>
