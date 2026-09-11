@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       params.push(estado);
     }
 
-    sql += ' ORDER BY d.sala_nombre, CASE WHEN d.dia_semana = \'Lunes\' THEN 1 WHEN d.dia_semana = \'Martes\' THEN 2 WHEN d.dia_semana = \'Miércoles\' THEN 3 WHEN d.dia_semana = \'Jueves\' THEN 4 WHEN d.dia_semana = \'Viernes\' THEN 5 END, d.hora_inicio';
+    sql += " ORDER BY d.sala_nombre, CASE WHEN d.dia_semana = 'Lunes' THEN 1 WHEN d.dia_semana = 'Martes' THEN 2 WHEN d.dia_semana = 'Miércoles' THEN 3 WHEN d.dia_semana = 'Jueves' THEN 4 WHEN d.dia_semana = 'Viernes' THEN 5 WHEN d.dia_semana = 'Sábado' THEN 6 WHEN d.dia_semana = 'Domingo' THEN 7 END, d.hora_inicio";
 
     const result = await query(sql, params);
 

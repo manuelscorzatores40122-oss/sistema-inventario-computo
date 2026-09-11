@@ -65,7 +65,7 @@ const primaryButton = 'rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold te
 const secondaryButton = 'rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50';
 const dangerButton = 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700';
 
-const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 function getStoredUser(): Usuario | null {
   if (typeof window === 'undefined') return null;

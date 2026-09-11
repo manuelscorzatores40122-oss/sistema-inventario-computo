@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const result = await query(
-      'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at FROM usuarios WHERE id = $1',
+      'SELECT id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo, fecha_creacion, updated_at FROM usuarios WHERE id = $1',
       [params.id]
     );
 

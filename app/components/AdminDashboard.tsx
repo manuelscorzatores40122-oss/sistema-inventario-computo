@@ -31,6 +31,18 @@ const adminLinks = [
     icon: '◷',
   },
   {
+    href: '/admin/horario',
+    title: 'Horario',
+    text: 'Vista semanal de reservas',
+    icon: '▦',
+  },
+  {
+    href: '/admin/perfil',
+    title: 'Perfil',
+    text: 'Información y credenciales',
+    icon: '●',
+  },
+  {
     href: '/admin/solicitudes',
     title: 'Solicitudes',
     text: 'Historial y aprobaciones',

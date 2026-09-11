@@ -156,7 +156,7 @@ export default function ProfesorDashboard() {
   return (
     <div className="min-vh-100 bg-light">
 
-      {/* ENCABEZADO */}
+{/* ENCABEZADO */}
       <header className="bg-dark text-white shadow-sm">
         <div className="container-xl py-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -287,6 +287,50 @@ export default function ProfesorDashboard() {
                       }}
                     >
                       <span className="text-success fw-bold fs-5">
+                        →
+                      </span>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <div className="col-12 col-md-6">
+            <a
+              href="/profesor/perfil"
+              className="text-decoration-none"
+            >
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body p-4">
+
+                  <div className="d-flex justify-content-between align-items-start">
+
+                    <div>
+                      <div className="text-secondary small fw-bold text-uppercase mb-2">
+                        Cuenta
+                      </div>
+
+                      <h2 className="h5 fw-bold text-dark mb-2">
+                        Mi Perfil
+                      </h2>
+
+                      <p className="text-secondary small mb-0">
+                        Ver mi información y cambiar
+                        credenciales de acceso.
+                      </p>
+                    </div>
+
+                    <div
+                      className="bg-secondary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                      }}
+                    >
+                      <span className="text-secondary fw-bold fs-5">
                         →
                       </span>
                     </div>
