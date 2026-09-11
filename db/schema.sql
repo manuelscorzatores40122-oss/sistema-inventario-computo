@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   role VARCHAR(20) NOT NULL DEFAULT 'profesor',
   telefono VARCHAR(20),
   correo_personal VARCHAR(255),
+  dni VARCHAR(20) UNIQUE,
+  area VARCHAR(255),
   activo BOOLEAN DEFAULT true,
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

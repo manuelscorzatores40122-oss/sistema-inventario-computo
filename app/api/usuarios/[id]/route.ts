@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const result = await query(
-      'SELECT id, email, nombre, apellido, role, telefono, activo, fecha_creacion, updated_at FROM usuarios WHERE id = $1',
+      'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at FROM usuarios WHERE id = $1',
       [params.id]
     );
 
@@ -34,7 +34,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { email, nombre, apellido, password, role, telefono, activo } = await request.json();
+    const { email, nombre, apellido, password, role, telefono, correo_personal, activo } = await request.json();
 
     if (role && !['admin', 'profesor'].includes(role)) {
       return NextResponse.json(
@@ -61,10 +61,11 @@ export async function PUT(
            role = COALESCE($5, role),
            telefono = $6,
            activo = COALESCE($7, activo),
+           correo_personal = COALESCE($8, correo_personal),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8
-       RETURNING id, email, nombre, apellido, role, telefono, activo, fecha_creacion, updated_at`,
-      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, params.id]
+       WHERE id = $9
+       RETURNING id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at`,
+      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, correo_personal ?? null, params.id]
     );
 
     if (result.rows.length === 0) {

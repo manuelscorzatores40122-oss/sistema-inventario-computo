@@ -33,8 +33,10 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Redirigir según rol
-      if (data.user.role === 'admin') {
+      // Redirigir según requiera cambio o rol
+      if (data.requirePasswordChange) {
+        router.push('/auth/completar-perfil');
+      } else if (data.user.role === 'admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/profesor/dashboard');
@@ -62,14 +64,14 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label fw-bold">
-              Email
+              DNI
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="form-control"
-              placeholder="tu@email.com"
+              placeholder="Usuario"
               required
             />
           </div>

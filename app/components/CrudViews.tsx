@@ -9,6 +9,7 @@ type Usuario = {
   apellido: string;
   role: 'admin' | 'profesor';
   telefono: string | null;
+  correo_personal: string | null;
   activo: boolean;
 };
 
@@ -229,7 +230,7 @@ export function AdminInventarioView() {
 }
 
 export function AdminProfesoresView() {
-  const empty = { email: '', nombre: '', apellido: '', password: '', role: 'profesor', telefono: '', activo: true };
+  const empty = { email: '', nombre: '', apellido: '', password: '', role: 'profesor', telefono: '', correo_personal: '', activo: true };
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -267,7 +268,7 @@ export function AdminProfesoresView() {
 
   const edit = (usuario: Usuario) => {
     setEditingId(usuario.id);
-    setForm({ email: usuario.email, nombre: usuario.nombre, apellido: usuario.apellido, password: '', role: usuario.role, telefono: usuario.telefono || '', activo: usuario.activo });
+    setForm({ email: usuario.email, nombre: usuario.nombre, apellido: usuario.apellido, password: '', role: usuario.role, telefono: usuario.telefono || '', correo_personal: usuario.correo_personal || '', activo: usuario.activo });
   };
 
   const deactivate = async (id: number) => {
@@ -286,19 +287,20 @@ export function AdminProfesoresView() {
       <form onSubmit={submit} className={`${panel} grid gap-4 p-5 md:grid-cols-4`}>
         <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
         <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
-        <div><label className={label}>Email</label><input className={input} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
+        <div><label className={label}>DNI</label><input className={input} type="text" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
+        <div><label className={label}>Correo Personal</label><input className={input} type="email" value={form.correo_personal} onChange={(e) => setForm({ ...form, correo_personal: e.target.value })} /></div>
         <div><label className={label}>Teléfono WhatsApp</label><input className={input} value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+51999999999" /></div>
-        <div><label className={label}>Contraseña</label><input className={input} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editingId} placeholder={editingId ? 'Opcional' : ''} /></div>
+        <div><label className={label}>Contraseña</label><input className={input} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'Opcional' : 'DNI por defecto'} /></div>
         <div><label className={label}>Rol</label><select className={input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option value="profesor">Profesor</option><option value="admin">Admin</option></select></div>
         <label className="flex items-end gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Activo</label>
         <div className="flex items-end gap-2"><button className={primaryButton} type="submit">{editingId ? 'Guardar' : 'Crear'}</button>{editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}</div>
       </form>
       <div className={`${panel} overflow-x-auto`}>
         <table className="w-full min-w-[850px] text-sm">
-          <thead className="bg-slate-100 text-left text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Usuario</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
+          <thead className="bg-slate-100 text-left text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Usuario</th><th>DNI</th><th>Correo Personal</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
           <tbody className="divide-y divide-slate-200">
             {usuarios.map((usuario) => (
-              <tr key={usuario.id}><td className="px-4 py-3 font-semibold">{usuario.nombre} {usuario.apellido}</td><td>{usuario.email}</td><td>{usuario.telefono || '-'}</td><td>{usuario.role}</td><td>{usuario.activo ? 'Activo' : 'Inactivo'}</td><td className="px-4 py-3"><button className={secondaryButton} onClick={() => edit(usuario)}>Editar</button><button className={`${dangerButton} ml-2`} onClick={() => deactivate(usuario.id)}>Desactivar</button></td></tr>
+              <tr key={usuario.id}><td className="px-4 py-3 font-semibold">{usuario.nombre} {usuario.apellido}</td><td>{usuario.email}</td><td>{usuario.correo_personal || '-'}</td><td>{usuario.telefono || '-'}</td><td>{usuario.role}</td><td>{usuario.activo ? 'Activo' : 'Inactivo'}</td><td className="px-4 py-3"><button className={secondaryButton} onClick={() => edit(usuario)}>Editar</button><button className={`${dangerButton} ml-2`} onClick={() => deactivate(usuario.id)}>Desactivar</button></td></tr>
             ))}
           </tbody>
         </table>
