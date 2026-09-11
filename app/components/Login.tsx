@@ -97,11 +97,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-3 text-center">
-          <a href="/auth/register" className="text-decoration-none">
-            ING YERSON  DARWIN
-          </a>
-        </div>
+
       </div>
     </div>
   );

@@ -34,7 +34,7 @@ export const verifyToken = (token: string) => {
 
 export const getUserById = async (id: number) => {
   const result = await query(
-    'SELECT id, email, nombre, apellido, role, telefono, activo FROM usuarios WHERE id = $1',
+    'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo FROM usuarios WHERE id = $1',
     [id]
   );
   return result.rows[0];
@@ -54,12 +54,13 @@ export const createUser = async (
   apellido: string,
   password: string,
   role: string = 'profesor',
-  telefono?: string
+  telefono?: string,
+  correo_personal?: string
 ) => {
   const hashedPassword = await hashPassword(password);
   const result = await query(
-    'INSERT INTO usuarios (email, nombre, apellido, password, role, telefono) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, nombre, apellido, role',
-    [email, nombre, apellido, hashedPassword, role, telefono]
+    'INSERT INTO usuarios (email, nombre, apellido, password, role, telefono, correo_personal) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nombre, apellido, role',
+    [email, nombre, apellido, hashedPassword, role, telefono, correo_personal || null]
   );
   return result.rows[0];
 };
