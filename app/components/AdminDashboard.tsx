@@ -20,6 +20,12 @@ const adminLinks = [
     icon: '▣',
   },
   {
+    href: '/admin/solicitudes',
+    title: 'Solicitudes',
+    text: 'Aprobaciones e historial',
+    icon: '✓',
+  },
+  {
     href: '/admin/profesores',
     title: 'Profesores',
     text: 'Usuarios y accesos',
@@ -42,12 +48,6 @@ const adminLinks = [
     title: 'Perfil',
     text: 'Información y credenciales',
     icon: '●',
-  },
-  {
-    href: '/admin/solicitudes',
-    title: 'Solicitudes',
-    text: 'Historial y aprobaciones',
-    icon: '✓',
   },
 ];
 
