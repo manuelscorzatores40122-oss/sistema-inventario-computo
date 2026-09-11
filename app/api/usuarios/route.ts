@@ -7,9 +7,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const activo = searchParams.get('activo');
+    const incluirOcultos = searchParams.get('incluirOcultos') === 'true';
 
     let sql = 'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at FROM usuarios WHERE 1=1';
     const params: string[] = [];
+
+    if (!incluirOcultos) {
+      sql += ' AND oculto = false';
+    }
 
     if (role) {
       params.push(role);
