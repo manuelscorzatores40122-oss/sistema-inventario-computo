@@ -64,7 +64,7 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label fw-bold">
-              DNI
+              Usuario
             </label>
             <input
               type="text"

@@ -139,6 +139,15 @@ export default function CompletarPerfil() {
             {loading ? 'Guardando...' : 'Guardar y Continuar'}
           </button>
         </form>
+
+        <div className="text-center mt-3">
+          <button
+            onClick={() => router.push(user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard')}
+            className="btn btn-link text-secondary text-decoration-none"
+          >
+            Omitir por ahora
+          </button>
+        </div>
       </div>
     </div>
   );
