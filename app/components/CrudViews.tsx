@@ -82,11 +82,10 @@ function Notice({ message }: { message: Message }) {
   if (!message) return null;
 
   return (
-    <div className={`rounded-lg border px-4 py-3 text-sm ${
-      message.type === 'success'
-        ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-red-200 bg-red-50 text-red-800'
-    }`}>
+    <div className={`rounded-lg border px-4 py-3 text-sm ${message.type === 'success'
+      ? 'border-green-200 bg-green-50 text-green-800'
+      : 'border-red-200 bg-red-50 text-red-800'
+      }`}>
       {message.text}
     </div>
   );
@@ -235,16 +234,21 @@ export function AdminProfesoresView() {
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<Message>(null);
+  const [busqueda, setBusqueda] = useState('');
 
-  const fetchUsuarios = async () => {
-    const response = await fetch('/api/usuarios');
+  const fetchUsuarios = async (q: string = '') => {
+    const url = q ? `/api/usuarios?q=${encodeURIComponent(q)}` : '/api/usuarios';
+    const response = await fetch(url);
     const data = await response.json();
     setUsuarios(data.usuarios || []);
   };
 
   useEffect(() => {
-    fetchUsuarios().catch(() => setMessage({ type: 'error', text: 'Error al cargar usuarios' }));
-  }, []);
+    const timer = setTimeout(() => {
+      fetchUsuarios(busqueda).catch(() => setMessage({ type: 'error', text: 'Error al buscar' }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -263,7 +267,7 @@ export function AdminProfesoresView() {
     setForm(empty);
     setEditingId(null);
     setMessage({ type: 'success', text: editingId ? 'Usuario actualizado' : 'Usuario creado' });
-    fetchUsuarios();
+    fetchUsuarios(busqueda);
   };
 
   const edit = (usuario: Usuario) => {
@@ -278,12 +282,30 @@ export function AdminProfesoresView() {
       return;
     }
     setMessage({ type: 'success', text: 'Usuario desactivado' });
-    fetchUsuarios();
+    fetchUsuarios(busqueda);
   };
 
   return (
     <PageShell title="Profesores y usuarios" subtitle="Crea profesores, edita datos de contacto, roles y acceso.">
       <Notice message={message} />
+<div className="mb-4 flex items-center gap-2">
+        <input
+          className={input}
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, apellido, DNI o teléfono..."
+        />
+        {busqueda && (
+          <button
+            className={secondaryButton}
+            type="button"
+            onClick={() => { setBusqueda(''); fetchUsuarios(''); }}
+          >
+            Limpiar
+          </button>
+        )}
+      </div>
       <form onSubmit={submit} className={`${panel} grid gap-4 p-5 md:grid-cols-4`}>
         <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
         <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>

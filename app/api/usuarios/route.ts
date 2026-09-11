@@ -8,12 +8,18 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role');
     const activo = searchParams.get('activo');
     const incluirOcultos = searchParams.get('incluirOcultos') === 'true';
+    const q = searchParams.get('q');
 
     let sql = 'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at FROM usuarios WHERE 1=1';
     const params: string[] = [];
 
     if (!incluirOcultos) {
       sql += ' AND oculto = false';
+    }
+
+    if (q && q.trim()) {
+      params.push(`%${q.trim()}%`);
+      sql += ` AND (nombre ILIKE $${params.length} OR apellido ILIKE $${params.length} OR email ILIKE $${params.length} OR COALESCE(telefono, '') ILIKE $${params.length})`;
     }
 
     if (role) {

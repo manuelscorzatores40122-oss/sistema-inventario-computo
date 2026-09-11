@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 // POST - Crear disponibilidad de sala (admin)
 export async function POST(request: NextRequest) {
   try {
-    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible' } = await request.json();
+    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible', reservado_por = null, motivo_reserva = null } = await request.json();
 
     if (!sala_nombre || !dia_semana || !hora_inicio || !hora_fin) {
       return NextResponse.json(
@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(
-      'INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [sala_nombre, dia_semana, hora_inicio, hora_fin, estado]
+      'INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva]
     );
 
     return NextResponse.json({
