@@ -82,101 +82,84 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+    <div className="p-4 bg-light min-vh-100">
+      <div className="container-xl mx-auto">
+        <h1 className="h2 fw-bold text-dark mb-2">
           Panel de Administración
         </h1>
-        <p className="text-gray-600 mb-6">Hola, {user?.nombre}</p>
+        <p className="text-secondary mb-4">Hola, {user?.nombre}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-gray-600 text-sm font-semibold">
-              Solicitudes Pendientes
-            </h3>
-            <p className="text-3xl font-bold text-blue-600 mt-2">
-              {solicitudes.length}
-            </p>
+        <div className="row g-4 mb-4">
+          <div className="col-12 col-md-3">
+            <div className="card shadow p-4 h-100 border-0">
+              <h3 className="text-secondary small fw-bold mb-0">
+                Solicitudes Pendientes
+              </h3>
+              <p className="h2 fw-bold text-primary mt-2 mb-0">
+                {solicitudes.length}
+              </p>
+            </div>
           </div>
           {adminLinks.map((link) => (
-            <a key={link.href} href={link.href} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-              <h3 className="text-gray-800 text-sm font-bold">{link.title}</h3>
-              <p className="mt-2 text-sm text-gray-600">{link.text}</p>
-              <span className="text-blue-600 hover:text-blue-800 mt-3 inline-block text-sm font-semibold">Abrir</span>
-            </a>
+            <div className="col-12 col-md-3" key={link.href}>
+              <a href={link.href} className="card shadow p-4 h-100 border-0 text-decoration-none">
+                <h3 className="text-dark small fw-bold mb-0">{link.title}</h3>
+                <p className="mt-2 small text-secondary mb-0">{link.text}</p>
+                <span className="text-primary mt-3 d-inline-block small fw-bold">Abrir</span>
+              </a>
+            </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-gray-800">
-                Solicitudes Pendientes
-              </h2>
-              <a href="/admin/solicitudes" className="text-sm font-semibold text-blue-600 hover:text-blue-800">
-                Ver todas
-              </a>
-            </div>
+        <div className="card shadow border-0">
+          <div className="card-header bg-white p-4 d-flex align-items-center justify-content-between">
+            <h2 className="h5 fw-bold text-dark mb-0">
+              Solicitudes Pendientes
+            </h2>
+            <a href="/admin/solicitudes" className="small fw-bold text-primary text-decoration-none">
+              Ver todas
+            </a>
           </div>
 
           {loading ? (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-4 text-center text-secondary">
               Cargando...
             </div>
           ) : solicitudes.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-4 text-center text-secondary">
               No hay solicitudes pendientes
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200">
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead className="table-light">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Profesor
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Artículo
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Cantidad
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Acciones
-                    </th>
+                    <th className="py-3 text-secondary small fw-bold">Profesor</th>
+                    <th className="py-3 text-secondary small fw-bold">Artículo</th>
+                    <th className="py-3 text-secondary small fw-bold">Cantidad</th>
+                    <th className="py-3 text-secondary small fw-bold">Fecha</th>
+                    <th className="py-3 text-secondary small fw-bold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {solicitudes.map((solicitud) => (
-                    <tr
-                      key={solicitud.id}
-                      className="border-b border-gray-200 hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 text-sm text-gray-800">
-                        {solicitud.profesor_nombre}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-800">
-                        {solicitud.item_nombre}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-800">
-                        {solicitud.cantidad_solicitada}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                    <tr key={solicitud.id}>
+                      <td className="align-middle text-dark">{solicitud.profesor_nombre}</td>
+                      <td className="align-middle text-dark">{solicitud.item_nombre}</td>
+                      <td className="align-middle text-dark">{solicitud.cantidad_solicitada}</td>
+                      <td className="align-middle text-secondary">
                         {new Date(solicitud.fecha_solicitud).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="align-middle">
                         <button
                           onClick={() => handleAprobar(solicitud.id)}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 mr-2"
+                          className="btn btn-success btn-sm me-2"
                         >
                           Aprobar
                         </button>
                         <button
                           onClick={() => handleRechazar(solicitud.id)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                          className="btn btn-danger btn-sm"
                         >
                           Rechazar
                         </button>

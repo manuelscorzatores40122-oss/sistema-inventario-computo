@@ -90,53 +90,59 @@ export default function ProfesorDashboard() {
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+    <div className="p-4 bg-light min-vh-100">
+      <div className="container-xl mx-auto">
+        <h1 className="h2 fw-bold text-dark mb-2">
           Panel del Profesor
         </h1>
-        <p className="text-gray-600 mb-6">Hola, {user?.nombre}</p>
+        <p className="text-secondary mb-4">Hola, {user?.nombre}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <a href="/profesor/solicitudes" className="bg-white rounded-lg shadow p-5 hover:shadow-md transition">
-            <h3 className="font-bold text-gray-800">Mis solicitudes</h3>
-            <p className="mt-1 text-sm text-gray-600">Crear pedidos, revisar estados y cancelar pendientes.</p>
-          </a>
-          <a href="/profesor/disponibilidad" className="bg-white rounded-lg shadow p-5 hover:shadow-md transition">
-            <h3 className="font-bold text-gray-800">Mi disponibilidad</h3>
-            <p className="mt-1 text-sm text-gray-600">Agregar, editar o eliminar horarios disponibles.</p>
-          </a>
+        <div className="row g-4 mb-4">
+          <div className="col-12 col-md-6">
+            <a href="/profesor/solicitudes" className="card shadow p-4 h-100 text-decoration-none border-0">
+              <h3 className="h5 fw-bold text-dark mb-1">Mis solicitudes</h3>
+              <p className="small text-secondary mb-0">Crear pedidos, revisar estados y cancelar pendientes.</p>
+            </a>
+          </div>
+          <div className="col-12 col-md-6">
+            <a href="/profesor/disponibilidad" className="card shadow p-4 h-100 text-decoration-none border-0">
+              <h3 className="h5 fw-bold text-dark mb-1">Mi disponibilidad</h3>
+              <p className="small text-secondary mb-0">Agregar, editar o eliminar horarios disponibles.</p>
+            </a>
+          </div>
         </div>
 
         {/* Sección de Disponibilidad */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
+        <div className="card shadow mb-4 border-0">
+          <div className="card-header bg-white p-4">
+            <h2 className="h5 fw-bold text-dark mb-0">
               Mi Disponibilidad
             </h2>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="card-body p-4">
+            <div className="row g-3">
               {diasSemana.map((dia) => (
-                <div key={dia} className="border rounded-lg p-3">
-                  <p className="font-semibold text-sm mb-2">{dia}</p>
-                  {disponibilidades
-                    .filter((d) => d.dia_semana === dia)
-                    .map((d) => (
-                      <div
-                        key={d.id}
-                        className={`text-xs p-2 rounded mb-2 ${
-                          d.estado === 'disponible'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        <p>{d.hora_inicio} - {d.hora_fin}</p>
-                        {d.estado === 'separado' && (
-                          <p className="mt-1">Por: {d.reservado_por_nombre}</p>
-                        )}
-                      </div>
-                    ))}
+                <div key={dia} className="col-6 col-md">
+                  <div className="border rounded p-3 h-100">
+                    <p className="fw-bold small mb-2">{dia}</p>
+                    {disponibilidades
+                      .filter((d) => d.dia_semana === dia)
+                      .map((d) => (
+                        <div
+                          key={d.id}
+                          className={`small p-2 rounded mb-2 ${
+                            d.estado === 'disponible'
+                              ? 'bg-success text-success bg-opacity-10'
+                              : 'bg-danger text-danger bg-opacity-10'
+                          }`}
+                        >
+                          <p className="mb-0">{d.hora_inicio} - {d.hora_fin}</p>
+                          {d.estado === 'separado' && (
+                            <p className="mt-1 mb-0">Por: {d.reservado_por_nombre}</p>
+                          )}
+                        </div>
+                      ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -144,22 +150,22 @@ export default function ProfesorDashboard() {
         </div>
 
         {/* Sección de Solicitudes */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
+        <div className="card shadow border-0">
+          <div className="card-header bg-white p-4">
+            <h2 className="h5 fw-bold text-dark mb-0">
               Solicitar Artículos
             </h2>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="card-body p-4">
+            <div className="row g-3 mb-4">
+              <div className="col-md-4">
+                <label className="form-label fw-bold small">
                   Selecciona un artículo
                 </label>
                 <select
                   value={selectedItem || ''}
                   onChange={(e) => setSelectedItem(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="form-select"
                 >
                   <option value="">-- Seleccionar --</option>
                   {inventario.map((item) => (
@@ -170,8 +176,8 @@ export default function ProfesorDashboard() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <div className="col-md-4">
+                <label className="form-label fw-bold small">
                   Cantidad
                 </label>
                 <input
@@ -179,37 +185,39 @@ export default function ProfesorDashboard() {
                   min="1"
                   value={cantidad}
                   onChange={(e) => setCantidad(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="form-control"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <div className="col-md-4">
+                <label className="form-label fw-bold small">
                   Motivo
                 </label>
                 <input
                   type="text"
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="form-control"
                   placeholder="Ej: Reparación de equipos"
                 />
               </div>
             </div>
 
-            <button
-              onClick={handleSolicitar}
-              disabled={!selectedItem || loading}
-              className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
-            >
-              Enviar Solicitud
-            </button>
-            <a
-              href="/profesor/solicitudes"
-              className="ml-3 inline-block rounded-lg border border-gray-300 px-5 py-2 font-bold text-gray-700 hover:bg-gray-50"
-            >
-              Ver mis solicitudes
-            </a>
+            <div>
+              <button
+                onClick={handleSolicitar}
+                disabled={!selectedItem || loading}
+                className="btn btn-primary fw-bold py-2 px-4"
+              >
+                Enviar Solicitud
+              </button>
+              <a
+                href="/profesor/solicitudes"
+                className="btn btn-outline-secondary fw-bold py-2 px-4 ms-2"
+              >
+                Ver mis solicitudes
+              </a>
+            </div>
           </div>
         </div>
       </div>

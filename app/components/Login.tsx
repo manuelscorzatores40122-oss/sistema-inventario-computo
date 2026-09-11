@@ -48,41 +48,41 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Colegio</h1>
-        <p className="text-gray-600 text-center mb-6">Sistema de Inventarios</p>
+    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+      <div className="card shadow p-4 w-100" style={{ maxWidth: '400px' }}>
+        <h1 className="h3 fw-bold text-dark text-center mb-2">Colegio</h1>
+        <p className="text-secondary text-center mb-4">Sistema de Inventarios</p>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="alert alert-danger" role="alert">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
+          <div className="mb-3">
+            <label className="form-label fw-bold">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="form-control"
               placeholder="tu@email.com"
               required
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
+          <div className="mb-4">
+            <label className="form-label fw-bold">
               Contraseña
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="form-control"
               placeholder="••••••••"
               required
             />
@@ -91,14 +91,14 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+            className="btn btn-primary w-100 fw-bold py-2"
           >
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
         </form>
 
-        <div className="mt-4 text-center">
-          <a href="/auth/register" className="text-blue-600 hover:text-blue-800 text-sm">
+        <div className="mt-3 text-center">
+          <a href="/auth/register" className="text-decoration-none">
             ¿No tienes cuenta? Regístrate
           </a>
         </div>
