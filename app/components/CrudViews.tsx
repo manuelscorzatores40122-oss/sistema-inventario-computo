@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   FiArrowLeft,
+  FiArrowRight,
   FiCheckCircle,
   FiXCircle,
   FiEdit2,
@@ -449,6 +450,8 @@ export function AdminProfesoresView() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<Message>(null);
   const [search, setSearch] = useState('');
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   const fetchUsuarios = async () => {
     const response = await fetch('/api/usuarios');
@@ -466,6 +469,17 @@ export function AdminProfesoresView() {
       return full.includes(search.toLowerCase());
     });
   }, [usuarios, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedUsuarios = filteredUsuarios.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rangeStart = filteredUsuarios.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filteredUsuarios.length);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -543,10 +557,15 @@ export function AdminProfesoresView() {
           <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2">
             <FiUsers size={17} className="text-slate-500" />
             Directorio de Usuarios ({filteredUsuarios.length})
+            {filteredUsuarios.length > 0 && (
+              <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                {rangeStart}-{rangeEnd}
+              </span>
+            )}
           </h3>
           <div className="d-flex align-items-center gap-2">
             <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
-            <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => handleSearch(e.target.value)} />
           </div>
         </div>
 
@@ -556,8 +575,8 @@ export function AdminProfesoresView() {
             No se encontraron usuarios que coincidan con la búsqueda.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredUsuarios.map((usuario) => {
+          <div className="space-y-3">
+            {paginatedUsuarios.map((usuario) => {
               const isAdmin = usuario.role === 'admin';
               const activo = usuario.activo;
 
@@ -565,17 +584,17 @@ export function AdminProfesoresView() {
               const avatarColor = avatarPalette[usuario.id % avatarPalette.length];
 
               return (
-                <div key={usuario.id} className={`${panel} p-4 d-flex flex-column gap-3 position-relative`}>
+                <div key={usuario.id} className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center`}>
                   <div className="d-flex align-items-center gap-3">
                     <div
                       className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                      style={{ width: '48px', height: '48px', fontSize: '18px', backgroundColor: avatarColor }}
+                      style={{ width: '46px', height: '46px', fontSize: '17px', backgroundColor: avatarColor }}
                     >
                       {usuario.nombre.charAt(0).toUpperCase()}
                     </div>
 
                     <div className="min-w-0">
-                      <div className="font-bold text-slate-900 text-truncate" style={{ fontSize: '0.9rem' }}>
+                      <div className="font-bold text-slate-900 text-truncate">
                         {usuario.nombre} {usuario.apellido}
                       </div>
                       <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
@@ -588,38 +607,85 @@ export function AdminProfesoresView() {
                     </div>
                   </div>
 
-                  <div className="border-top border-slate-200 pt-3 d-flex flex-column gap-2">
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
-                        <FiHash size={12} />
+                  <div className="d-flex flex-column gap-2 flex-md-row gap-md-3 flex-grow-1">
+                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
+                        <FiHash size={13} />
                       </span>
                       <span className="text-truncate">DNI: <strong className="text-slate-800">{usuario.email}</strong></span>
                     </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
-                        <FiMail size={12} />
+                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
+                        <FiMail size={13} />
                       </span>
                       <span className="text-truncate">{usuario.correo_personal || 'Sin correo'}</span>
                     </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
-                        <FiPhone size={12} />
+                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
+                        <FiPhone size={13} />
                       </span>
                       <span className="text-truncate">{usuario.telefono || 'Sin teléfono'}</span>
                     </div>
                   </div>
 
-                  <div className="d-flex gap-2 border-top border-slate-200 pt-3 mt-auto">
-                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1 flex-grow-1 justify-content-center`} onClick={() => edit(usuario)}>
+                  <div className="d-flex gap-2 flex-shrink-0">
+                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}>
                       <FiEdit2 size={13} />Editar
                     </button>
-                    <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1 flex-grow-1 justify-content-center`} onClick={() => deactivate(usuario.id)}>
+                    <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}>
                       {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
                     </button>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {filteredUsuarios.length > pageSize && (
+          <div className="d-flex flex-column gap-2 flex-md-row align-items-md-center justify-content-md-between border-top border-slate-200 pt-3">
+            <span className="text-xs font-semibold text-slate-500">
+              Mostrando {rangeStart}-{rangeEnd} de {filteredUsuarios.length} usuarios
+            </span>
+            <div className="d-flex align-items-center gap-1">
+              <button
+                className={`${secondaryButton} d-inline-flex align-items-center gap-1 ${currentPage === 1 ? 'disabled opacity-50' : ''}`}
+                disabled={currentPage === 1}
+                onClick={() => setPage(currentPage - 1)}
+              >
+                <FiArrowLeft size={13} />Anterior
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => Math.abs(p - currentPage) <= 1 || p === 1 || p === totalPages)
+                .reduce<number[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && arr[idx - 1] !== p - 1) acc.push(NaN);
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  isNaN(p) ? (
+                    <span key={`gap-${idx}`} className="px-1 text-slate-500 small">...</span>
+                  ) : (
+                    <button
+                      key={p}
+                      className={`d-inline-flex align-items-center justify-content-center rounded fw-bold ${currentPage === p ? 'text-white bg-primary' : 'text-slate-600 bg-slate-100'}`}
+                      style={{ width: '32px', height: '32px', border: 'none', transition: 'background-color 0.2s' }}
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+              <button
+                className={`${secondaryButton} d-inline-flex align-items-center gap-1 ${currentPage === totalPages ? 'disabled opacity-50' : ''}`}
+                disabled={currentPage === totalPages}
+                onClick={() => setPage(currentPage + 1)}
+              >
+                Siguiente<FiArrowRight size={13} />
+              </button>
+            </div>
           </div>
         )}
       </div>
