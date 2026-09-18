@@ -26,6 +26,10 @@ import {
   FiInbox,
   FiTag,
   FiInfo,
+  FiHash,
+  FiShield,
+  FiUserCheck,
+  FiUserX,
 } from 'react-icons/fi';
 
 type Usuario = {
@@ -545,60 +549,79 @@ export function AdminProfesoresView() {
             <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="inventory-table">
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>DNI</th>
-                <th>Correo Contacto</th>
-                <th>Teléfono</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th className="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsuarios.map((usuario) => (
-                <tr key={usuario.id}>
-                  <td className="font-bold text-slate-900">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style={{ width: '34px', height: '34px', flexShrink: 0 }}>
-                        {usuario.nombre.charAt(0).toUpperCase()}
-                      </div>
-                      {usuario.nombre} {usuario.apellido}
+
+        {filteredUsuarios.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 font-semibold">
+            <FiUsers size={36} className="mx-auto mb-3 text-slate-300" />
+            No se encontraron usuarios que coincidan con la búsqueda.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredUsuarios.map((usuario) => {
+              const isAdmin = usuario.role === 'admin';
+              const activo = usuario.activo;
+
+              const avatarPalette = ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'];
+              const avatarColor = avatarPalette[usuario.id % avatarPalette.length];
+
+              return (
+                <div key={usuario.id} className={`${panel} p-4 d-flex flex-column gap-3 position-relative`}>
+                  <div className="d-flex align-items-center gap-3">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                      style={{ width: '48px', height: '48px', fontSize: '18px', backgroundColor: avatarColor }}
+                    >
+                      {usuario.nombre.charAt(0).toUpperCase()}
                     </div>
-                  </td>
-                  <td className="font-mono text-sm">{usuario.email}</td>
-                  <td className="text-slate-600">
-                    <span className="d-inline-flex align-items-center gap-1">
-                      <FiMail size={13} className="text-slate-400" />
-                      {usuario.correo_personal || '-'}
-                    </span>
-                  </td>
-                  <td className="text-slate-600">
-                    <span className="d-inline-flex align-items-center gap-1">
-                      <FiPhone size={13} className="text-slate-400" />
-                      {usuario.telefono || '-'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`category-chip ${usuario.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
-                      {usuario.role === 'admin' ? 'Admin' : 'Profesor'}
-                    </span>
-                  </td>
-                  <td>
-                    <StatusBadge value={usuario.activo ? 'disponible' : 'agotado'} />
-                  </td>
-                  <td className="text-right space-x-2">
-                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}><FiEdit2 size={13} />Editar</button>
-                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}><FiTrash2 size={13} />Desactivar</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 text-truncate" style={{ fontSize: '0.9rem' }}>
+                        {usuario.nombre} {usuario.apellido}
+                      </div>
+                      <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                        <span className={`category-chip d-inline-flex align-items-center gap-1 ${isAdmin ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
+                          {isAdmin ? <FiShield size={11} /> : <FiUser size={11} />}
+                          {isAdmin ? 'Admin' : 'Profesor'}
+                        </span>
+                        <StatusBadge value={activo ? 'disponible' : 'agotado'} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-top border-slate-200 pt-3 d-flex flex-column gap-2">
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
+                        <FiHash size={12} />
+                      </span>
+                      <span className="text-truncate">DNI: <strong className="text-slate-800">{usuario.email}</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
+                        <FiMail size={12} />
+                      </span>
+                      <span className="text-truncate">{usuario.correo_personal || 'Sin correo'}</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.8rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
+                        <FiPhone size={12} />
+                      </span>
+                      <span className="text-truncate">{usuario.telefono || 'Sin teléfono'}</span>
+                    </div>
+                  </div>
+
+                  <div className="d-flex gap-2 border-top border-slate-200 pt-3 mt-auto">
+                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1 flex-grow-1 justify-content-center`} onClick={() => edit(usuario)}>
+                      <FiEdit2 size={13} />Editar
+                    </button>
+                    <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1 flex-grow-1 justify-content-center`} onClick={() => deactivate(usuario.id)}>
+                      {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </PageShell>
   );
