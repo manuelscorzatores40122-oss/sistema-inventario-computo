@@ -41,7 +41,6 @@ type Message = { type: 'success' | 'error'; text: string } | null;
 
 const SALA_HORARIO = 'Horario de Clases';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -54,16 +53,22 @@ const PERIODOS = [
   { inicio: '12:00', fin: '13:00' },
 ];
 
+const weekStartOf = (date: Date) => {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
+
 export default function AdminHorarioView() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
 
-  const [cursor, setCursor] = useState<Date>(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
+  const [weekStart, setWeekStart] = useState<Date>(() => weekStartOf(new Date()));
+  const [autoFollow, setAutoFollow] = useState(true);
+  const [now, setNow] = useState<Date>(() => new Date());
   const [dayModal, setDayModal] = useState<{ diaNombre: string; label: string } | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editClase, setEditClase] = useState<Clase | null>(null);
@@ -94,6 +99,20 @@ export default function AdminHorarioView() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const current = new Date();
+      setNow(current);
+      setWeekStart((prev) => {
+        const monday = weekStartOf(current);
+        const diff = Math.round((monday.getTime() - prev.getTime()) / 86400000);
+        if (autoFollow && diff > 0) return monday;
+        return prev;
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [autoFollow]);
+
   const clasesByDay = useMemo(() => {
     const map = new Map<string, Clase[]>();
     DIAS.forEach((d) => map.set(d, []));
@@ -108,25 +127,30 @@ export default function AdminHorarioView() {
   const libre = DIAS.length * PERIODOS.length - total;
   const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
 
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const today = new Date();
+  const year = weekStart.getFullYear();
+  const month = weekStart.getMonth();
+  const today = now;
+  const weekDates = Array.from({ length: 6 }, (_, i) => new Date(year, month, weekStart.getDate() + i));
 
-  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevWeek = () => {
+    setAutoFollow(false);
+    setWeekStart(new Date(year, month, weekStart.getDate() - 7));
+  };
+  const nextWeek = () => {
+    setAutoFollow(false);
+    setWeekStart(new Date(year, month, weekStart.getDate() + 7));
+  };
+  const goCurrentWeek = () => {
+    setWeekStart(weekStartOf(today));
+    setAutoFollow(true);
+  };
 
-  const cells: (number | null)[] = [
-    ...Array.from({ length: startOffset }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
+  const startD = weekDates[0];
+  const endD = weekDates[5];
+  const startPart = `${startD.getDate()}${startD.getMonth() !== endD.getMonth() ? ' de ' + MESES[startD.getMonth()] : ''}`;
+  const weekTitle = `Semana del ${startPart} al ${endD.getDate()} de ${MESES[endD.getMonth()]} del ${endD.getFullYear()}`;
 
-  const prevMonth = () => setCursor(new Date(year, month - 1, 1));
-  const nextMonth = () => setCursor(new Date(year, month + 1, 1));
-  const goToday = () => setCursor(new Date(today.getFullYear(), today.getMonth(), 1));
-
-  const openDay = (d: number) => {
-    const date = new Date(year, month, d);
+  const openDay = (date: Date) => {
     const diaNombre = DIAS_SEMANA[date.getDay()];
     if (!DIAS.includes(diaNombre)) return;
 
@@ -248,10 +272,10 @@ export default function AdminHorarioView() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2">
             <FiCalendar className="text-primary" size={26} />
-            Almanaque de Clases
+            Horario Semanal
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Calendario mensual. Presiona un día para ver y editar las clases de ese día.
+            Muestra la semana actual de Lunes a Sábado y se actualiza sola cada lunes. Presiona un día para editar sus clases.
           </p>
         </div>
 
@@ -295,7 +319,7 @@ export default function AdminHorarioView() {
 
       {loading ? (
         <div className="inventory-panel p-8 text-center text-slate-500 font-semibold">
-          Cargando almanaque...
+          Cargando horario semanal...
         </div>
       ) : (
         <div className="inventory-panel p-3">
@@ -304,75 +328,94 @@ export default function AdminHorarioView() {
               <div className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
                 <FiCalendar size={16} />
               </div>
-              <h2 className="text-lg font-extrabold text-slate-950 mb-0">{MESES[month]} {year}</h2>
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-950 mb-0" style={{ fontSize: '1.05rem' }}>{weekTitle}</h2>
+                <p className="text-xs font-semibold text-primary mb-0 d-flex align-items-center gap-1">
+                  <span className={autoFollow ? 'text-success' : 'text-warning'} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: autoFollow ? '#16a34a' : '#d97706', display: 'inline-block' }} />
+                  {autoFollow ? 'Se actualiza automáticamente a la semana actual' : 'Estás viendo otra semana, presiona "Semana actual"'}
+                </p>
+              </div>
             </div>
             <div className="d-flex align-items-center gap-1">
-              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevMonth}>
-                <FiChevronLeft size={14} />Anterior
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevWeek}>
+                <FiChevronLeft size={14} />Semana anterior
               </button>
-              <button className="btn-secondary-custom text-xs" onClick={goToday}>Hoy</button>
-              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextMonth}>
-                Siguiente<FiChevronRight size={14} />
+              <button className="btn-primary-custom text-xs" onClick={goCurrentWeek}>Semana actual</button>
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextWeek}>
+                Semana siguiente<FiChevronRight size={14} />
               </button>
             </div>
           </div>
 
-          <div className="d-grid mt-3" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-            {DIAS_CORTOS.map((dia) => (
-              <div key={dia} className="text-center text-xs font-bold uppercase text-slate-400 py-1">
-                {dia}
-              </div>
-            ))}
-
-            {cells.map((d, idx) => {
-              if (d === null) return <div key={`empty-${idx}`} />;
-
-              const date = new Date(year, month, d);
+          <div className="d-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
+            {weekDates.map((date) => {
               const diaNombre = DIAS_SEMANA[date.getDay()];
-              const isSunday = !DIAS.includes(diaNombre);
               const isToday = date.toDateString() === today.toDateString();
-              const dayClases = isSunday ? [] : clasesByDay.get(diaNombre) || [];
+              const dayClases = clasesByDay.get(diaNombre) || [];
               const shown = dayClases.slice(0, 3);
               const extra = dayClases.length - shown.length;
 
               return (
                 <button
-                  key={d}
-                  onClick={() => openDay(d)}
-                  disabled={isSunday}
-                  className="rounded text-start p-1 d-flex flex-column"
+                  key={date.toDateString()}
+                  onClick={() => openDay(date)}
+                  className="rounded p-2 d-flex flex-column text-start"
                   style={{
-                    minHeight: '70px',
+                    minHeight: '150px',
                     border: isToday ? '1.5px solid var(--color-primary)' : '1px solid #e2e8f0',
                     background: isToday ? 'var(--color-primary-light)' : '#ffffff',
-                    cursor: isSunday ? 'default' : 'pointer',
-                    opacity: 1,
+                    cursor: 'pointer',
                     transition: 'box-shadow 0.15s, border-color 0.15s',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSunday) e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <span
-                    className="align-self-end font-bold"
-                    style={{
-                      fontSize: '0.72rem',
-                      color: isSunday ? '#cbd5e1' : isToday ? 'var(--color-primary)' : '#334155',
-                    }}
-                  >
-                    {d}
-                  </span>
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <span className="text-xs font-bold uppercase text-slate-500">
+                      {DIAS_SEMANA[date.getDay()].slice(0, 3)}
+                    </span>
+                    <span
+                      className="rounded-circle fw-bold d-inline-flex align-items-center justify-content-center"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        fontSize: '0.8rem',
+                        color: isToday ? '#ffffff' : '#334155',
+                        backgroundColor: isToday ? 'var(--color-primary)' : '#f1f5f9',
+                      }}
+                    >
+                      {date.getDate()}
+                    </span>
+                  </div>
 
-                  <div className="mt-1 d-flex flex-column" style={{ gap: '2px' }}>
-                    {shown.map((c) => (
-                      <span key={c.id} className="cal-chip">
-                        <b>{c.hora_inicio.slice(0, 5)}</b> {c.motivo_reserva}
-                      </span>
-                    ))}
-                    {extra > 0 && <span className="cal-chip more">+{extra} más</span>}
+                  {date.getMonth() !== month && (
+                    <span className="text-xs font-semibold text-slate-400 mb-1">{MESES[date.getMonth()]}</span>
+                  )}
+
+                  {isToday && (
+                    <span className="badge rounded-pill mb-1 align-self-start" style={{ backgroundColor: 'var(--color-primary)', fontSize: '0.58rem', fontWeight: 700 }}>
+                      HOY
+                    </span>
+                  )}
+
+                  <div className="mt-auto mb-0 d-flex flex-column" style={{ gap: '2px' }}>
+                    {dayClases.length === 0 ? (
+                      <span className="text-xs text-slate-300 font-semibold">Sin clases</span>
+                    ) : (
+                      <>
+                        {shown.map((c) => (
+                          <span key={c.id} className="cal-chip">
+                            <b>{c.hora_inicio.slice(0, 5)}</b> {c.motivo_reserva}
+                          </span>
+                        ))}
+                        {extra > 0 && <span className="cal-chip more">+{extra} más</span>}
+                      </>
+                    )}
+                    <span className="cal-chip more mt-1">+ Agregar</span>
                   </div>
                 </button>
               );
