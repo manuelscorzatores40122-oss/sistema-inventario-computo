@@ -16,6 +16,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiEdit2,
+  FiCheck,
 } from 'react-icons/fi';
 
 type Clase = {
@@ -39,6 +40,8 @@ type Profesor = {
 
 type Message = { type: 'success' | 'error'; text: string } | null;
 
+type Bloque = { hora_inicio: string; hora_fin: string };
+
 const SALA_HORARIO = 'Horario de Clases';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -46,11 +49,13 @@ const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
-const PERIODOS = [
-  { inicio: '09:00', fin: '10:00' },
-  { inicio: '10:00', fin: '11:00' },
-  { inicio: '11:00', fin: '12:00' },
-  { inicio: '12:00', fin: '13:00' },
+const TEMPLATE_KEY = 'horarioTemplate';
+
+export const FORMATO_DEFECTO: Bloque[] = [
+  { hora_inicio: '09:00', hora_fin: '10:00' },
+  { hora_inicio: '10:00', hora_fin: '11:00' },
+  { hora_inicio: '11:00', hora_fin: '12:00' },
+  { hora_inicio: '12:00', hora_fin: '13:00' },
 ];
 
 const weekStartOf = (date: Date) => {
@@ -60,21 +65,38 @@ const weekStartOf = (date: Date) => {
   return monday;
 };
 
+const cargarFormato = (): Bloque[] => {
+  try {
+    const raw = localStorage.getItem(TEMPLATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.map((b: Bloque) => ({ hora_inicio: b.hora_inicio, hora_fin: b.hora_fin }));
+      }
+    }
+  } catch (error) {
+    console.error('Error al leer formato de horario:', error);
+  }
+  return FORMATO_DEFECTO;
+};
+
 export default function AdminHorarioView() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
 
+  const [template, setTemplate] = useState<Bloque[]>(FORMATO_DEFECTO);
+  const [showTemplate, setShowTemplate] = useState(false);
+
   const [weekStart, setWeekStart] = useState<Date>(() => weekStartOf(new Date()));
   const [autoFollow, setAutoFollow] = useState(true);
   const [now, setNow] = useState<Date>(() => new Date());
-  const [dayModal, setDayModal] = useState<{ diaNombre: string; label: string } | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editClase, setEditClase] = useState<Clase | null>(null);
-  const [form, setForm] = useState({ hora_inicio: '09:00', hora_fin: '10:00', materia: '', profesor_id: 0 });
+
+  const [assign, setAssign] = useState<{ diaNombre: string; label: string; clase: Clase | null } | null>(null);
+  const [form, setForm] = useState({ materia: '', profesor_id: 0, hora_inicio: '', hora_fin: '' });
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     const [claseRes, profRes] = await Promise.all([
@@ -94,6 +116,10 @@ export default function AdminHorarioView() {
   };
 
   useEffect(() => {
+    const saved = localStorage.getItem(TEMPLATE_KEY);
+    setTemplate(cargarFormato());
+    if (!saved) setShowTemplate(true);
+
     fetchData()
       .catch(() => setMessage({ type: 'error', text: 'Error al cargar el horario' }))
       .finally(() => setLoading(false));
@@ -113,19 +139,11 @@ export default function AdminHorarioView() {
     return () => clearInterval(timer);
   }, [autoFollow]);
 
-  const clasesByDay = useMemo(() => {
-    const map = new Map<string, Clase[]>();
-    DIAS.forEach((d) => map.set(d, []));
-    clases
-      .filter((c) => DIAS.includes(c.dia_semana))
-      .forEach((c) => map.get(c.dia_semana)?.push(c));
-    map.forEach((arr) => arr.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)));
+  const claseMap = useMemo(() => {
+    const map = new Map<string, Clase>();
+    clases.forEach((c) => map.set(`${c.dia_semana}|${c.hora_inicio}`, c));
     return map;
   }, [clases]);
-
-  const total = clases.length;
-  const libre = DIAS.length * PERIODOS.length - total;
-  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
 
   const year = weekStart.getFullYear();
   const month = weekStart.getMonth();
@@ -150,54 +168,75 @@ export default function AdminHorarioView() {
   const startPart = `${startD.getDate()}${startD.getMonth() !== endD.getMonth() ? ' de ' + MESES[startD.getMonth()] : ''}`;
   const weekTitle = `Semana del ${startPart} al ${endD.getDate()} de ${MESES[endD.getMonth()]} del ${endD.getFullYear()}`;
 
-  const openDay = (date: Date) => {
-    const diaNombre = DIAS_SEMANA[date.getDay()];
-    if (!DIAS.includes(diaNombre)) return;
+  const total = clases.length;
+  const libres = DIAS.length * template.length - total;
+  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
 
-    const label = date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    setDayModal({ diaNombre, label });
-    setFormOpen(false);
-    setEditClase(null);
-  };
-
-  const openAdd = () => {
-    setEditClase(null);
-    setForm({ hora_inicio: '09:00', hora_fin: '10:00', materia: '', profesor_id: 0 });
-    setFormOpen(true);
-  };
-
-  const openEdit = (c: Clase) => {
-    setEditClase(c);
-    setForm({
-      hora_inicio: c.hora_inicio,
-      hora_fin: c.hora_fin,
-      materia: c.motivo_reserva || '',
-      profesor_id: c.reservado_por || 0,
+  const addBloque = () => {
+    setTemplate((prev) => {
+      const last = prev[prev.length - 1];
+      const inicio = last ? last.hora_fin : '09:00';
+      const [h, m] = inicio.split(':').map(Number);
+      const fin = `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return [...prev, { hora_inicio: inicio, hora_fin: fin }];
     });
-    setFormOpen(true);
   };
 
-  const handleHoraChange = (inicio: string) => {
-    const p = PERIODOS.find((x) => x.inicio === inicio);
-    setForm((f) => ({ ...f, hora_inicio: inicio, hora_fin: p ? p.fin : f.hora_fin }));
+  const updateBloque = (idx: number, campo: keyof Bloque, valor: string) => {
+    setTemplate((prev) => prev.map((b, i) => (i === idx ? { ...b, [campo]: valor } : b)));
+  };
+
+  const removeBloque = (idx: number) => {
+    setTemplate((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const guardarFormato = () => {
+    const clean = template
+      .map((b) => ({ hora_inicio: b.hora_inicio, hora_fin: b.hora_fin }))
+      .filter((b) => b.hora_inicio && b.hora_fin);
+    setTemplate(clean);
+    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(clean));
+    setShowTemplate(false);
+    setMessage({ type: 'success', text: 'Formato de horario guardado para todos los días y semanas' });
+  };
+
+  const openAssign = (diaNombre: string, hora_inicio: string) => {
+    const date = weekDates.find((d) => DIAS_SEMANA[d.getDay()] === diaNombre);
+    const label = date ? date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : diaNombre;
+    const clase = claseMap.get(`${diaNombre}|${hora_inicio}`) || null;
+
+    setForm({
+      materia: clase?.motivo_reserva || '',
+      profesor_id: clase?.reservado_por || 0,
+      hora_inicio,
+      hora_fin: template.find((b) => b.hora_inicio === hora_inicio)?.hora_fin || '',
+    });
+    setAssign({ diaNombre, label, clase });
   };
 
   const save = async () => {
-    if (!dayModal) return;
+    if (!assign) return;
+
+    const bloque = template.find((b) => b.hora_inicio === form.hora_inicio);
+    if (!bloque) {
+      setMessage({ type: 'error', text: 'Horario no válido' });
+      return;
+    }
+
     if (!form.materia.trim()) {
-      setMessage({ type: 'error', text: 'Escribe la clase/materia que toca en este horario' });
+      setMessage({ type: 'error', text: 'Escribe qué materia/clase toca en este turno' });
       return;
     }
     if (!form.profesor_id) {
-      setMessage({ type: 'error', text: 'Selecciona el profesor a cargo' });
+      setMessage({ type: 'error', text: 'Selecciona qué profesor dará el turno' });
       return;
     }
 
     const payload = {
       sala_nombre: SALA_HORARIO,
-      dia_semana: dayModal.diaNombre,
-      hora_inicio: form.hora_inicio,
-      hora_fin: form.hora_fin,
+      dia_semana: assign.diaNombre,
+      hora_inicio: bloque.hora_inicio,
+      hora_fin: bloque.hora_fin,
       estado: 'separado',
       reservado_por: form.profesor_id,
       motivo_reserva: form.materia.trim(),
@@ -205,8 +244,8 @@ export default function AdminHorarioView() {
 
     setSaving(true);
     try {
-      const url = editClase ? `/api/disponibilidad/${editClase.id}` : '/api/disponibilidad';
-      const method = editClase ? 'PUT' : 'POST';
+      const url = assign.clase ? `/api/disponibilidad/${assign.clase.id}` : '/api/disponibilidad';
+      const method = assign.clase ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -214,44 +253,43 @@ export default function AdminHorarioView() {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: editClase ? 'Clase actualizada correctamente' : 'Clase asignada correctamente' });
-        setFormOpen(false);
-        setEditClase(null);
+        setMessage({ type: 'success', text: assign.clase ? 'Turno actualizado correctamente' : 'Profesor asignado al turno' });
+        setAssign(null);
         await fetchData();
       } else {
         const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo guardar la clase' });
+        setMessage({ type: 'error', text: data?.error || 'No se pudo guardar el turno' });
       }
     } catch (error) {
-      console.error('Error al guardar clase:', error);
-      setMessage({ type: 'error', text: 'Error al guardar la clase' });
+      console.error('Error al guardar turno:', error);
+      setMessage({ type: 'error', text: 'Error al guardar el turno' });
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (clase: Clase) => {
-    if (!confirm(`¿Eliminar "${clase.motivo_reserva}" del horario?`)) return;
+  const remove = async () => {
+    if (!assign?.clase) return;
+    if (!confirm('¿Quitar al profesor de este turno?')) return;
 
-    setDeletingId(clase.id);
+    setDeleting(true);
     try {
-      const response = await fetch(`/api/disponibilidad/${clase.id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/disponibilidad/${assign.clase.id}`, { method: 'DELETE' });
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Clase eliminada del horario' });
+        setMessage({ type: 'success', text: 'Turno liberado' });
+        setAssign(null);
         await fetchData();
       } else {
         const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar la clase' });
+        setMessage({ type: 'error', text: data?.error || 'No se pudo liberar el turno' });
       }
     } catch (error) {
-      console.error('Error al eliminar clase:', error);
-      setMessage({ type: 'error', text: 'Error al eliminar la clase' });
+      console.error('Error al liberar turno:', error);
+      setMessage({ type: 'error', text: 'Error al liberar el turno' });
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   };
-
-  const diaClases = dayModal ? (clasesByDay.get(dayModal.diaNombre) || []) : [];
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -275,35 +313,37 @@ export default function AdminHorarioView() {
             Horario Semanal
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Muestra la semana actual de Lunes a Sábado y se actualiza sola cada lunes. Presiona un día para editar sus clases.
+            Semana {startPart} al {endD.getDate()} de {MESES[endD.getMonth()]} (Lun–Sáb). Define el formato de turnos y asigna el profesor de cada hora.
           </p>
         </div>
 
-        <Link href="/admin/disponibilidad" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-2">
-          <FiSettings size={15} />
-          Gestionar bloques disponibles
-        </Link>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-primary-custom text-decoration-none d-inline-flex align-items-center gap-1" onClick={() => setShowTemplate(true)}>
+            <FiSettings size={15} />
+            Agregar / Editar Horario
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="inventory-panel p-4 border-l-4 border-l-slate-700">
           <div className="d-flex align-items-center gap-2 mb-2">
             <div className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600" style={{ width: '34px', height: '34px' }}>
-              <FiBookOpen size={16} />
+              <FiClock size={16} />
             </div>
-            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Clases Asignadas</p>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Turnos de Clase Definidos</p>
           </div>
-          <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : total}</h3>
+          <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : template.length}</h3>
         </div>
 
         <div className="inventory-panel p-4 border-l-4 border-l-green-600">
           <div className="d-flex align-items-center gap-2 mb-2">
             <div className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-600" style={{ width: '34px', height: '34px' }}>
-              <FiClock size={16} />
+              <FiCheck size={16} />
             </div>
-            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques Libres</p>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Turnos con Profesor</p>
           </div>
-          <h3 className="text-2xl font-black text-green-600 mt-1">{loading ? '...' : libre}</h3>
+          <h3 className="text-2xl font-black text-green-600 mt-1">{loading ? '...' : total}</h3>
         </div>
 
         <div className="inventory-panel p-4 border-l-4 border-l-blue-600">
@@ -311,9 +351,9 @@ export default function AdminHorarioView() {
             <div className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '34px', height: '34px' }}>
               <FiUser size={16} />
             </div>
-            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Profesores con Clase</p>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques por Asignar</p>
           </div>
-          <h3 className="text-2xl font-black text-blue-600 mt-1">{loading ? '...' : profesoresConClase}</h3>
+          <h3 className="text-2xl font-black text-blue-600 mt-1">{loading ? '...' : libres}</h3>
         </div>
       </div>
 
@@ -324,17 +364,12 @@ export default function AdminHorarioView() {
       ) : (
         <div className="inventory-panel p-3">
           <div className="d-flex flex-column gap-2 flex-md-row align-items-md-center justify-content-md-between border-b border-slate-200 pb-3">
-            <div className="d-flex align-items-center gap-3">
-              <div className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
-                <FiCalendar size={16} />
-              </div>
-              <div>
-                <h2 className="text-lg font-extrabold text-slate-950 mb-0" style={{ fontSize: '1.05rem' }}>{weekTitle}</h2>
-                <p className="text-xs font-semibold text-primary mb-0 d-flex align-items-center gap-1">
-                  <span className={autoFollow ? 'text-success' : 'text-warning'} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: autoFollow ? '#16a34a' : '#d97706', display: 'inline-block' }} />
-                  {autoFollow ? 'Se actualiza automáticamente a la semana actual' : 'Estás viendo otra semana, presiona "Semana actual"'}
-                </p>
-              </div>
+            <div>
+              <h2 className="font-extrabold text-slate-950 mb-0" style={{ fontSize: '1.1rem' }}>{weekTitle}</h2>
+              <p className="text-xs font-semibold mb-0 d-flex align-items-center gap-1">
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: autoFollow ? '#16a34a' : '#d97706', display: 'inline-block' }} />
+                {autoFollow ? 'Se actualiza automáticamente a la semana actual' : 'Viendo otra semana — presiona "Semana actual"'}
+              </p>
             </div>
             <div className="d-flex align-items-center gap-1">
               <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevWeek}>
@@ -347,84 +382,121 @@ export default function AdminHorarioView() {
             </div>
           </div>
 
-          <div className="d-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
+          <div className="d-grid" style={{ gridTemplateColumns: '120px repeat(6, 1fr)', gap: '8px', marginTop: '12px' }}>
+            <div />
+
             {weekDates.map((date) => {
-              const diaNombre = DIAS_SEMANA[date.getDay()];
               const isToday = date.toDateString() === today.toDateString();
-              const dayClases = clasesByDay.get(diaNombre) || [];
-              const shown = dayClases.slice(0, 3);
-              const extra = dayClases.length - shown.length;
-
               return (
-                <button
-                  key={date.toDateString()}
-                  onClick={() => openDay(date)}
-                  className="rounded p-2 d-flex flex-column text-start"
-                  style={{
-                    minHeight: '150px',
-                    border: isToday ? '1.5px solid var(--color-primary)' : '1px solid #e2e8f0',
-                    background: isToday ? 'var(--color-primary-light)' : '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'box-shadow 0.15s, border-color 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="text-xs font-bold uppercase text-slate-500">
-                      {DIAS_SEMANA[date.getDay()].slice(0, 3)}
-                    </span>
-                    <span
-                      className="rounded-circle fw-bold d-inline-flex align-items-center justify-content-center"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        fontSize: '0.8rem',
-                        color: isToday ? '#ffffff' : '#334155',
-                        backgroundColor: isToday ? 'var(--color-primary)' : '#f1f5f9',
-                      }}
-                    >
-                      {date.getDate()}
-                    </span>
+                <div key={date.toDateString()} className="text-center">
+                  <div
+                    className="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      fontSize: '0.85rem',
+                      color: isToday ? '#ffffff' : '#334155',
+                      backgroundColor: isToday ? 'var(--color-primary)' : '#f1f5f9',
+                    }}
+                  >
+                    {date.getDate()}
                   </div>
-
+                  <div className="text-xs font-bold uppercase text-slate-500 mt-1">
+                    {DIAS_SEMANA[date.getDay()].slice(0, 3)}
+                  </div>
                   {date.getMonth() !== month && (
-                    <span className="text-xs font-semibold text-slate-400 mb-1">{MESES[date.getMonth()]}</span>
+                    <div className="font-semibold text-slate-400" style={{ fontSize: '0.6rem' }}>{MESES[date.getMonth()].slice(0, 3)}</div>
                   )}
-
                   {isToday && (
-                    <span className="badge rounded-pill mb-1 align-self-start" style={{ backgroundColor: 'var(--color-primary)', fontSize: '0.58rem', fontWeight: 700 }}>
+                    <span className="badge rounded-pill mt-1" style={{ backgroundColor: 'var(--color-primary)', fontSize: '0.55rem', fontWeight: 700 }}>
                       HOY
                     </span>
                   )}
-
-                  <div className="mt-auto mb-0 d-flex flex-column" style={{ gap: '2px' }}>
-                    {dayClases.length === 0 ? (
-                      <span className="text-xs text-slate-300 font-semibold">Sin clases</span>
-                    ) : (
-                      <>
-                        {shown.map((c) => (
-                          <span key={c.id} className="cal-chip">
-                            <b>{c.hora_inicio.slice(0, 5)}</b> {c.motivo_reserva}
-                          </span>
-                        ))}
-                        {extra > 0 && <span className="cal-chip more">+{extra} más</span>}
-                      </>
-                    )}
-                    <span className="cal-chip more mt-1">+ Agregar</span>
-                  </div>
-                </button>
+                </div>
               );
             })}
+
+            {template.map((bloque, idx) => (
+              <FragmentDias key={idx} bloque={bloque} idx={idx} weekDates={weekDates} claseMap={claseMap} openAssign={openAssign} />
+            ))}
+          </div>
+
+          <div className="d-flex align-items-center justify-content-between border-t border-slate-200 pt-3 mt-3">
+            <span className="text-xs font-semibold text-slate-500">
+              Presiona un turno (ej. 9:00 - 10:00) para asignar qué profesor da esa hora.
+            </span>
           </div>
         </div>
       )}
 
-      {dayModal && (
+      {showTemplate && (
+        <>
+          <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ zIndex: 1055 }}>
+            <div className="modal-dialog modal-lg" role="document">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header border-b border-slate-200 p-4">
+                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                    <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
+                      <FiClock size={15} />
+                    </span>
+                    Agregar / Editar Formato de Horario
+                  </h5>
+                  <button type="button" className="btn-close" disabled={saving} onClick={() => setShowTemplate(false)} />
+                </div>
+
+                <div className="modal-body p-4 space-y-3">
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-900">
+                    Define el formato diario de turnos (ej. 1ª clase 09:00–10:00, 2ª clase 10:00–11:00...).
+                    Este formato se guarda y aplica a <strong>todos los días y semanas futuras</strong>.
+                  </div>
+
+                  {template.map((bloque, idx) => (
+                    <div key={idx} className="d-flex align-items-center gap-2">
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600 fw-bold flex-shrink-0" style={{ width: '30px', height: '30px', fontSize: '0.7rem' }}>
+                        {idx + 1}ª
+                      </span>
+                      <input
+                        type="time"
+                        value={bloque.hora_inicio}
+                        onChange={(e) => updateBloque(idx, 'hora_inicio', e.target.value)}
+                        className="inventory-form-input"
+                      />
+                      <span className="text-slate-400 font-bold">—</span>
+                      <input
+                        type="time"
+                        value={bloque.hora_fin}
+                        onChange={(e) => updateBloque(idx, 'hora_fin', e.target.value)}
+                        className="inventory-form-input"
+                      />
+                      <button className="btn-icon text-danger" title="Quitar turno" onClick={() => removeBloque(idx)}>
+                        <FiTrash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button className="btn-secondary-custom w-100 d-inline-flex align-items-center justify-content-center gap-1" onClick={addBloque}>
+                    <FiPlus size={13} />
+                    Agregar turno
+                  </button>
+                </div>
+
+                <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
+                  <button className="btn-secondary-custom" onClick={() => setShowTemplate(false)}>
+                    Cancelar
+                  </button>
+                  <button className="btn-primary-custom d-inline-flex align-items-center gap-1" onClick={guardarFormato}>
+                    <FiSave size={13} />
+                    Guardar formato
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" />
+        </>
+      )}
+
+      {assign && (
         <>
           <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ zIndex: 1055 }}>
             <div className="modal-dialog" role="document">
@@ -434,115 +506,61 @@ export default function AdminHorarioView() {
                     <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
                       <FiBookOpen size={15} />
                     </span>
-                    {dayModal.label}
+                    Turno {form.hora_inicio} - {form.hora_fin} · {assign.label}
                   </h5>
-                  <button type="button" className="btn-close" onClick={() => setDayModal(null)} />
+                  <button type="button" className="btn-close" disabled={saving || deleting} onClick={() => setAssign(null)} />
                 </div>
 
                 <div className="modal-body p-4 space-y-3">
-                  {!formOpen ? (
-                    <>
-                      {diaClases.length === 0 ? (
-                        <p className="text-sm text-slate-500 font-semibold text-center py-3">
-                          Este día no tiene clases asignadas.
-                        </p>
-                      ) : (
-                        diaClases.map((clase) => (
-                          <div key={clase.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
-                              <span className="font-mono text-xs font-bold text-primary">
-                                <FiClock size={11} className="me-1" />
-                                {clase.hora_inicio} - {clase.hora_fin}
-                              </span>
-                              <div className="d-flex align-items-center gap-1">
-                                <button className="btn-icon" title="Editar" onClick={() => openEdit(clase)}>
-                                  <FiEdit2 size={14} />
-                                </button>
-                                <button className="btn-icon text-danger" title="Eliminar" disabled={deletingId === clase.id} onClick={() => remove(clase)}>
-                                  <FiTrash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="font-bold text-slate-900 d-flex align-items-center gap-1">
-                              <FiBookOpen size={12} className="text-primary" />
-                              {clase.motivo_reserva}
-                            </div>
-                            <div className="text-xs text-slate-500 d-flex align-items-center gap-1">
-                              <FiUser size={11} />
-                              {clase.reservado_por_nombre} {clase.reservado_por_apellido}
-                            </div>
-                          </div>
-                        ))
-                      )}
+                  <div>
+                    <label className="inventory-form-label">Materia / Clase que toca</label>
+                    <input
+                      type="text"
+                      value={form.materia}
+                      onChange={(e) => setForm({ ...form, materia: e.target.value })}
+                      className="inventory-form-input"
+                      placeholder="Ej. Matemática, Comunicación, C y T..."
+                    />
+                  </div>
 
-                      <button className="btn-primary-custom w-100 d-inline-flex align-items-center justify-content-center gap-1" onClick={openAdd}>
-                        <FiPlus size={13} />
-                        Agregar clase a este día
-                      </button>
-                    </>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <label className="inventory-form-label">Hora de Inicio</label>
-                          <select value={form.hora_inicio} onChange={(e) => handleHoraChange(e.target.value)} className="inventory-form-select">
-                            {PERIODOS.map((p) => (
-                              <option key={p.inicio} value={p.inicio}>{p.inicio}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-6">
-                          <label className="inventory-form-label">Hora de Fin</label>
-                          <input type="text" value={form.hora_fin} readOnly className="inventory-form-input bg-slate-50" />
-                        </div>
-                      </div>
+                  <div>
+                    <label className="inventory-form-label">Profesor que dará el turno</label>
+                    <select
+                      value={form.profesor_id}
+                      onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
+                      className="inventory-form-select"
+                    >
+                      <option value="0">Seleccionar profesor...</option>
+                      {profesores.map((profesor) => (
+                        <option key={profesor.id} value={profesor.id}>
+                          {profesor.apellido}, {profesor.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                      <div>
-                        <label className="inventory-form-label">Clase / Materia que toca</label>
-                        <input
-                          type="text"
-                          value={form.materia}
-                          onChange={(e) => setForm({ ...form, materia: e.target.value })}
-                          className="inventory-form-input"
-                          placeholder="Ej. Matemática, Comunicación, C y T..."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="inventory-form-label">Profesor a cargo</label>
-                        <select
-                          value={form.profesor_id}
-                          onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
-                          className="inventory-form-select"
-                        >
-                          <option value="0">Seleccionar profesor...</option>
-                          {profesores.map((profesor) => (
-                            <option key={profesor.id} value={profesor.id}>
-                              {profesor.apellido}, {profesor.nombre}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                  {assign.clase && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 d-flex align-items-center gap-2">
+                      <FiUser size={14} />
+                      Actualmente asignado a <strong>{assign.clase.reservado_por_nombre} {assign.clase.reservado_por_apellido}</strong>
                     </div>
                   )}
                 </div>
 
                 <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
-                  {formOpen ? (
-                    <>
-                      <button className="btn-secondary-custom" onClick={() => { setFormOpen(false); setEditClase(null); }}>
-                        Cancelar
-                      </button>
-                      <button className="btn-primary-custom d-inline-flex align-items-center gap-1" disabled={saving} onClick={save}>
-                        <FiSave size={13} />
-                        {saving ? 'Guardando...' : 'Guardar'}
-                      </button>
-                    </>
-                  ) : (
-                    <button className="btn-secondary-custom" onClick={() => setDayModal(null)}>
-                      Cerrar
+                  {assign.clase && (
+                    <button className="btn-danger-custom d-inline-flex align-items-center gap-1" disabled={saving || deleting} onClick={remove}>
+                      <FiTrash2 size={13} />
+                      {deleting ? 'Quitando...' : 'Quitar profesor'}
                     </button>
                   )}
+                  <button className="btn-secondary-custom" onClick={() => setAssign(null)}>
+                    Cancelar
+                  </button>
+                  <button className="btn-primary-custom d-inline-flex align-items-center gap-1" disabled={saving} onClick={save}>
+                    <FiSave size={13} />
+                    {saving ? 'Guardando...' : 'Asignar'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -551,5 +569,77 @@ export default function AdminHorarioView() {
         </>
       )}
     </div>
+  );
+}
+
+function FragmentDias({
+  bloque,
+  idx,
+  weekDates,
+  claseMap,
+  openAssign,
+}: {
+  bloque: Bloque;
+  idx: number;
+  weekDates: Date[];
+  claseMap: Map<string, Clase>;
+  openAssign: (diaNombre: string, hora_inicio: string) => void;
+}) {
+  const ordinals = ['1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª'];
+
+  return (
+    <>
+      <div className="rounded-lg bg-slate-100 border border-slate-200 px-2 py-1 d-flex flex-column justify-content-center" style={{ minHeight: '86px' }}>
+        <span className="font-bold uppercase text-slate-400" style={{ fontSize: '0.62rem' }}>{ordinals[idx] || `Turno ${idx + 1}`}</span>
+        <span className="font-mono font-bold text-slate-800" style={{ fontSize: '0.9rem' }}>{bloque.hora_inicio} - {bloque.hora_fin}</span>
+      </div>
+
+      {weekDates.map((date) => {
+        const diaNombre = DIAS_SEMANA[date.getDay()];
+        const key = `${diaNombre}|${bloque.hora_inicio}`;
+        const clase = claseMap.get(key);
+
+        return (
+          <button
+            key={key}
+            onClick={() => openAssign(diaNombre, bloque.hora_inicio)}
+            className="rounded p-2 d-flex flex-column align-items-center justify-content-center text-center"
+            style={{
+              minHeight: '86px',
+              border: clase ? '1px solid #bfdbfe' : '1.5px dashed #cbd5e1',
+              background: clase ? 'linear-gradient(135deg, #eff6ff, #e0edff)' : '#f8fafc',
+              cursor: 'pointer',
+              transition: 'box-shadow 0.15s, border-color 0.15s, transform 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(37, 99, 235, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            {clase ? (
+              <>
+                <span className="fw-bold text-slate-900 text-truncate" style={{ fontSize: '0.82rem', maxWidth: '100%' }}>
+                  {clase.motivo_reserva}
+                </span>
+                <span className="text-slate-600 text-truncate d-inline-flex align-items-center gap-1" style={{ fontSize: '0.72rem', maxWidth: '100%' }}>
+                  <FiUser size={11} className="flex-shrink-0" />
+                  {clase.reservado_por_apellido || clase.reservado_por_nombre}
+                </span>
+                <span className="text-primary text-xs fw-semibold mt-1">
+                  <FiEdit2 size={10} /> Editar
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-400 fw-semibold d-inline-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                <FiPlus size={13} />
+                Asignar
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </>
   );
 }
