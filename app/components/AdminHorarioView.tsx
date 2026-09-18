@@ -36,6 +36,20 @@ type Profesor = {
   id: number;
   nombre: string;
   apellido: string;
+  area?: string | null;
+};
+
+type SolicitudSala = {
+  id: number;
+  profesor_id: number;
+  profesor_nombre: string;
+  apellido: string;
+  motivo: string | null;
+  sala_nombre: string | null;
+  dia_semana: string | null;
+  hora_inicio: string | null;
+  hora_fin: string | null;
+  estado: string;
 };
 
 type Message = { type: 'success' | 'error'; text: string } | null;
@@ -83,6 +97,7 @@ const cargarFormato = (): Bloque[] => {
 export default function AdminHorarioView() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
+  const [solicitudes, setSolicitudes] = useState<SolicitudSala[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
 
@@ -99,9 +114,10 @@ export default function AdminHorarioView() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
-    const [claseRes, profRes] = await Promise.all([
+    const [claseRes, profRes, solRes] = await Promise.all([
       fetch(`/api/disponibilidad?sala_nombre=${encodeURIComponent(SALA_HORARIO)}`),
       fetch('/api/usuarios?role=profesor&activo=true'),
+      fetch('/api/solicitudes?estado=pendiente'),
     ]);
 
     if (claseRes.ok) {
@@ -112,6 +128,15 @@ export default function AdminHorarioView() {
     if (profRes.ok) {
       const data = await profRes.json();
       setProfesores(data.usuarios || []);
+    }
+
+    if (solRes.ok) {
+      const data = await solRes.json();
+      setSolicitudes(
+        (data.solicitudes || []).filter(
+          (s: SolicitudSala) => s.sala_nombre && s.dia_semana && s.hora_inicio
+        )
+      );
     }
   };
 
@@ -144,6 +169,17 @@ export default function AdminHorarioView() {
     clases.forEach((c) => map.set(`${c.dia_semana}|${c.hora_inicio}`, c));
     return map;
   }, [clases]);
+
+  const solicitudesPorTurno = useMemo(() => {
+    const map = new Map<string, SolicitudSala[]>();
+    solicitudes.forEach((s) => {
+      const key = `${s.dia_semana}|${s.hora_inicio}`;
+      const arr = map.get(key) || [];
+      arr.push(s);
+      map.set(key, arr);
+    });
+    return map;
+  }, [solicitudes]);
 
   const year = weekStart.getFullYear();
   const month = weekStart.getMonth();
@@ -212,6 +248,24 @@ export default function AdminHorarioView() {
       hora_fin: template.find((b) => b.hora_inicio === hora_inicio)?.hora_fin || '',
     });
     setAssign({ diaNombre, label, clase });
+  };
+
+  const handleProfesorChange = (id: number) => {
+    const prof = profesores.find((p) => p.id === id);
+    setForm((f) => ({
+      ...f,
+      profesor_id: id,
+      materia: prof?.area || f.materia,
+    }));
+  };
+
+  const handleSolicitudClick = (s: SolicitudSala) => {
+    const prof = profesores.find((p) => p.id === s.profesor_id);
+    setForm((f) => ({
+      ...f,
+      profesor_id: s.profesor_id,
+      materia: prof?.area || s.motivo || f.materia,
+    }));
   };
 
   const save = async () => {
@@ -295,11 +349,10 @@ export default function AdminHorarioView() {
     <div className="p-4 md:p-6 space-y-6">
       {message && (
         <div
-          className={`rounded-lg border px-4 py-3 text-sm font-semibold d-flex align-items-center gap-2 ${
-            message.type === 'success'
+          className={`rounded-lg border px-4 py-3 text-sm font-semibold d-flex align-items-center gap-2 ${message.type === 'success'
               ? 'border-green-200 bg-green-50 text-green-800'
               : 'border-red-200 bg-red-50 text-red-800'
-          }`}
+            }`}
         >
           {message.type === 'success' ? <FiCheckCircle size={18} /> : <FiXCircle size={18} />}
           <span>{message.text}</span>
@@ -417,15 +470,11 @@ export default function AdminHorarioView() {
             })}
 
             {template.map((bloque, idx) => (
-              <FragmentDias key={idx} bloque={bloque} idx={idx} weekDates={weekDates} claseMap={claseMap} openAssign={openAssign} />
+              <FragmentDias key={idx} bloque={bloque} idx={idx} weekDates={weekDates} claseMap={claseMap} solicitudesPorTurno={solicitudesPorTurno} openAssign={openAssign} />
             ))}
           </div>
 
-          <div className="d-flex align-items-center justify-content-between border-t border-slate-200 pt-3 mt-3">
-            <span className="text-xs font-semibold text-slate-500">
-              Presiona un turno (ej. 9:00 - 10:00) para asignar qué profesor da esa hora.
-            </span>
-          </div>
+
         </div>
       )}
 
@@ -512,6 +561,48 @@ export default function AdminHorarioView() {
                 </div>
 
                 <div className="modal-body p-4 space-y-3">
+                  {(() => {
+                    const pendientes = assign
+                      ? solicitudesPorTurno.get(`${assign.diaNombre}|${form.hora_inicio}`) || []
+                      : [];
+                    return pendientes.length > 0 ? (
+                      <div>
+                        <label className="inventory-form-label">
+                          Solicitudes del Salón para este turno ({pendientes.length})
+                        </label>
+                        <div className="d-flex flex-column gap-2">
+                          {pendientes.map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => handleSolicitudClick(s)}
+                              className="solicitud-card d-flex align-items-center gap-2 text-start w-100"
+                            >
+                              <span className="rounded d-flex align-items-center justify-content-center flex-shrink-0 bg-amber-100 text-amber-600" style={{ width: '30px', height: '30px' }}>
+                                <FiClock size={14} />
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="d-block fw-bold text-slate-900 text-truncate" style={{ fontSize: '0.82rem' }}>
+                                  {s.profesor_nombre} {s.apellido}
+                                </span>
+                                <span className="d-block text-slate-500 text-truncate" style={{ fontSize: '0.75rem' }}>
+                                  {s.sala_nombre} · {s.dia_semana} {s.hora_inicio}-{s.hora_fin}
+                                  {s.motivo ? ` · ${s.motivo}` : ''}
+                                </span>
+                              </span>
+                              <span className="flex-shrink-0 btn-icon text-amber-600" title="Usar esta solicitud">
+                                <FiCheck size={14} />
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Presiona una solicitud para prellenar el profesor y su curso.
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
                   <div>
                     <label className="inventory-form-label">Materia / Clase que toca</label>
                     <input
@@ -519,7 +610,7 @@ export default function AdminHorarioView() {
                       value={form.materia}
                       onChange={(e) => setForm({ ...form, materia: e.target.value })}
                       className="inventory-form-input"
-                      placeholder="Ej. Matemática, Comunicación, C y T..."
+                      placeholder="Tabién deja vacío y elige el profesor (se llena con su curso)"
                     />
                   </div>
 
@@ -527,7 +618,7 @@ export default function AdminHorarioView() {
                     <label className="inventory-form-label">Profesor que dará el turno</label>
                     <select
                       value={form.profesor_id}
-                      onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
+                      onChange={(e) => handleProfesorChange(Number(e.target.value))}
                       className="inventory-form-select"
                     >
                       <option value="0">Seleccionar profesor...</option>
@@ -537,6 +628,16 @@ export default function AdminHorarioView() {
                         </option>
                       ))}
                     </select>
+                    {(() => {
+                      const prof = profesores.find((p) => p.id === form.profesor_id);
+                      if (!prof) return null;
+                      return (
+                        <div className="rounded bg-sky-50 border border-sky-200 px-2 py-1 mt-1 text-xs text-sky-800 d-inline-flex align-items-center gap-1">
+                          <FiBookOpen size={12} />
+                          Curso asignado: <strong className="fw-semibold">{prof.area || 'Sin área registrada'}</strong>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {assign.clase && (
@@ -577,12 +678,14 @@ function FragmentDias({
   idx,
   weekDates,
   claseMap,
+  solicitudesPorTurno,
   openAssign,
 }: {
   bloque: Bloque;
   idx: number;
   weekDates: Date[];
   claseMap: Map<string, Clase>;
+  solicitudesPorTurno: Map<string, SolicitudSala[]>;
   openAssign: (diaNombre: string, hora_inicio: string) => void;
 }) {
   const ordinals = ['1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª'];
@@ -632,10 +735,17 @@ function FragmentDias({
                 </span>
               </>
             ) : (
-              <span className="text-slate-400 fw-semibold d-inline-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
-                <FiPlus size={13} />
-                Asignar
-              </span>
+              <>
+                <span className="text-slate-400 fw-semibold d-inline-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                  <FiPlus size={13} />
+                  Asignar
+                </span>
+                {solicitudesPorTurno.get(key)?.length ? (
+                  <span className="badge bg-amber-100 text-amber-700 border border-amber-200 fw-semibold mt-1" style={{ fontSize: '0.62rem' }}>
+                    Solicitud
+                  </span>
+                ) : null}
+              </>
             )}
           </button>
         );
