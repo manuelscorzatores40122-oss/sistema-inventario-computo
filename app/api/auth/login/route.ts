@@ -32,11 +32,8 @@ export async function POST(request: NextRequest) {
 
     const token = generateToken(user.id, user.role);
 
-    const requirePasswordChange = password === email || !user.correo_personal;
-
     return NextResponse.json({
       token,
-      requirePasswordChange,
       user: {
         id: user.id,
         email: user.email,

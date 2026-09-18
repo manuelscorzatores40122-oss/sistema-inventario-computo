@@ -33,10 +33,7 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Redirigir según requiera cambio o rol
-      if (data.requirePasswordChange) {
-        router.push('/auth/completar-perfil');
-      } else if (data.user.role === 'admin') {
+      if (data.user.role === 'admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/profesor/dashboard');
