@@ -31,6 +31,9 @@ import {
   FiShield,
   FiUserCheck,
   FiUserX,
+  FiX,
+  FiBookOpen,
+  FiEye,
 } from 'react-icons/fi';
 
 type Usuario = {
@@ -42,6 +45,9 @@ type Usuario = {
   telefono: string | null;
   correo_personal: string | null;
   activo: boolean;
+  dni?: string | null;
+  area?: string | null;
+  fecha_creacion?: string | null;
 };
 
 type Item = {
@@ -450,6 +456,7 @@ export function AdminProfesoresView() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<Message>(null);
   const [search, setSearch] = useState('');
+  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
@@ -584,7 +591,20 @@ export function AdminProfesoresView() {
               const avatarColor = avatarPalette[usuario.id % avatarPalette.length];
 
               return (
-                <div key={usuario.id} className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center`}>
+                <div
+                  key={usuario.id}
+                  className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center`}
+                  style={{ cursor: 'pointer', transition: 'border-color 0.2s, box-shadow 0.2s' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                  onClick={() => setSelectedUser(usuario)}
+                >
                   <div className="d-flex align-items-center gap-3">
                     <div
                       className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"

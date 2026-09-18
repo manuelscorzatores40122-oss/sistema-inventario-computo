@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const reservado_por = searchParams.get('reservado_por');
     const dia_semana = searchParams.get('dia_semana');
     const estado = searchParams.get('estado');
+    const sala_nombre = searchParams.get('sala_nombre');
 
     let sql = 'SELECT d.*, ru.nombre as reservado_por_nombre, ru.apellido as reservado_por_apellido FROM disponibilidad d LEFT JOIN usuarios ru ON d.reservado_por = ru.id WHERE 1=1';
     const params: any[] = [];
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest) {
     if (estado) {
       sql += ' AND d.estado = $' + (params.length + 1);
       params.push(estado);
+    }
+
+    if (sala_nombre) {
+      sql += ' AND d.sala_nombre = $' + (params.length + 1);
+      params.push(sala_nombre);
     }
 
     sql += " ORDER BY d.sala_nombre, CASE WHEN d.dia_semana = 'Lunes' THEN 1 WHEN d.dia_semana = 'Martes' THEN 2 WHEN d.dia_semana = 'Miércoles' THEN 3 WHEN d.dia_semana = 'Jueves' THEN 4 WHEN d.dia_semana = 'Viernes' THEN 5 WHEN d.dia_semana = 'Sábado' THEN 6 WHEN d.dia_semana = 'Domingo' THEN 7 END, d.hora_inicio";
@@ -47,7 +53,7 @@ export async function GET(request: NextRequest) {
 // POST - Crear disponibilidad de sala (admin)
 export async function POST(request: NextRequest) {
   try {
-    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible' } = await request.json();
+    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible', reservado_por, motivo_reserva } = await request.json();
 
     if (!sala_nombre || !dia_semana || !hora_inicio || !hora_fin) {
       return NextResponse.json(
@@ -56,9 +62,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const finalEstado = reservado_por ? 'separado' : estado;
     const result = await query(
-      'INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [sala_nombre, dia_semana, hora_inicio, hora_fin, estado]
+      `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $6::int IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END)
+       RETURNING *`,
+      [sala_nombre, dia_semana, hora_inicio, hora_fin, finalEstado, reservado_por ?? null, motivo_reserva ?? null]
     );
 
     return NextResponse.json({

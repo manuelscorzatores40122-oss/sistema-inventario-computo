@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const activo = searchParams.get('activo');
     const incluirOcultos = searchParams.get('incluirOcultos') === 'true';
 
-    let sql = 'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at FROM usuarios WHERE 1=1';
+    let sql = 'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, dni, area, fecha_creacion, updated_at FROM usuarios WHERE 1=1';
     const params: string[] = [];
 
     if (!incluirOcultos) {

@@ -968,3 +968,47 @@ body {
   font-weight: 700;
   color: #94a3b8;
 }
+
+/* ===== Horario de Clases editable ===== */
+.timetable-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  padding: 6px;
+  min-height: 64px;
+  width: 100%;
+  transition: transform 0.1s, box-shadow 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+.timetable-cell:hover {
+  transform: translateY(-1px);
+}
+
+.timetable-cell.empty {
+  border: 1.5px dashed #cbd5e1;
+  color: #94a3b8;
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.timetable-cell.empty:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.timetable-cell.filled {
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #eff6ff, #e0edff);
+  color: #1e3a8a;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.timetable-cell.filled:hover {
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+}

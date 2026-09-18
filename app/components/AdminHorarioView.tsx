@@ -7,15 +7,15 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiClock,
-  FiEdit2,
   FiSettings,
-  FiCheck,
-  FiLock,
-  FiUnlock,
+  FiPlus,
+  FiTrash2,
+  FiBookOpen,
+  FiUser,
+  FiSave,
 } from 'react-icons/fi';
-import RealCalendar from './RealCalendar';
 
-type Disponibilidad = {
+type Clase = {
   id: number;
   sala_nombre: string;
   dia_semana: string;
@@ -36,39 +36,42 @@ type Profesor = {
 
 type Message = { type: 'success' | 'error'; text: string } | null;
 
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const SALA_HORARIO = 'Horario de Clases';
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-const DIAS_MAP: Record<string, number> = {
-  Lunes: 0,
-  Martes: 1,
-  Miércoles: 2,
-  Jueves: 3,
-  Viernes: 4,
-  Sábado: 5,
-  Domingo: 6,
-};
+const PERIODOS = [
+  { inicio: '09:00', fin: '10:00' },
+  { inicio: '10:00', fin: '11:00' },
+  { inicio: '11:00', fin: '12:00' },
+  { inicio: '12:00', fin: '13:00' },
+];
 
 export default function AdminHorarioView() {
-  const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([]);
+  const [clases, setClases] = useState<Clase[]>([]);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
 
-  const [slotReservando, setSlotReservando] = useState<Disponibilidad | null>(null);
-  const [reservando, setReservando] = useState(false);
-  const [liberandoId, setLiberandoId] = useState<number | null>(null);
-  const [profesorId, setProfesorId] = useState(0);
-  const [motivo, setMotivo] = useState('');
+  const [editing, setEditing] = useState<{ clase: Clase | null } | null>(null);
+  const [form, setForm] = useState({
+    dia: 'Lunes',
+    hora_inicio: '09:00',
+    hora_fin: '10:00',
+    materia: '',
+    profesor_id: 0,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
-    const [dispRes, profRes] = await Promise.all([
-      fetch('/api/disponibilidad'),
+    const [claseRes, profRes] = await Promise.all([
+      fetch(`/api/disponibilidad?sala_nombre=${encodeURIComponent(SALA_HORARIO)}`),
       fetch('/api/usuarios?role=profesor&activo=true'),
     ]);
 
-    if (dispRes.ok) {
-      const data = await dispRes.json();
-      setDisponibilidades(data.disponibilidades || []);
+    if (claseRes.ok) {
+      const data = await claseRes.json();
+      setClases(data.disponibilidades || []);
     }
 
     if (profRes.ok) {
@@ -83,99 +86,108 @@ export default function AdminHorarioView() {
       .finally(() => setLoading(false));
   }, []);
 
-  const abrirReserva = (slot: Disponibilidad) => {
-    setSlotReservando(slot);
-    setProfesorId(0);
-    setMotivo('');
+  const openAdd = (dia: string, periodo: { inicio: string; fin: string }) => {
+    setForm({ dia, hora_inicio: periodo.inicio, hora_fin: periodo.fin, materia: '', profesor_id: 0 });
+    setEditing({ clase: null });
   };
 
-  const confirmarReserva = async () => {
-    if (!slotReservando || !profesorId) {
-      setMessage({ type: 'error', text: 'Selecciona un profesor para reservar' });
+  const openEdit = (clase: Clase) => {
+    setForm({
+      dia: clase.dia_semana,
+      hora_inicio: clase.hora_inicio,
+      hora_fin: clase.hora_fin,
+      materia: clase.motivo_reserva || '',
+      profesor_id: clase.reservado_por || 0,
+    });
+    setEditing({ clase });
+  };
+
+  const closeModal = () => {
+    if (saving || deleting) return;
+    setEditing(null);
+  };
+
+  const save = async () => {
+    if (editing === null) return;
+    if (!form.materia.trim()) {
+      setMessage({ type: 'error', text: 'Escribe la clase/materia que toca en este bloque' });
+      return;
+    }
+    if (!form.profesor_id) {
+      setMessage({ type: 'error', text: 'Selecciona el profesor a cargo' });
       return;
     }
 
-    setReservando(true);
+    const payload = {
+      sala_nombre: SALA_HORARIO,
+      dia_semana: form.dia,
+      hora_inicio: form.hora_inicio,
+      hora_fin: form.hora_fin,
+      estado: 'separado',
+      reservado_por: form.profesor_id,
+      motivo_reserva: form.materia.trim(),
+    };
 
+    setSaving(true);
     try {
-      const response = await fetch(`/api/disponibilidad/${slotReservando.id}`, {
-        method: 'PUT',
+      const url = editing.clase ? `/api/disponibilidad/${editing.clase.id}` : '/api/disponibilidad';
+      const method = editing.clase ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          estado: 'separado',
-          reservado_por: profesorId,
-          motivo_reserva: motivo || `Reserva de sala de cómputo`,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Horario reservado correctamente' });
-        setSlotReservando(null);
+        setMessage({ type: 'success', text: editing.clase ? 'Clase actualizada correctamente' : 'Clase asignada correctamente' });
+        setEditing(null);
         fetchData();
       } else {
         const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo reservar el horario' });
+        setMessage({ type: 'error', text: data?.error || 'No se pudo guardar la clase' });
       }
     } catch (error) {
-      console.error('Error al reservar:', error);
-      setMessage({ type: 'error', text: 'Error al reservar el horario' });
+      console.error('Error al guardar clase:', error);
+      setMessage({ type: 'error', text: 'Error al guardar la clase' });
     } finally {
-      setReservando(false);
+      setSaving(false);
     }
   };
 
-  const liberar = async (id: number) => {
-    if (!confirm('¿Liberar este horario?')) return;
+  const remove = async () => {
+    if (!editing?.clase) return;
+    if (!confirm('¿Eliminar esta clase del horario?')) return;
 
-    setLiberandoId(id);
-
+    setDeleting(true);
     try {
-      const response = await fetch(`/api/disponibilidad/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'disponible' }),
-      });
-
+      const response = await fetch(`/api/disponibilidad/${editing.clase.id}`, { method: 'DELETE' });
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Horario liberado correctamente' });
+        setMessage({ type: 'success', text: 'Clase eliminada del horario' });
+        setEditing(null);
         fetchData();
       } else {
         const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo liberar el horario' });
+        setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar la clase' });
       }
     } catch (error) {
-      console.error('Error al liberar:', error);
-      setMessage({ type: 'error', text: 'Error al liberar el horario' });
+      console.error('Error al eliminar clase:', error);
+      setMessage({ type: 'error', text: 'Error al eliminar la clase' });
     } finally {
-      setLiberandoId(null);
+      setDeleting(false);
     }
   };
 
-  const porDia = DIAS.map((dia) => ({
-    dia,
-    slots: disponibilidades
-      .filter((d) => d.dia_semana === dia)
-      .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)),
-  }));
+  const claseMap = new Map<string, Clase>();
+  clases.forEach((c) => claseMap.set(`${c.dia_semana}|${c.hora_inicio}`, c));
 
-  const total = disponibilidades.length;
-  const disponibles = disponibilidades.filter((d) => d.estado === 'disponible').length;
-  const separados = disponibilidades.filter((d) => d.estado === 'separado').length;
+  const total = clases.length;
+  const libre = DIAS.length * PERIODOS.length - total;
+  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
 
-  const reservadosPorDia = Array.from(
-    new Set(
-      disponibilidades
-        .filter((d) => d.estado === 'separado')
-        .map((d) => DIAS_MAP[d.dia_semana])
-        .filter((idx) => idx !== undefined)
-    )
-  ).sort((a, b) => a - b);
-
-  const hoyIdx = (new Date().getDay() + 6) % 7;
-  const hoyNombre = DIAS[hoyIdx];
-  const reservasHoy = disponibilidades.filter(
-    (d) => d.estado === 'separado' && d.dia_semana === hoyNombre
-  ).length;
+  const handleHoraChange = (inicio: string) => {
+    const p = PERIODOS.find((x) => x.inicio === inicio);
+    setForm((f) => ({ ...f, hora_inicio: inicio, hora_fin: p ? p.fin : f.hora_fin }));
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -196,10 +208,10 @@ export default function AdminHorarioView() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2">
             <FiCalendar className="text-primary" size={26} />
-            Horario Semanal
+            Horario de Clases
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Matriz de uso de la Sala de Cómputo. Asigna profesores o libera bloques horarios.
+            Plan semanal de Lunes a Sábado. Toca cualquier casilla para asignar o editar qué clase toca en ese horario.
           </p>
         </div>
 
@@ -209,15 +221,13 @@ export default function AdminHorarioView() {
         </Link>
       </div>
 
-      <RealCalendar reservadosPorDia={reservadosPorDia} reservasHoy={reservasHoy} />
-
       <div className="grid gap-4 md:grid-cols-3">
         <div className="inventory-panel p-4 border-l-4 border-l-slate-700">
           <div className="d-flex align-items-center gap-2 mb-2">
             <div className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600" style={{ width: '34px', height: '34px' }}>
-              <FiClock size={16} />
+              <FiBookOpen size={16} />
             </div>
-            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Total de Horarios Registrados</p>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Clases Asignadas</p>
           </div>
           <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : total}</h3>
         </div>
@@ -225,168 +235,168 @@ export default function AdminHorarioView() {
         <div className="inventory-panel p-4 border-l-4 border-l-green-600">
           <div className="d-flex align-items-center gap-2 mb-2">
             <div className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-600" style={{ width: '34px', height: '34px' }}>
-              <FiCheck size={16} />
+              <FiClock size={16} />
             </div>
             <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques Libres</p>
           </div>
-          <h3 className="text-2xl font-black text-green-600 mt-1">{loading ? '...' : disponibles}</h3>
+          <h3 className="text-2xl font-black text-green-600 mt-1">{loading ? '...' : libre}</h3>
         </div>
 
-        <div className="inventory-panel p-4 border-l-4 border-l-red-600">
+        <div className="inventory-panel p-4 border-l-4 border-l-blue-600">
           <div className="d-flex align-items-center gap-2 mb-2">
-            <div className="rounded d-flex align-items-center justify-content-center bg-red-50 text-red-600" style={{ width: '34px', height: '34px' }}>
-              <FiLock size={16} />
+            <div className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '34px', height: '34px' }}>
+              <FiUser size={16} />
             </div>
-            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques Reservados</p>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Profesores con Clase</p>
           </div>
-          <h3 className="text-2xl font-black text-red-600 mt-1">{loading ? '...' : separados}</h3>
+          <h3 className="text-2xl font-black text-blue-600 mt-1">{loading ? '...' : profesoresConClase}</h3>
         </div>
       </div>
 
       {loading ? (
         <div className="inventory-panel p-8 text-center text-slate-500 font-semibold">
-          Cargando matriz semanal...
-        </div>
-      ) : total === 0 ? (
-        <div className="inventory-panel p-8 text-center">
-          <FiCalendar className="text-slate-400 mx-auto mb-3" size={40} />
-          <h3 className="text-lg font-bold text-slate-900">No hay horarios registrados</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Crea bloques de tiempo desde "Gestionar disponibilidad".
-          </p>
+          Cargando horario de clases...
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-7">
-          {porDia.map(({ dia, slots }) => (
-            <div key={dia} className="inventory-panel flex flex-col">
-              <div className="bg-slate-100 border-b border-slate-200 p-3 text-center">
-                <h2 className="text-sm font-bold text-slate-900">{dia}</h2>
-                <span className="text-xs font-semibold text-slate-500">{slots.length} bloque{slots.length !== 1 ? 's' : ''}</span>
-              </div>
+        <div className="inventory-panel p-3">
+          <div className="overflow-x-auto">
+            <table className="table table-bordered align-middle mb-0" style={{ minWidth: '880px', borderCollapse: 'separate', borderSpacing: '6px 0' }}>
+              <thead>
+                <tr>
+                  <th className="text-center text-xs font-bold uppercase text-slate-500 border-0" style={{ width: '110px' }}>
+                    Horario
+                  </th>
+                  {DIAS.map((dia) => (
+                    <th key={dia} className="text-center border-0" style={{ minWidth: '125px' }}>
+                      <span className="text-sm font-bold text-slate-900">{dia}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PERIODOS.map((periodo) => (
+                  <tr key={periodo.inicio}>
+                    <td className="text-center border-0 py-2">
+                      <span className="font-mono text-sm font-bold text-slate-600">{periodo.inicio} - {periodo.fin}</span>
+                    </td>
+                    {DIAS.map((dia) => {
+                      const key = `${dia}|${periodo.inicio}`;
+                      const clase = claseMap.get(key);
 
-              <div className="p-2 space-y-2 flex-1">
-                {slots.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-4">Sin turnos</p>
-                ) : (
-                  slots.map((slot) => {
-                    const isDisponible = slot.estado === 'disponible';
-
-                    return (
-                      <div
-                        key={slot.id}
-                        className={`rounded-lg p-2.5 border text-xs ${
-                          isDisponible
-                            ? 'border-green-200 bg-green-50 text-green-950'
-                            : 'border-red-200 bg-red-50 text-red-950'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-slate-900">{slot.hora_inicio} - {slot.hora_fin}</span>
-                        </div>
-
-                        <div className="font-semibold text-slate-600 text-xs">
-                          {slot.sala_nombre}
-                        </div>
-
-                        {!isDisponible && (
-                          <div className="text-xs text-slate-700 mt-1 border-t border-red-200 pt-1">
-                            <div className="font-bold">{slot.reservado_por_nombre} {slot.reservado_por_apellido}</div>
-                            {slot.motivo_reserva && <div className="text-slate-600 truncate">{slot.motivo_reserva}</div>}
-                          </div>
-                        )}
-
-                        <div className="mt-2">
-                          {isDisponible ? (
-                            <button
-                              onClick={() => abrirReserva(slot)}
-                              className="btn-primary-custom w-full text-xs py-1 d-inline-flex align-items-center justify-content-center gap-1"
-                            >
-                              <FiCheck size={12} />
-                              Reservar
+                      return (
+                        <td key={key} className="border-0 p-1 align-middle" style={{ height: '72px' }}>
+                          {clase ? (
+                            <button className="timetable-cell filled w-100 h-100" onClick={() => openEdit(clase)}>
+                              <span className="d-block fw-bold text-slate-900 text-truncate">
+                                <FiBookOpen size={11} className="me-1 text-primary" />
+                                {clase.motivo_reserva}
+                              </span>
+                              <span className="d-block text-slate-500 text-truncate">
+                                <FiUser size={10} className="me-1" />
+                                {clase.reservado_por_nombre} {clase.reservado_por_apellido}
+                              </span>
                             </button>
                           ) : (
-                            <button
-                              onClick={() => liberar(slot.id)}
-                              disabled={liberandoId === slot.id}
-                              className="btn-danger-custom w-full text-xs py-1 d-inline-flex align-items-center justify-content-center gap-1"
-                            >
-                              <FiUnlock size={12} />
-                              {liberandoId === slot.id ? 'Liberando...' : 'Liberar'}
+                            <button className="timetable-cell empty w-100 h-100" onClick={() => openAdd(dia, periodo)}>
+                              <FiPlus size={14} />
+                              <span>Agregar clase</span>
                             </button>
                           )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ))}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {slotReservando && (
+      {editing && (
         <>
           <div className="modal fade show d-block" tabIndex={-1} role="dialog">
             <div className="modal-dialog" role="document">
               <div className="modal-content border-0 shadow-lg">
                 <div className="modal-header border-b border-slate-200 p-4">
                   <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
-                  <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
-                    <FiEdit2 size={15} />
-                  </span>
-                  Reservar Bloque Horario
-                </h5>
-                  <button type="button" className="btn-close" onClick={() => setSlotReservando(null)} />
+                    <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
+                      <FiBookOpen size={15} />
+                    </span>
+                    {editing.clase ? 'Editar Clase' : 'Asignar Clase'}
+                  </h5>
+                  <button type="button" className="btn-close" onClick={closeModal} />
                 </div>
 
                 <div className="modal-body p-4 space-y-4">
-                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-900">
-                    <strong>{slotReservando.sala_nombre}</strong> — {slotReservando.dia_semana}{' '}
-                    {slotReservando.hora_inicio} - {slotReservando.hora_fin}
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="inventory-form-label">Día</label>
+                      <select
+                        value={form.dia}
+                        onChange={(e) => setForm({ ...form, dia: e.target.value })}
+                        className="inventory-form-select"
+                      >
+                        {DIAS.map((dia) => (
+                          <option key={dia} value={dia}>{dia}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="inventory-form-label">Hora de Inicio</label>
+                      <select value={form.hora_inicio} onChange={(e) => handleHoraChange(e.target.value)} className="inventory-form-select">
+                        {PERIODOS.map((p) => (
+                          <option key={p.inicio} value={p.inicio}>{p.inicio}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="inventory-form-label">Hora de Fin</label>
+                      <input type="text" value={form.hora_fin} readOnly className="inventory-form-input bg-slate-50" />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="inventory-form-label">Profesor Asignado</label>
+                    <label className="inventory-form-label">Clase / Materia que toca</label>
+                    <input
+                      type="text"
+                      value={form.materia}
+                      onChange={(e) => setForm({ ...form, materia: e.target.value })}
+                      className="inventory-form-input"
+                      placeholder="Ej. Matemática, Comunicación, C y T..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="inventory-form-label">Profesor a cargo</label>
                     <select
-                      value={profesorId}
-                      onChange={(e) => setProfesorId(Number(e.target.value))}
+                      value={form.profesor_id}
+                      onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
                       className="inventory-form-select"
                     >
                       <option value="0">Seleccionar profesor...</option>
                       {profesores.map((profesor) => (
                         <option key={profesor.id} value={profesor.id}>
-                          {profesor.nombre} {profesor.apellido}
+                          {profesor.apellido}, {profesor.nombre}
                         </option>
                       ))}
                     </select>
                   </div>
-
-                  <div>
-                    <label className="inventory-form-label">Motivo de Reserva (Opcional)</label>
-                    <input
-                      type="text"
-                      value={motivo}
-                      onChange={(e) => setMotivo(e.target.value)}
-                      className="inventory-form-input"
-                      placeholder="Ej. Clase de Computación"
-                    />
-                  </div>
                 </div>
 
                 <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
-                  <button
-                    className="btn-secondary-custom"
-                    onClick={() => setSlotReservando(null)}
-                  >
+                  {editing.clase && (
+                    <button className="btn-danger-custom d-inline-flex align-items-center gap-1" disabled={saving || deleting} onClick={remove}>
+                      <FiTrash2 size={13} />
+                      {deleting ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  )}
+                  <button className="btn-secondary-custom" onClick={closeModal}>
                     Cancelar
                   </button>
-                  <button
-                    className="btn-primary-custom"
-                    disabled={reservando || !profesorId}
-                    onClick={confirmarReserva}
-                  >
-                    {reservando ? 'Reservando...' : 'Confirmar Reserva'}
+                  <button className="btn-primary-custom d-inline-flex align-items-center gap-1" disabled={saving} onClick={save}>
+                    <FiSave size={13} />
+                    {saving ? 'Guardando...' : 'Guardar'}
                   </button>
                 </div>
               </div>
