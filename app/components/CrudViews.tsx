@@ -709,6 +709,123 @@ export function AdminProfesoresView() {
           </div>
         )}
       </div>
+
+      {selectedUser && (
+        <>
+          <div className="modal fade show d-block" tabIndex={-1} role="dialog">
+            <div className="modal-dialog" role="document">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header border-b border-slate-200 p-4">
+                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                    <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
+                      <FiEye size={15} />
+                    </span>
+                    Información del Usuario
+                  </h5>
+                  <button type="button" className="btn-close" onClick={() => setSelectedUser(null)} />
+                </div>
+
+                <div className="modal-body p-4">
+                  <div className="d-flex align-items-center gap-3 mb-4">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        fontSize: '20px',
+                        backgroundColor: ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'][selectedUser.id % 8],
+                      }}
+                    >
+                      {selectedUser.nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900" style={{ fontSize: '1.05rem' }}>
+                        {selectedUser.nombre} {selectedUser.apellido}
+                      </div>
+                      <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                        <span className={`category-chip d-inline-flex align-items-center gap-1 ${selectedUser.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
+                          {selectedUser.role === 'admin' ? <FiShield size={11} /> : <FiUser size={11} />}
+                          {selectedUser.role === 'admin' ? 'Administrador' : 'Profesor'}
+                        </span>
+                        <StatusBadge value={selectedUser.activo ? 'disponible' : 'agotado'} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="d-flex flex-column gap-2">
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiHash size={13} />
+                      </span>
+                      <span><span className="font-semibold text-slate-500">DNI:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiBookOpen size={13} />
+                      </span>
+                      <span><span className="font-semibold text-slate-500">Área / Cargo:</span> <strong className="text-slate-800">{selectedUser.area || 'Sin asignar'}</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiMail size={13} />
+                      </span>
+                      <span><span className="font-semibold text-slate-500">Correo institucional:</span> <strong className="text-slate-800">{selectedUser.email}@colegio.edu.pe</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiUser size={13} />
+                      </span>
+                      <span><span className="font-semibold text-slate-500">Correo de contacto:</span> <strong className="text-slate-800">{selectedUser.correo_personal || 'Sin correo'}</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiPhone size={13} />
+                      </span>
+                      <span><span className="font-semibold text-slate-500">Teléfono / WhatsApp:</span> <strong className="text-slate-800">{selectedUser.telefono || 'Sin teléfono'}</strong></span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                        <FiCalendar size={13} />
+                      </span>
+                      <span>
+                        <span className="font-semibold text-slate-500">Registrado el:</span>{' '}
+                        <strong className="text-slate-800">
+                          {selectedUser.fecha_creacion ? new Date(selectedUser.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Fecha no disponible'}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
+                  <button
+                    className={`${secondaryButton} d-inline-flex align-items-center gap-1`}
+                    onClick={() => {
+                      setSelectedUser(null);
+                      edit(selectedUser);
+                    }}
+                  >
+                    <FiEdit2 size={13} />Editar
+                  </button>
+                  <button
+                    className={`${selectedUser.activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`}
+                    onClick={() => {
+                      setSelectedUser(null);
+                      deactivate(selectedUser.id);
+                    }}
+                  >
+                    {selectedUser.activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
+                  </button>
+                  <button className={secondaryButton} onClick={() => setSelectedUser(null)}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" />
+        </>
+      )}
     </PageShell>
   );
 }
