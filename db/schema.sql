@@ -99,14 +99,14 @@ CREATE TABLE IF NOT EXISTS notificaciones_whatsapp (
 );
 
 -- Índices
-CREATE INDEX idx_usuarios_email ON usuarios(email);
-CREATE INDEX idx_usuarios_role ON usuarios(role);
-CREATE INDEX idx_solicitudes_profesor ON solicitudes(profesor_id);
-CREATE INDEX idx_solicitudes_estado ON solicitudes(estado);
-CREATE INDEX idx_solicitudes_disponibilidad ON solicitudes(disponibilidad_id);
-CREATE INDEX idx_disponibilidad_estado ON disponibilidad(estado);
-CREATE INDEX idx_inventario_categoria ON inventario(categoria);
-CREATE INDEX idx_notificaciones_usuario ON notificaciones_whatsapp(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+CREATE INDEX IF NOT EXISTS idx_usuarios_role ON usuarios(role);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_profesor ON solicitudes(profesor_id);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes(estado);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_disponibilidad ON solicitudes(disponibilidad_id);
+CREATE INDEX IF NOT EXISTS idx_disponibilidad_estado ON disponibilidad(estado);
+CREATE INDEX IF NOT EXISTS idx_inventario_categoria ON inventario(categoria);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones_whatsapp(usuario_id);
 
 
 

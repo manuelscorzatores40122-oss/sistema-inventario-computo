@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface Solicitud {
   id: number;
@@ -10,45 +11,6 @@ interface Solicitud {
   estado: string;
   fecha_solicitud: string;
 }
-
-const adminLinks = [
-  {
-    href: '/admin/inventario',
-    title: 'Inventario',
-    text: 'Control de productos y stock',
-    icon: '▣',
-  },
-  {
-    href: '/admin/profesores',
-    title: 'Profesores',
-    text: 'Usuarios y accesos',
-    icon: '♙',
-  },
-  {
-    href: '/admin/disponibilidad',
-    title: 'Disponibilidad',
-    text: 'Horarios y reservas',
-    icon: '◷',
-  },
-  {
-    href: '/admin/horario',
-    title: 'Horario',
-    text: 'Vista semanal de reservas',
-    icon: '▦',
-  },
-  {
-    href: '/admin/perfil',
-    title: 'Perfil',
-    text: 'Información y credenciales',
-    icon: '●',
-  },
-  {
-    href: '/admin/solicitudes',
-    title: 'Solicitudes',
-    text: 'Historial y aprobaciones',
-    icon: '✓',
-  },
-];
 
 export default function AdminDashboard() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
@@ -123,120 +85,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-vh-100 bg-light">
 
-      {/* MENÚ LATERAL */}
-      <aside
-        className="position-fixed top-0 start-0 h-100 bg-dark text-white"
-        style={{
-          width: '260px',
-          zIndex: 1000,
-        }}
-      >
-        {/* LOGO */}
-        <div className="p-4 border-bottom border-secondary">
-          <h2 className="h5 fw-bold mb-1">
-            Sistema de Inventario
-          </h2>
-
-          <p className="text-secondary small mb-0">
-            Panel de Administración
-          </p>
-        </div>
-
-        {/* USUARIO */}
-        <div className="p-4 border-bottom border-secondary">
-          <div className="d-flex align-items-center">
-
-            <div
-              className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold me-3"
-              style={{
-                width: '42px',
-                height: '42px',
-              }}
-            >
-              {user?.nombre?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
-
-            <div>
-              <div className="fw-semibold">
-                {user?.nombre || 'Administrador'}
-              </div>
-
-              <div className="text-secondary small">
-                Administrador
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* NAVEGACIÓN */}
-        <nav className="p-3">
-
-          <div className="text-uppercase text-secondary small fw-bold px-3 mb-2">
-            Menú principal
-          </div>
-
-          <a
-            href="/admin"
-            className="d-flex align-items-center text-white text-decoration-none rounded px-3 py-3 mb-1"
-            style={{
-              backgroundColor: '#0d6efd',
-            }}
-          >
-            <span className="me-3">⌂</span>
-            <span className="fw-semibold">Dashboard</span>
-          </a>
-
-          {adminLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="d-flex align-items-center text-light text-decoration-none rounded px-3 py-3 mb-1"
-              style={{
-                transition: 'background-color 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#343a40';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <span
-                className="me-3 d-flex align-items-center justify-content-center"
-                style={{
-                  width: '24px',
-                }}
-              >
-                {link.icon}
-              </span>
-
-              <span>{link.title}</span>
-            </a>
-          ))}
-
-        </nav>
-
-        {/* PARTE INFERIOR */}
-        <div
-          className="position-absolute bottom-0 start-0 end-0 p-3 border-top border-secondary"
-        >
-          <div className="small text-secondary px-2">
-            Sistema de Gestión
-          </div>
-
-          <div className="small text-secondary px-2">
-            Administración
-          </div>
-        </div>
-      </aside>
-
       {/* CONTENIDO PRINCIPAL */}
-      <main
-        style={{
-          marginLeft: '260px',
-        }}
-      >
+      <div>
 
         {/* HEADER */}
         <header className="bg-white border-bottom px-4 py-3">
@@ -325,12 +175,12 @@ export default function AdminDashboard() {
                     Administra productos y cantidades disponibles.
                   </p>
 
-                  <a
+                  <Link
                     href="/admin/inventario"
                     className="btn btn-outline-primary btn-sm"
                   >
                     Ir al inventario
-                  </a>
+                  </Link>
 
                 </div>
 
@@ -356,12 +206,12 @@ export default function AdminDashboard() {
                     Gestiona profesores y sus accesos.
                   </p>
 
-                  <a
+                  <Link
                     href="/admin/profesores"
                     className="btn btn-outline-primary btn-sm"
                   >
                     Ver profesores
-                  </a>
+                  </Link>
 
                 </div>
 
@@ -388,12 +238,12 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
-                <a
+                <Link
                   href="/admin/solicitudes"
                   className="btn btn-outline-primary btn-sm"
                 >
                   Ver todas
-                </a>
+                </Link>
 
               </div>
 
@@ -548,7 +398,7 @@ export default function AdminDashboard() {
 
         </div>
 
-      </main>
+      </div>
 
     </div>
   );

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface Item {
   id: number;
@@ -156,62 +157,13 @@ export default function ProfesorDashboard() {
   return (
     <div className="min-vh-100 bg-light">
 
-{/* ENCABEZADO */}
-      <header className="bg-dark text-white shadow-sm">
-        <div className="container-xl py-4">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-
-            <div>
-              <div className="text-uppercase small text-secondary fw-bold mb-1">
-                Sistema de Inventario
-              </div>
-
-              <h1 className="h3 fw-bold mb-1">
-                Panel del Profesor
-              </h1>
-
-              <p className="mb-0 text-white-50">
-                Gestiona tus solicitudes y disponibilidad.
-              </p>
-            </div>
-
-            <div className="d-flex align-items-center gap-3">
-
-              <div className="text-end d-none d-sm-block">
-                <div className="fw-semibold">
-                  {user?.nombre || 'Profesor'}
-                </div>
-
-                <div className="small text-white-50">
-                  Profesor
-                </div>
-              </div>
-
-              <div
-                className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold"
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  fontSize: '18px',
-                }}
-              >
-                {user?.nombre
-                  ? user.nombre.charAt(0).toUpperCase()
-                  : 'P'}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="container-xl py-4">
 
         {/* ACCESOS RÁPIDOS */}
         <div className="row g-4 mb-4">
 
           <div className="col-12 col-md-6">
-            <a
+            <Link
               href="/profesor/solicitudes"
               className="text-decoration-none"
             >
@@ -251,11 +203,11 @@ export default function ProfesorDashboard() {
 
                 </div>
               </div>
-            </a>
+            </Link>
           </div>
 
           <div className="col-12 col-md-6">
-            <a
+            <Link
               href="/profesor/disponibilidad"
               className="text-decoration-none"
             >
@@ -295,11 +247,11 @@ export default function ProfesorDashboard() {
 
                 </div>
               </div>
-            </a>
+            </Link>
           </div>
 
           <div className="col-12 col-md-6">
-            <a
+            <Link
               href="/profesor/perfil"
               className="text-decoration-none"
             >
@@ -339,7 +291,7 @@ export default function ProfesorDashboard() {
 
                 </div>
               </div>
-            </a>
+            </Link>
           </div>
 
         </div>
@@ -444,12 +396,12 @@ export default function ProfesorDashboard() {
                 </p>
               </div>
 
-              <a
+              <Link
                 href="/profesor/disponibilidad"
                 className="btn btn-outline-primary btn-sm align-self-start"
               >
                 Administrar horarios
-              </a>
+              </Link>
 
             </div>
 
@@ -731,12 +683,12 @@ export default function ProfesorDashboard() {
                   : 'Enviar solicitud'}
               </button>
 
-              <a
+              <Link
                 href="/profesor/solicitudes"
                 className="btn btn-outline-secondary btn-lg px-4 fw-semibold"
               >
                 Ver mis solicitudes
-              </a>
+              </Link>
 
             </div>
 

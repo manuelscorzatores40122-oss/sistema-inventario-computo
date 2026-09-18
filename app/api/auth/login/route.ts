@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
       name: 'auth-token',
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.VERCEL === '1',
+      sameSite: 'lax',
       maxAge: 86400,
       path: '/',
     });

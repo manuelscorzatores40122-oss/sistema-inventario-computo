@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 type Usuario = {
   id: number;
@@ -113,20 +114,20 @@ function StatusBadge({ value }: { value: string }) {
 
 function PageShell({ title, subtitle, backHref, children }: { title: string; subtitle: string; backHref?: string; children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-950">{title}</h1>
             <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
           </div>
-          <a className={secondaryButton} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
+          <Link className={secondaryButton} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
             Volver al panel
-          </a>
+          </Link>
         </div>
         {children}
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -41,9 +41,10 @@ export const getUserById = async (id: number) => {
 };
 
 export const getUserByEmail = async (email: string) => {
+  const cleanInput = email.trim();
   const result = await query(
-    'SELECT * FROM usuarios WHERE email = $1',
-    [email]
+    'SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1) OR LOWER(email) = LOWER($1 || \'@colegio.com\') OR LOWER(email) = LOWER($1 || \'@colegio.edu\') OR dni = $1',
+    [cleanInput]
   );
   return result.rows[0];
 };

@@ -29,19 +29,16 @@ export default function Login() {
         return;
       }
 
-      // Guardar token
+      // Guardar token y usuario
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      document.cookie = `auth-token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
 
-      if (data.user.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/profesor/dashboard');
-      }
+      const targetPath = data.user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard';
+      window.location.href = targetPath;
     } catch (err) {
       setError('Error de conexión');
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };
