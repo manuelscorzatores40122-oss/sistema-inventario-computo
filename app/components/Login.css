@@ -1,0 +1,644 @@
+/* ==================================================
+   CONTENEDOR PRINCIPAL
+================================================== */
+
+.login-background {
+  position: relative;
+
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 25px;
+
+  overflow: hidden;
+
+  background: #f5f5f5;
+}
+
+
+/* ==================================================
+   IMÁGENES DE FONDO
+================================================== */
+
+.background-image {
+  position: absolute;
+
+  inset: -2%;
+
+  width: 104%;
+  height: 104%;
+
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+
+  z-index: 0;
+
+  transition:
+    opacity 1.2s ease-in-out,
+    transform 8s ease-in-out;
+}
+
+
+/*
+ * Fondo actual
+ */
+
+.background-current {
+  opacity: 1;
+
+  animation:
+    backgroundZoom 8s ease-in-out infinite alternate;
+}
+
+
+/*
+ * Fondo anterior
+ */
+
+.background-previous {
+  opacity: 0;
+
+  animation: backgroundFadeOut 1.2s ease-in-out;
+}
+
+
+/* ==================================================
+   ANIMACIÓN DEL ZOOM
+================================================== */
+
+@keyframes backgroundZoom {
+
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.04);
+  }
+
+}
+
+
+/* ==================================================
+   FUNDIDO DEL FONDO
+================================================== */
+
+@keyframes backgroundFadeOut {
+
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+
+}
+
+
+/* ==================================================
+   CAPA SOBRE LA FOTOGRAFÍA
+================================================== */
+
+.login-overlay {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  /*
+   * Capa muy ligera.
+   * Permite ver claramente la fotografía.
+   */
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(0, 0, 0, 0.12)
+    );
+
+  pointer-events: none;
+}
+
+
+/* ==================================================
+   INDICADORES
+================================================== */
+
+.background-indicators {
+  position: absolute;
+
+  left: 50%;
+  bottom: 22px;
+
+  transform: translateX(-50%);
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  z-index: 10;
+}
+
+
+.indicator {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.55);
+
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.2);
+
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
+}
+
+
+.indicator.active {
+  width: 25px;
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.95);
+}
+
+
+/* ==================================================
+   TARJETA LOGIN
+================================================== */
+
+.login-card {
+  position: relative;
+
+  z-index: 5;
+
+  width: 100%;
+  max-width: 420px;
+
+  padding: 40px;
+
+  /*
+   * Blanco ligeramente transparente.
+   */
+
+  background: rgba(255, 255, 255, 0.94);
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.20);
+
+  backdrop-filter: blur(8px);
+
+  -webkit-backdrop-filter: blur(8px);
+
+  animation:
+    loginCardAppear 0.7s ease-out;
+}
+
+
+/* ==================================================
+   ENTRADA DE TARJETA
+================================================== */
+
+@keyframes loginCardAppear {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(30px)
+      scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+
+}
+
+
+/* ==================================================
+   LOGO
+================================================== */
+
+.logo-container {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 12px;
+}
+
+
+.school-logo {
+  width: 90px;
+  height: 90px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 5px 10px rgba(0, 0, 0, 0.15)
+    );
+
+  animation:
+    logoFloat 4s ease-in-out infinite;
+}
+
+
+/* ==================================================
+   ANIMACIÓN DEL LOGO
+================================================== */
+
+@keyframes logoFloat {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+}
+
+
+/* ==================================================
+   TÍTULO
+================================================== */
+
+.login-title {
+  margin: 0;
+
+  font-size: 28px;
+
+  font-weight: 700;
+
+  line-height: 1.2;
+
+  color: #212529;
+
+  animation:
+    textAppear 0.7s ease-out;
+}
+
+
+.login-subtitle {
+  margin-top: 6px;
+
+  margin-bottom: 0;
+
+  color: #6c757d;
+
+  font-size: 15px;
+
+  animation:
+    textAppear 0.9s ease-out;
+}
+
+
+/* ==================================================
+   ANIMACIÓN TEXTO
+================================================== */
+
+@keyframes textAppear {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+
+}
+
+
+/* ==================================================
+   ERROR
+================================================== */
+
+.login-error {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  margin-bottom: 18px;
+
+  padding: 11px 13px;
+
+  border-radius: 9px;
+
+  background: #f8d7da;
+
+  color: #842029;
+
+  font-size: 14px;
+
+  animation:
+    errorAppear 0.3s ease-out;
+}
+
+
+@keyframes errorAppear {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+
+}
+
+
+/* ==================================================
+   FORMULARIOS
+================================================== */
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+
+.password-group {
+  margin-bottom: 22px;
+}
+
+
+.form-label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  color: #212529;
+}
+
+
+/* ==================================================
+   INPUT
+================================================== */
+
+.input-container {
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+}
+
+
+.input-icon {
+  position: absolute;
+
+  left: 13px;
+
+  color: #6c757d;
+
+  pointer-events: none;
+
+  z-index: 2;
+
+  transition:
+    color 0.2s ease;
+}
+
+
+.login-input {
+  width: 100%;
+
+  min-height: 44px;
+
+  padding:
+    10px
+    13px
+    10px
+    42px;
+
+  border:
+    1px solid #dee2e6;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #212529;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+.login-input::placeholder {
+  color: #adb5bd;
+}
+
+
+.login-input:focus {
+  border-color: #0d6efd;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(13, 110, 253, 0.10);
+
+  transform:
+    translateY(-1px);
+}
+
+
+.input-container:focus-within .input-icon {
+  color: #0d6efd;
+}
+
+
+/* ==================================================
+   BOTÓN
+================================================== */
+
+.login-button {
+  width: 100%;
+
+  min-height: 45px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: none;
+
+  border-radius: 9px;
+
+  background: #0d6efd;
+
+  color: white;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 5px 14px
+    rgba(13, 110, 253, 0.20);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    opacity 0.2s ease;
+}
+
+
+.login-button:hover:not(:disabled) {
+  background: #0b5ed7;
+
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 9px 22px
+    rgba(13, 110, 253, 0.28);
+}
+
+
+.login-button:active:not(:disabled) {
+  transform:
+    translateY(0);
+
+  box-shadow:
+    0 4px 10px
+    rgba(13, 110, 253, 0.20);
+}
+
+
+.login-button:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+/* ==================================================
+   PIE
+================================================== */
+
+.login-footer {
+  margin-top: 22px;
+
+  text-align: center;
+
+  color: #6c757d;
+
+  font-size: 12px;
+}
+
+
+/* ==================================================
+   RESPONSIVE
+================================================== */
+
+@media (max-width: 576px) {
+
+  .login-background {
+    padding: 15px;
+  }
+
+
+  .login-card {
+    padding: 30px 22px;
+
+    border-radius: 16px;
+  }
+
+
+  .school-logo {
+    width: 75px;
+    height: 75px;
+  }
+
+
+  .login-title {
+    font-size: 25px;
+  }
+
+
+  .login-subtitle {
+    font-size: 14px;
+  }
+
+
+  .background-indicators {
+    bottom: 12px;
+  }
+
+}
+
+
+/* ==================================================
+   REDUCIR ANIMACIONES SI EL USUARIO LO SOLICITA
+================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .background-image,
+  .school-logo,
+  .login-card,
+  .login-title,
+  .login-subtitle,
+  .login-error {
+    animation: none;
+    transition: none;
+  }
+
+}
+

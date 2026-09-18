@@ -1,128 +1,366 @@
+
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { FiShield, FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import {
+  FiUser,
+  FiLock,
+  FiLogIn,
+  FiAlertTriangle,
+} from 'react-icons/fi';
+
+import './Login.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+
+  /*
+   * ==========================================
+   * FONDOS
+   * ==========================================
+   *
+   * Coloca las imágenes dentro de:
+   *
+   * public/
+   * ├── logo.png
+   * ├── fondo1.jpg
+   * ├── fondo2.jpg
+   * ├── fondo3.jpg
+   * └── fondo4.jpg
+   *
+   * Puedes agregar más imágenes aquí.
+   */
+
+  const backgrounds = [
+    '/fondo.jpeg',
+    '/fondo3.jpeg',
+    '/fondo4.jp',
+    
+
+  ];
+
+  const [currentBackground, setCurrentBackground] = useState(0);
+  const [previousBackground, setPreviousBackground] = useState<number | null>(
+    null
+  );
+
+  /*
+   * ==========================================
+   * CAMBIO AUTOMÁTICO DE FONDO
+   * ==========================================
+   *
+   * Cambia cada 2 segundos.
+   */
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBackground((current) => {
+        const next = (current + 1) % backgrounds.length;
+
+        setPreviousBackground(current);
+
+        return next;
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [backgrounds.length]);
+
+  /*
+   * ==========================================
+   * LOGIN
+   * ==========================================
+   */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setError('');
     setLoading(true);
 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al iniciar sesión');
+        setError(
+          data.error || 'Error al iniciar sesión'
+        );
+
         setLoading(false);
+
         return;
       }
 
-      // Guardar token y usuario
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      document.cookie = `auth-token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+      /*
+       * Guardar sesión
+       */
 
-      const targetPath = data.user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard';
+      localStorage.setItem(
+        'token',
+        data.token
+      );
+
+      localStorage.setItem(
+        'user',
+        JSON.stringify(data.user)
+      );
+
+      document.cookie =
+        `auth-token=${data.token}; ` +
+        `path=/; ` +
+        `max-age=86400; ` +
+        `SameSite=Lax`;
+
+      /*
+       * Redirección según el rol
+       */
+
+      const targetPath =
+        data.user.role === 'admin'
+          ? '/admin/dashboard'
+          : '/profesor/dashboard';
+
       window.location.href = targetPath;
+
     } catch (err) {
-      setError('Error de conexión');
       console.error(err);
+
+      setError('Error de conexión');
+
       setLoading(false);
     }
   };
 
   return (
-    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light" style={{ backgroundColor: 'var(--color-slate-50) !important' }}>
-      <div className="card shadow p-4 p-md-5 w-100" style={{ maxWidth: '420px', border: 'none', borderRadius: '1rem' }}>
+    <main className="login-background">
+
+      {/* =====================================
+          FONDO ACTUAL
+      ====================================== */}
+
+      <div
+        key={`current-${currentBackground}`}
+        className="background-image background-current"
+        style={{
+          backgroundImage: `url("${backgrounds[currentBackground]}")`,
+        }}
+      />
+
+      {/* =====================================
+          FONDO ANTERIOR
+      ====================================== */}
+
+      {previousBackground !== null && (
+        <div
+          key={`previous-${previousBackground}`}
+          className="background-image background-previous"
+          style={{
+            backgroundImage: `url("${backgrounds[previousBackground]}")`,
+          }}
+        />
+      )}
+
+      {/* =====================================
+          CAPA SUAVE
+      ====================================== */}
+
+      <div className="login-overlay" />
+
+      {/* =====================================
+          INDICADORES
+      ====================================== */}
+
+      <div className="background-indicators">
+
+        {backgrounds.map((_, index) => (
+          <span
+            key={index}
+            className={
+              index === currentBackground
+                ? 'indicator active'
+                : 'indicator'
+            }
+          />
+        ))}
+
+      </div>
+
+      {/* =====================================
+          TARJETA
+      ====================================== */}
+
+      <section className="login-card">
+
+        {/* ===================================
+            LOGO
+        ==================================== */}
+
         <div className="text-center mb-4">
-          <div
-            className="bg-primary rounded-3 d-inline-flex align-items-center justify-content-center text-white mb-3 mx-auto"
-            style={{ width: '64px', height: '64px', boxShadow: '0 8px 16px rgba(37, 99, 235, 0.3)' }}
-          >
-            <FiShield size={32} />
+
+          <div className="logo-container">
+
+            <img
+              src="/logo.png"
+              alt="Insignia del colegio"
+              className="school-logo"
+            />
+
           </div>
 
-          <h1 className="h3 fw-bold text-dark mb-1">Colegio</h1>
-          <p className="text-secondary mb-0">Sistema de Inventarios</p>
+          <h1 className="login-title">
+            Colegio
+          </h1>
+
+          <p className="login-subtitle">
+            Sistema de Inventarios
+          </p>
+
         </div>
 
+        {/* ===================================
+            ERROR
+        ==================================== */}
+
         {error && (
-          <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
-            <FiAlertTriangle className="flex-shrink-0" size={18} />
-            <span>{error}</span>
+          <div
+            className="login-error"
+            role="alert"
+          >
+
+            <FiAlertTriangle size={18} />
+
+            <span>
+              {error}
+            </span>
+
           </div>
         )}
 
+        {/* ===================================
+            FORMULARIO
+        ==================================== */}
+
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label fw-bold">
+
+          {/* USUARIO */}
+
+          <div className="form-group">
+
+            <label
+              htmlFor="email"
+              className="form-label"
+            >
               Usuario
             </label>
-            <div className="input-group">
-              <span className="input-group-text bg-white">
-                <FiUser className="text-secondary" size={17} />
-              </span>
+
+            <div className="input-container">
+
+              <FiUser
+                className="input-icon"
+                size={18}
+              />
+
               <input
+                id="email"
                 type="text"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="form-control"
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
+                className="login-input"
                 placeholder="Usuario"
+                autoComplete="username"
                 required
               />
+
             </div>
+
           </div>
 
-          <div className="mb-4">
-            <label className="form-label fw-bold">
+          {/* CONTRASEÑA */}
+
+          <div className="form-group password-group">
+
+            <label
+              htmlFor="password"
+              className="form-label"
+            >
               Contraseña
             </label>
-            <div className="input-group">
-              <span className="input-group-text bg-white">
-                <FiLock className="text-secondary" size={17} />
-              </span>
+
+            <div className="input-container">
+
+              <FiLock
+                className="input-icon"
+                size={18}
+              />
+
               <input
+                id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-control"
+                onChange={(e) =>
+                  setPassword(e.target.value)
+                }
+                className="login-input"
                 placeholder="••••••••"
+                autoComplete="current-password"
                 required
               />
+
             </div>
+
           </div>
+
+          {/* BOTÓN */}
 
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-100 fw-bold py-2 d-flex align-items-center justify-content-center gap-2"
-            style={{ borderRadius: '0.5rem' }}
+            className="login-button"
           >
+
             <FiLogIn size={18} />
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+
+            <span>
+              {loading
+                ? 'Iniciando sesión...'
+                : 'Iniciar Sesión'}
+            </span>
+
           </button>
+
         </form>
 
-        <div className="text-center mt-4">
-          <p className="small text-secondary mb-0">
-            Sistema de gestión para colegios
-          </p>
+        {/* ===================================
+            PIE
+        ==================================== */}
+
+        <div className="login-footer">
+
+          Sistema de gestión para colegios
+
         </div>
-      </div>
-    </div>
+
+      </section>
+
+    </main>
   );
 }
+
