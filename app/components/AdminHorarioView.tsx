@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   FiCalendar,
@@ -13,6 +13,9 @@ import {
   FiBookOpen,
   FiUser,
   FiSave,
+  FiChevronLeft,
+  FiChevronRight,
+  FiEdit2,
 } from 'react-icons/fi';
 
 type Clase = {
@@ -38,7 +41,12 @@ type Message = { type: 'success' | 'error'; text: string } | null;
 
 const SALA_HORARIO = 'Horario de Clases';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-
+const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
 const PERIODOS = [
   { inicio: '09:00', fin: '10:00' },
   { inicio: '10:00', fin: '11:00' },
@@ -52,16 +60,16 @@ export default function AdminHorarioView() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
 
-  const [editing, setEditing] = useState<{ clase: Clase | null } | null>(null);
-  const [form, setForm] = useState({
-    dia: 'Lunes',
-    hora_inicio: '09:00',
-    hora_fin: '10:00',
-    materia: '',
-    profesor_id: 0,
+  const [cursor, setCursor] = useState<Date>(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
   });
+  const [dayModal, setDayModal] = useState<{ diaNombre: string; label: string } | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editClase, setEditClase] = useState<Clase | null>(null);
+  const [form, setForm] = useState({ hora_inicio: '09:00', hora_fin: '10:00', materia: '', profesor_id: 0 });
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     const [claseRes, profRes] = await Promise.all([
@@ -86,31 +94,74 @@ export default function AdminHorarioView() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openAdd = (dia: string, periodo: { inicio: string; fin: string }) => {
-    setForm({ dia, hora_inicio: periodo.inicio, hora_fin: periodo.fin, materia: '', profesor_id: 0 });
-    setEditing({ clase: null });
+  const clasesByDay = useMemo(() => {
+    const map = new Map<string, Clase[]>();
+    DIAS.forEach((d) => map.set(d, []));
+    clases
+      .filter((c) => DIAS.includes(c.dia_semana))
+      .forEach((c) => map.get(c.dia_semana)?.push(c));
+    map.forEach((arr) => arr.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)));
+    return map;
+  }, [clases]);
+
+  const total = clases.length;
+  const libre = DIAS.length * PERIODOS.length - total;
+  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
+
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const today = new Date();
+
+  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [
+    ...Array.from({ length: startOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const prevMonth = () => setCursor(new Date(year, month - 1, 1));
+  const nextMonth = () => setCursor(new Date(year, month + 1, 1));
+  const goToday = () => setCursor(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const openDay = (d: number) => {
+    const date = new Date(year, month, d);
+    const diaNombre = DIAS_SEMANA[date.getDay()];
+    if (!DIAS.includes(diaNombre)) return;
+
+    const label = date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    setDayModal({ diaNombre, label });
+    setFormOpen(false);
+    setEditClase(null);
   };
 
-  const openEdit = (clase: Clase) => {
+  const openAdd = () => {
+    setEditClase(null);
+    setForm({ hora_inicio: '09:00', hora_fin: '10:00', materia: '', profesor_id: 0 });
+    setFormOpen(true);
+  };
+
+  const openEdit = (c: Clase) => {
+    setEditClase(c);
     setForm({
-      dia: clase.dia_semana,
-      hora_inicio: clase.hora_inicio,
-      hora_fin: clase.hora_fin,
-      materia: clase.motivo_reserva || '',
-      profesor_id: clase.reservado_por || 0,
+      hora_inicio: c.hora_inicio,
+      hora_fin: c.hora_fin,
+      materia: c.motivo_reserva || '',
+      profesor_id: c.reservado_por || 0,
     });
-    setEditing({ clase });
+    setFormOpen(true);
   };
 
-  const closeModal = () => {
-    if (saving || deleting) return;
-    setEditing(null);
+  const handleHoraChange = (inicio: string) => {
+    const p = PERIODOS.find((x) => x.inicio === inicio);
+    setForm((f) => ({ ...f, hora_inicio: inicio, hora_fin: p ? p.fin : f.hora_fin }));
   };
 
   const save = async () => {
-    if (editing === null) return;
+    if (!dayModal) return;
     if (!form.materia.trim()) {
-      setMessage({ type: 'error', text: 'Escribe la clase/materia que toca en este bloque' });
+      setMessage({ type: 'error', text: 'Escribe la clase/materia que toca en este horario' });
       return;
     }
     if (!form.profesor_id) {
@@ -120,7 +171,7 @@ export default function AdminHorarioView() {
 
     const payload = {
       sala_nombre: SALA_HORARIO,
-      dia_semana: form.dia,
+      dia_semana: dayModal.diaNombre,
       hora_inicio: form.hora_inicio,
       hora_fin: form.hora_fin,
       estado: 'separado',
@@ -130,8 +181,8 @@ export default function AdminHorarioView() {
 
     setSaving(true);
     try {
-      const url = editing.clase ? `/api/disponibilidad/${editing.clase.id}` : '/api/disponibilidad';
-      const method = editing.clase ? 'PUT' : 'POST';
+      const url = editClase ? `/api/disponibilidad/${editClase.id}` : '/api/disponibilidad';
+      const method = editClase ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -139,9 +190,10 @@ export default function AdminHorarioView() {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: editing.clase ? 'Clase actualizada correctamente' : 'Clase asignada correctamente' });
-        setEditing(null);
-        fetchData();
+        setMessage({ type: 'success', text: editClase ? 'Clase actualizada correctamente' : 'Clase asignada correctamente' });
+        setFormOpen(false);
+        setEditClase(null);
+        await fetchData();
       } else {
         const data = await response.json().catch(() => null);
         setMessage({ type: 'error', text: data?.error || 'No se pudo guardar la clase' });
@@ -154,17 +206,15 @@ export default function AdminHorarioView() {
     }
   };
 
-  const remove = async () => {
-    if (!editing?.clase) return;
-    if (!confirm('¿Eliminar esta clase del horario?')) return;
+  const remove = async (clase: Clase) => {
+    if (!confirm(`¿Eliminar "${clase.motivo_reserva}" del horario?`)) return;
 
-    setDeleting(true);
+    setDeletingId(clase.id);
     try {
-      const response = await fetch(`/api/disponibilidad/${editing.clase.id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/disponibilidad/${clase.id}`, { method: 'DELETE' });
       if (response.ok) {
         setMessage({ type: 'success', text: 'Clase eliminada del horario' });
-        setEditing(null);
-        fetchData();
+        await fetchData();
       } else {
         const data = await response.json().catch(() => null);
         setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar la clase' });
@@ -173,21 +223,11 @@ export default function AdminHorarioView() {
       console.error('Error al eliminar clase:', error);
       setMessage({ type: 'error', text: 'Error al eliminar la clase' });
     } finally {
-      setDeleting(false);
+      setDeletingId(null);
     }
   };
 
-  const claseMap = new Map<string, Clase>();
-  clases.forEach((c) => claseMap.set(`${c.dia_semana}|${c.hora_inicio}`, c));
-
-  const total = clases.length;
-  const libre = DIAS.length * PERIODOS.length - total;
-  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
-
-  const handleHoraChange = (inicio: string) => {
-    const p = PERIODOS.find((x) => x.inicio === inicio);
-    setForm((f) => ({ ...f, hora_inicio: inicio, hora_fin: p ? p.fin : f.hora_fin }));
-  };
+  const diaClases = dayModal ? (clasesByDay.get(dayModal.diaNombre) || []) : [];
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -208,10 +248,10 @@ export default function AdminHorarioView() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2">
             <FiCalendar className="text-primary" size={26} />
-            Horario de Clases
+            Almanaque de Clases
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Plan semanal de Lunes a Sábado. Toca cualquier casilla para asignar o editar qué clase toca en ese horario.
+            Calendario mensual. Presiona un día para ver y editar las clases de ese día.
           </p>
         </div>
 
@@ -255,149 +295,211 @@ export default function AdminHorarioView() {
 
       {loading ? (
         <div className="inventory-panel p-8 text-center text-slate-500 font-semibold">
-          Cargando horario de clases...
+          Cargando almanaque...
         </div>
       ) : (
         <div className="inventory-panel p-3">
-          <div className="overflow-x-auto">
-            <table className="table table-bordered align-middle mb-0" style={{ minWidth: '880px', borderCollapse: 'separate', borderSpacing: '6px 0' }}>
-              <thead>
-                <tr>
-                  <th className="text-center text-xs font-bold uppercase text-slate-500 border-0" style={{ width: '110px' }}>
-                    Horario
-                  </th>
-                  {DIAS.map((dia) => (
-                    <th key={dia} className="text-center border-0" style={{ minWidth: '125px' }}>
-                      <span className="text-sm font-bold text-slate-900">{dia}</span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {PERIODOS.map((periodo) => (
-                  <tr key={periodo.inicio}>
-                    <td className="text-center border-0 py-2">
-                      <span className="font-mono text-sm font-bold text-slate-600">{periodo.inicio} - {periodo.fin}</span>
-                    </td>
-                    {DIAS.map((dia) => {
-                      const key = `${dia}|${periodo.inicio}`;
-                      const clase = claseMap.get(key);
+          <div className="d-flex flex-column gap-2 flex-md-row align-items-md-center justify-content-md-between border-b border-slate-200 pb-3">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
+                <FiCalendar size={16} />
+              </div>
+              <h2 className="text-lg font-extrabold text-slate-950 mb-0">{MESES[month]} {year}</h2>
+            </div>
+            <div className="d-flex align-items-center gap-1">
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevMonth}>
+                <FiChevronLeft size={14} />Anterior
+              </button>
+              <button className="btn-secondary-custom text-xs" onClick={goToday}>Hoy</button>
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextMonth}>
+                Siguiente<FiChevronRight size={14} />
+              </button>
+            </div>
+          </div>
 
-                      return (
-                        <td key={key} className="border-0 p-1 align-middle" style={{ height: '72px' }}>
-                          {clase ? (
-                            <button className="timetable-cell filled w-100 h-100" onClick={() => openEdit(clase)}>
-                              <span className="d-block fw-bold text-slate-900 text-truncate">
-                                <FiBookOpen size={11} className="me-1 text-primary" />
-                                {clase.motivo_reserva}
-                              </span>
-                              <span className="d-block text-slate-500 text-truncate">
-                                <FiUser size={10} className="me-1" />
-                                {clase.reservado_por_nombre} {clase.reservado_por_apellido}
-                              </span>
-                            </button>
-                          ) : (
-                            <button className="timetable-cell empty w-100 h-100" onClick={() => openAdd(dia, periodo)}>
-                              <FiPlus size={14} />
-                              <span>Agregar clase</span>
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="d-grid mt-3" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+            {DIAS_CORTOS.map((dia) => (
+              <div key={dia} className="text-center text-xs font-bold uppercase text-slate-400 py-1">
+                {dia}
+              </div>
+            ))}
+
+            {cells.map((d, idx) => {
+              if (d === null) return <div key={`empty-${idx}`} />;
+
+              const date = new Date(year, month, d);
+              const diaNombre = DIAS_SEMANA[date.getDay()];
+              const isSunday = !DIAS.includes(diaNombre);
+              const isToday = date.toDateString() === today.toDateString();
+              const dayClases = isSunday ? [] : clasesByDay.get(diaNombre) || [];
+              const shown = dayClases.slice(0, 3);
+              const extra = dayClases.length - shown.length;
+
+              return (
+                <button
+                  key={d}
+                  onClick={() => openDay(d)}
+                  disabled={isSunday}
+                  className="rounded text-start p-1 d-flex flex-column"
+                  style={{
+                    minHeight: '70px',
+                    border: isToday ? '1.5px solid var(--color-primary)' : '1px solid #e2e8f0',
+                    background: isToday ? 'var(--color-primary-light)' : '#ffffff',
+                    cursor: isSunday ? 'default' : 'pointer',
+                    opacity: 1,
+                    transition: 'box-shadow 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSunday) e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <span
+                    className="align-self-end font-bold"
+                    style={{
+                      fontSize: '0.72rem',
+                      color: isSunday ? '#cbd5e1' : isToday ? 'var(--color-primary)' : '#334155',
+                    }}
+                  >
+                    {d}
+                  </span>
+
+                  <div className="mt-1 d-flex flex-column" style={{ gap: '2px' }}>
+                    {shown.map((c) => (
+                      <span key={c.id} className="cal-chip">
+                        <b>{c.hora_inicio.slice(0, 5)}</b> {c.motivo_reserva}
+                      </span>
+                    ))}
+                    {extra > 0 && <span className="cal-chip more">+{extra} más</span>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {editing && (
+      {dayModal && (
         <>
-          <div className="modal fade show d-block" tabIndex={-1} role="dialog">
+          <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ zIndex: 1055 }}>
             <div className="modal-dialog" role="document">
               <div className="modal-content border-0 shadow-lg">
                 <div className="modal-header border-b border-slate-200 p-4">
-                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2 text-capitalize">
                     <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
                       <FiBookOpen size={15} />
                     </span>
-                    {editing.clase ? 'Editar Clase' : 'Asignar Clase'}
+                    {dayModal.label}
                   </h5>
-                  <button type="button" className="btn-close" onClick={closeModal} />
+                  <button type="button" className="btn-close" onClick={() => setDayModal(null)} />
                 </div>
 
-                <div className="modal-body p-4 space-y-4">
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <label className="inventory-form-label">Día</label>
-                      <select
-                        value={form.dia}
-                        onChange={(e) => setForm({ ...form, dia: e.target.value })}
-                        className="inventory-form-select"
-                      >
-                        {DIAS.map((dia) => (
-                          <option key={dia} value={dia}>{dia}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-md-4">
-                      <label className="inventory-form-label">Hora de Inicio</label>
-                      <select value={form.hora_inicio} onChange={(e) => handleHoraChange(e.target.value)} className="inventory-form-select">
-                        {PERIODOS.map((p) => (
-                          <option key={p.inicio} value={p.inicio}>{p.inicio}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-md-4">
-                      <label className="inventory-form-label">Hora de Fin</label>
-                      <input type="text" value={form.hora_fin} readOnly className="inventory-form-input bg-slate-50" />
-                    </div>
-                  </div>
+                <div className="modal-body p-4 space-y-3">
+                  {!formOpen ? (
+                    <>
+                      {diaClases.length === 0 ? (
+                        <p className="text-sm text-slate-500 font-semibold text-center py-3">
+                          Este día no tiene clases asignadas.
+                        </p>
+                      ) : (
+                        diaClases.map((clase) => (
+                          <div key={clase.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                              <span className="font-mono text-xs font-bold text-primary">
+                                <FiClock size={11} className="me-1" />
+                                {clase.hora_inicio} - {clase.hora_fin}
+                              </span>
+                              <div className="d-flex align-items-center gap-1">
+                                <button className="btn-icon" title="Editar" onClick={() => openEdit(clase)}>
+                                  <FiEdit2 size={14} />
+                                </button>
+                                <button className="btn-icon text-danger" title="Eliminar" disabled={deletingId === clase.id} onClick={() => remove(clase)}>
+                                  <FiTrash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="font-bold text-slate-900 d-flex align-items-center gap-1">
+                              <FiBookOpen size={12} className="text-primary" />
+                              {clase.motivo_reserva}
+                            </div>
+                            <div className="text-xs text-slate-500 d-flex align-items-center gap-1">
+                              <FiUser size={11} />
+                              {clase.reservado_por_nombre} {clase.reservado_por_apellido}
+                            </div>
+                          </div>
+                        ))
+                      )}
 
-                  <div>
-                    <label className="inventory-form-label">Clase / Materia que toca</label>
-                    <input
-                      type="text"
-                      value={form.materia}
-                      onChange={(e) => setForm({ ...form, materia: e.target.value })}
-                      className="inventory-form-input"
-                      placeholder="Ej. Matemática, Comunicación, C y T..."
-                    />
-                  </div>
+                      <button className="btn-primary-custom w-100 d-inline-flex align-items-center justify-content-center gap-1" onClick={openAdd}>
+                        <FiPlus size={13} />
+                        Agregar clase a este día
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="inventory-form-label">Hora de Inicio</label>
+                          <select value={form.hora_inicio} onChange={(e) => handleHoraChange(e.target.value)} className="inventory-form-select">
+                            {PERIODOS.map((p) => (
+                              <option key={p.inicio} value={p.inicio}>{p.inicio}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="inventory-form-label">Hora de Fin</label>
+                          <input type="text" value={form.hora_fin} readOnly className="inventory-form-input bg-slate-50" />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="inventory-form-label">Profesor a cargo</label>
-                    <select
-                      value={form.profesor_id}
-                      onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
-                      className="inventory-form-select"
-                    >
-                      <option value="0">Seleccionar profesor...</option>
-                      {profesores.map((profesor) => (
-                        <option key={profesor.id} value={profesor.id}>
-                          {profesor.apellido}, {profesor.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="inventory-form-label">Clase / Materia que toca</label>
+                        <input
+                          type="text"
+                          value={form.materia}
+                          onChange={(e) => setForm({ ...form, materia: e.target.value })}
+                          className="inventory-form-input"
+                          placeholder="Ej. Matemática, Comunicación, C y T..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="inventory-form-label">Profesor a cargo</label>
+                        <select
+                          value={form.profesor_id}
+                          onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}
+                          className="inventory-form-select"
+                        >
+                          <option value="0">Seleccionar profesor...</option>
+                          {profesores.map((profesor) => (
+                            <option key={profesor.id} value={profesor.id}>
+                              {profesor.apellido}, {profesor.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
-                  {editing.clase && (
-                    <button className="btn-danger-custom d-inline-flex align-items-center gap-1" disabled={saving || deleting} onClick={remove}>
-                      <FiTrash2 size={13} />
-                      {deleting ? 'Eliminando...' : 'Eliminar'}
+                  {formOpen ? (
+                    <>
+                      <button className="btn-secondary-custom" onClick={() => { setFormOpen(false); setEditClase(null); }}>
+                        Cancelar
+                      </button>
+                      <button className="btn-primary-custom d-inline-flex align-items-center gap-1" disabled={saving} onClick={save}>
+                        <FiSave size={13} />
+                        {saving ? 'Guardando...' : 'Guardar'}
+                      </button>
+                    </>
+                  ) : (
+                    <button className="btn-secondary-custom" onClick={() => setDayModal(null)}>
+                      Cerrar
                     </button>
                   )}
-                  <button className="btn-secondary-custom" onClick={closeModal}>
-                    Cancelar
-                  </button>
-                  <button className="btn-primary-custom d-inline-flex align-items-center gap-1" disabled={saving} onClick={save}>
-                    <FiSave size={13} />
-                    {saving ? 'Guardando...' : 'Guardar'}
-                  </button>
                 </div>
               </div>
             </div>
