@@ -17,6 +17,7 @@ import {
 const menuItems = [
   { href: '/admin/dashboard', title: 'Dashboard', icon: FiGrid },
   { href: '/admin/inventario', title: 'Inventario', icon: FiPackage },
+  { href: '/admin/prestamos', title: 'Préstamos', icon: FiInbox },
   { href: '/admin/profesores', title: 'Profesores', icon: FiUsers },
   { href: '/admin/horario', title: 'Horario', icon: FiCalendar },
   { href: '/admin/solicitudes', title: 'Solicitudes', icon: FiInbox },

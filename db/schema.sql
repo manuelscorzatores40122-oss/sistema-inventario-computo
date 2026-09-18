@@ -85,6 +85,19 @@ CREATE TABLE IF NOT EXISTS movimientos_inventario (
   fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabla de préstamos de equipos a profesores
+CREATE TABLE IF NOT EXISTS prestamos (
+  id SERIAL PRIMARY KEY,
+  inventario_id INTEGER NOT NULL REFERENCES inventario(id),
+  profesor_id INTEGER NOT NULL REFERENCES usuarios(id),
+  cantidad INTEGER NOT NULL DEFAULT 1,
+  detalle VARCHAR(255),
+  estado VARCHAR(20) DEFAULT 'prestado',
+  fecha_prestamo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  fecha_devolucion TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tabla de notificaciones WhatsApp
 CREATE TABLE IF NOT EXISTS notificaciones_whatsapp (
   id SERIAL PRIMARY KEY,
@@ -107,6 +120,9 @@ CREATE INDEX IF NOT EXISTS idx_solicitudes_disponibilidad ON solicitudes(disponi
 CREATE INDEX IF NOT EXISTS idx_disponibilidad_estado ON disponibilidad(estado);
 CREATE INDEX IF NOT EXISTS idx_inventario_categoria ON inventario(categoria);
 CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones_whatsapp(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
+CREATE INDEX IF NOT EXISTS idx_prestamos_inventario ON prestamos(inventario_id);
+CREATE INDEX IF NOT EXISTS idx_prestamos_profesor ON prestamos(profesor_id);
 
 
 

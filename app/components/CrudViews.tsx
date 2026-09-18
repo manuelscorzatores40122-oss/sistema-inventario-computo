@@ -76,6 +76,21 @@ type Solicitud = {
 
 type Message = { type: 'success' | 'error'; text: string } | null;
 
+type Prestamo = {
+  id: number;
+  inventario_id: number;
+  profesor_id: number;
+  cantidad: number;
+  detalle: string | null;
+  estado: string;
+  item_nombre: string | null;
+  categoria: string | null;
+  profesor_nombre: string | null;
+  apellido: string | null;
+  fecha_prestamo: string;
+  fecha_devolucion: string | null;
+};
+
 const panel = 'inventory-panel';
 const input = 'inventory-form-input';
 const label = 'inventory-form-label';
@@ -112,9 +127,9 @@ function Notice({ message }: { message: Message }) {
 
 function StatusBadge({ value }: { value: string }) {
   const Icon =
-    value === 'disponible' || value === 'aprobada'
+    value === 'disponible' || value === 'aprobada' || value === 'devuelto'
       ? FiCheckCircle
-      : value === 'mantenimiento' || value === 'separado'
+      : value === 'mantenimiento' || value === 'separado' || value === 'prestado'
         ? FiClock
         : value === 'agotado' || value === 'rechazada'
           ? FiXCircle
@@ -992,6 +1007,233 @@ export function ProfesorSolicitudesView() {
         </div>
       </form>
       <SolicitudesTable solicitudes={solicitudes} onCancel={cancel} />
+    </PageShell>
+  );
+}
+
+export function AdminPrestamosView() {
+  const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [profesores, setProfesores] = useState<{ id: number; nombre: string; apellido: string }[]>([]);
+  const [tab, setTab] = useState<'prestado' | 'devuelto'>('prestado');
+  const [form, setForm] = useState({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
+  const [message, setMessage] = useState<Message>(null);
+  const [saving, setSaving] = useState(false);
+  const [procesando, setProcesando] = useState<number | null>(null);
+
+  const fetchData = async () => {
+    const [preRes, invRes, profRes] = await Promise.all([
+      fetch('/api/prestamos'),
+      fetch('/api/inventario?estado=disponible'),
+      fetch('/api/usuarios?role=profesor&activo=true'),
+    ]);
+    if (preRes.ok) {
+      const data = await preRes.json();
+      setPrestamos(data.prestamos || []);
+    }
+    if (invRes.ok) {
+      const data = await invRes.json();
+      setItems(data.items || []);
+    }
+    if (profRes.ok) {
+      const data = await profRes.json();
+      setProfesores(data.usuarios || []);
+    }
+  };
+
+  useEffect(() => {
+    fetchData().catch(() => setMessage({ type: 'error', text: 'Error al cargar préstamos' }));
+  }, []);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!form.inventario_id || !form.profesor_id) {
+      setMessage({ type: 'error', text: 'Selecciona el equipo y el profesor' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await fetch('/api/prestamos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMessage({ type: 'success', text: data.message || 'Préstamo registrado' });
+        setForm({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
+        await fetchData();
+      } else {
+        const data = await response.json().catch(() => null);
+        setMessage({ type: 'error', text: data?.error || 'No se pudo registrar el préstamo' });
+      }
+    } catch (error) {
+      console.error('Error al registrar préstamo:', error);
+      setMessage({ type: 'error', text: 'Error al registrar el préstamo' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const entregar = async (id: number) => {
+    if (!confirm('¿Confirmas que el/la profesor(a) devolvió el equipo?')) return;
+    setProcesando(id);
+    try {
+      const response = await fetch(`/api/prestamos/${id}`, { method: 'PUT' });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Equipo entregado, vuelve a estar disponible en el inventario' });
+        await fetchData();
+      } else {
+        const data = await response.json().catch(() => null);
+        setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como entregado' });
+      }
+    } catch (error) {
+      console.error('Error al marcar prestamo como entregado:', error);
+      setMessage({ type: 'error', text: 'Error al marcar como entregado' });
+    } finally {
+      setProcesando(null);
+    }
+  };
+
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Seguro que deseas eliminar este registro de devolución?')) return;
+    const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
+    if (response.ok) {
+      setMessage({ type: 'success', text: 'Registro eliminado' });
+      fetchData();
+    } else {
+      const data = await response.json().catch(() => null);
+      setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar el registro' });
+    }
+  };
+
+  const activos = prestamos.filter((p) => p.estado === 'prestado');
+  const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
+  const list = tab === 'prestado' ? activos : devueltos;
+
+  return (
+    <PageShell title="Préstamos de Equipos" subtitle="Registra qué equipo se presta a cada profesor; al devolverlo queda Entregado y vuelve al inventario.">
+      <Notice message={message} />
+
+      <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
+        <div className="md:col-span-4 border-b border-slate-200 pb-2">
+          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
+              <FiPackage size={15} />
+            </span>
+            Registrar Préstamo a Profesor
+          </h2>
+        </div>
+        <div>
+          <label className={label}>Equipo / Artículo</label>
+          <select className={input} value={form.inventario_id} onChange={(e) => setForm({ ...form, inventario_id: Number(e.target.value) })}>
+            <option value="0">Seleccionar equipo...</option>
+            {items.map((item) => (
+              <option key={item.id} value={item.id}>{item.nombre} (Disponibles: {item.cantidad_disponible})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={label}>Profesor que recibe</label>
+          <select className={input} value={form.profesor_id} onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}>
+            <option value="0">Seleccionar profesor...</option>
+            {profesores.map((profesor) => (
+              <option key={profesor.id} value={profesor.id}>{profesor.apellido}, {profesor.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={label}>Cantidad</label>
+          <input className={input} type="number" min="1" value={form.cantidad} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
+        </div>
+        <div className="flex items-end">
+          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit" disabled={saving}>
+            <FiCheckCircle size={15} />
+            {saving ? 'Registrando...' : 'Prestar Equipo'}
+          </button>
+        </div>
+        <div className="md:col-span-4">
+          <label className={label}>Detalle de la unidad (opcional)</label>
+          <input className={input} value={form.detalle} onChange={(e) => setForm({ ...form, detalle: e.target.value })} placeholder="Ej. Laptop P2, Control N° 3, Monitor del aula A..." />
+        </div>
+      </form>
+
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <div className="d-flex gap-2">
+          <button
+            className={tab === 'prestado' ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => setTab('prestado')}
+          >
+            Prestados ({activos.length})
+          </button>
+          <button
+            className={tab === 'devuelto' ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => setTab('devuelto')}
+          >
+            Entregados ({devueltos.length})
+          </button>
+        </div>
+      </div>
+
+      <div className={`${panel} p-4 overflow-x-auto`}>
+        <table className="inventory-table">
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Profesor</th>
+              <th>Cant.</th>
+              <th>Detalle</th>
+              <th>Fecha de Préstamo</th>
+              {tab === 'devuelto' && <th>Fecha de Entrega</th>}
+              <th>Estado</th>
+              <th className="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((prestamo) => (
+              <tr key={prestamo.id}>
+                <td className="font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <span className="rounded d-inline-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '26px', height: '26px' }}>
+                    <FiPackage size={13} />
+                  </span>
+                  {prestamo.item_nombre}
+                </td>
+                <td>
+                  <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
+                    <FiUser size={12} className="text-slate-400" />
+                    {prestamo.profesor_nombre} {prestamo.apellido}
+                  </span>
+                </td>
+                <td className="font-semibold">{prestamo.cantidad}</td>
+                <td className="text-xs text-slate-600">{prestamo.detalle || '-'}</td>
+                <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleDateString('es-ES')}</td>
+                {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleDateString('es-ES') : '-'}</td>}
+                <td><StatusBadge value={prestamo.estado} /></td>
+                <td className="text-right">
+                  {prestamo.estado === 'prestado' ? (
+                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => entregar(prestamo.id)}>
+                      <FiCheckCircle size={13} />
+                      {procesando === prestamo.id ? 'Procesando...' : 'Entregado'}
+                    </button>
+                  ) : (
+                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => eliminar(prestamo.id)}>
+                      <FiTrash2 size={13} />
+                      Eliminar
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr>
+                <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
+                  {tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos entregados aún'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </PageShell>
   );
 }

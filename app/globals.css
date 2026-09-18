@@ -375,6 +375,18 @@ body {
   border: 1px solid #bfdbfe;
 }
 
+.status-badge.prestado {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-badge.devuelto {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
 /* Category Chips */
 .category-chip {
   display: inline-block;
