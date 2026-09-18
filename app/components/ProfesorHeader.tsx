@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 const menuItems = [
-  { href: '/profesor/dashboard', title: 'Dashboard', icon: '⌂' },
-  { href: '/profesor/solicitudes', title: 'Mis solicitudes', icon: '✓' },
-  { href: '/profesor/disponibilidad', title: 'Mi disponibilidad', icon: '◷' },
-  { href: '/profesor/perfil', title: 'Mi perfil', icon: '●' },
+  { href: '/profesor/dashboard', title: 'Dashboard' },
+  { href: '/profesor/solicitudes', title: 'Mis Solicitudes' },
+  { href: '/profesor/disponibilidad', title: 'Mi Disponibilidad' },
+  { href: '/profesor/perfil', title: 'Mi Perfil' },
 ];
 
 export default function ProfesorHeader() {
@@ -85,7 +85,7 @@ export default function ProfesorHeader() {
               </div>
 
               <div
-                className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold"
+                className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold text-white"
                 style={{
                   width: '42px',
                   height: '42px',

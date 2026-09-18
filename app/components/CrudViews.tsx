@@ -128,7 +128,7 @@ function PageShell({ title, subtitle, backHref, children }: { title: string; sub
             <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
           </div>
           <Link className={secondaryButton} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
-            ← Volver al panel
+            Volver al panel
           </Link>
         </div>
         {children}
@@ -243,11 +243,11 @@ export function AdminInventarioView() {
         </div>
         <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-green-600">
           <span className="text-xs font-bold uppercase text-slate-500">Disponibles</span>
-          <div className="mt-2 text-2xl font-black text-green-600">{stats.totalDisponible} <span className="text-xs font-normal text-slate-500">para préstamo</span></div>
+          <div className="mt-2 text-2xl font-black text-green-600">{stats.totalDisponible} <span className="text-xs font-normal text-slate-500 font-semibold">para préstamo</span></div>
         </div>
         <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-amber-500">
           <span className="text-xs font-bold uppercase text-slate-500">Mantenimiento / Agotados</span>
-          <div className="mt-2 text-2xl font-black text-amber-600">{stats.mantenimientos} <span className="text-xs font-normal text-slate-500">requieren atención</span></div>
+          <div className="mt-2 text-2xl font-black text-amber-600">{stats.mantenimientos} <span className="text-xs font-normal text-slate-500 font-semibold">requieren atención</span></div>
         </div>
       </div>
 
@@ -255,7 +255,7 @@ export function AdminInventarioView() {
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-3 flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-900">
-            {editingId ? '✏️ Editar Artículo' : '➕ Agregar Nuevo Artículo'}
+            {editingId ? 'Editar Artículo' : 'Agregar Nuevo Artículo'}
           </h2>
           {editingId && (
             <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
@@ -280,7 +280,7 @@ export function AdminInventarioView() {
         <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Ej. Modelo HDMI 2.0 con soporte 4K" /></div>
         
         <div className="flex gap-2 md:col-span-4 pt-2">
-          <button className={primaryButton} type="submit">{editingId ? '💾 Guardar Cambios' : '🚀 Registrar Artículo'}</button>
+          <button className={primaryButton} type="submit">{editingId ? 'Guardar Cambios' : 'Registrar Artículo'}</button>
           {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
         </div>
       </form>
@@ -296,7 +296,7 @@ export function AdminInventarioView() {
           <div className="flex flex-wrap gap-2">
             <input
               className={`${input} md:w-64`}
-              placeholder="🔍 Buscar por nombre o ubicación..."
+              placeholder="Buscar por nombre o ubicación..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -327,7 +327,7 @@ export function AdminInventarioView() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>⌛ Cargando inventario...</td></tr>
+                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>Cargando inventario...</td></tr>
               ) : filteredItems.length === 0 ? (
                 <tr><td className="text-center py-6 text-slate-500" colSpan={6}>No se encontraron artículos que coincidan con la búsqueda.</td></tr>
               ) : (
@@ -344,14 +344,14 @@ export function AdminInventarioView() {
                       <StockMeter disponible={item.cantidad_disponible} total={item.cantidad_total} />
                     </td>
                     <td className="text-sm text-slate-700 font-medium">
-                      📍 {item.ubicacion || 'Sin especificar'}
+                      {item.ubicacion || 'Sin especificar'}
                     </td>
                     <td>
                       <StatusBadge value={item.estado} />
                     </td>
                     <td className="text-right space-x-2">
-                      <button className={secondaryButton} onClick={() => edit(item)}>✏️ Editar</button>
-                      <button className={dangerButton} onClick={() => remove(item.id)}>🗑️</button>
+                      <button className={secondaryButton} onClick={() => edit(item)}>Editar</button>
+                      <button className={dangerButton} onClick={() => remove(item.id)}>Eliminar</button>
                     </td>
                   </tr>
                 ))
@@ -432,7 +432,7 @@ export function AdminProfesoresView() {
       
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
-          <h2 className="text-base font-bold text-slate-900">{editingId ? '✏️ Editar Usuario' : '➕ Crear Nuevo Usuario'}</h2>
+          <h2 className="text-base font-bold text-slate-900">{editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h2>
         </div>
         <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
         <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
@@ -443,11 +443,11 @@ export function AdminProfesoresView() {
         <div><label className={label}>Rol de Acceso</label><select className={input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as any })}><option value="profesor">Profesor</option><option value="admin">Administrador</option></select></div>
         <div className="flex items-end mb-2">
           <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Account Activa
+            <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Cuenta Activa
           </label>
         </div>
         <div className="flex items-end gap-2 md:col-span-4 pt-2">
-          <button className={primaryButton} type="submit">{editingId ? '💾 Guardar Cambios' : '🚀 Crear Usuario'}</button>
+          <button className={primaryButton} type="submit">{editingId ? 'Guardar Cambios' : 'Crear Usuario'}</button>
           {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
         </div>
       </form>
@@ -455,7 +455,7 @@ export function AdminProfesoresView() {
       <div className={`${panel} p-4 space-y-4`}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
           <h3 className="text-sm font-bold text-slate-900">Directorio de Usuarios ({filteredUsuarios.length})</h3>
-          <input className={`${input} md:w-72`} placeholder="🔍 Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="overflow-x-auto">
           <table className="inventory-table">
@@ -479,14 +479,14 @@ export function AdminProfesoresView() {
                   <td className="text-slate-600">{usuario.telefono || '-'}</td>
                   <td>
                     <span className={`category-chip ${usuario.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
-                      {usuario.role === 'admin' ? '👑 Admin' : '👨‍🏫 Profesor'}
+                      {usuario.role === 'admin' ? 'Admin' : 'Profesor'}
                     </span>
                   </td>
                   <td>
                     <StatusBadge value={usuario.activo ? 'disponible' : 'agotado'} />
                   </td>
                   <td className="text-right space-x-2">
-                    <button className={secondaryButton} onClick={() => edit(usuario)}>✏️ Editar</button>
+                    <button className={secondaryButton} onClick={() => edit(usuario)}>Editar</button>
                     <button className={dangerButton} onClick={() => deactivate(usuario.id)}>Desactivar</button>
                   </td>
                 </tr>
@@ -577,8 +577,8 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
                   <input className={`${input} text-xs py-1 px-2 mb-1 w-full`} placeholder="Añadir nota / observación..." value={comentarios?.[solicitud.id] || ''} onChange={(e) => setComentarios({ ...(comentarios || {}), [solicitud.id]: e.target.value })} />
                 )}
                 <div className="flex justify-end gap-1">
-                  {solicitud.estado === 'pendiente' && onApprove && <button className={primaryButton} onClick={() => onApprove(solicitud.id)}>✓ Aprobar</button>}
-                  {solicitud.estado === 'pendiente' && onReject && <button className={dangerButton} onClick={() => onReject(solicitud.id)}>✕ Rechazar</button>}
+                  {solicitud.estado === 'pendiente' && onApprove && <button className={primaryButton} onClick={() => onApprove(solicitud.id)}>Aprobar</button>}
+                  {solicitud.estado === 'pendiente' && onReject && <button className={dangerButton} onClick={() => onReject(solicitud.id)}>Rechazar</button>}
                   {solicitud.estado === 'pendiente' && onCancel && <button className={dangerButton} onClick={() => onCancel(solicitud.id)}>Cancelar</button>}
                 </div>
               </td>
@@ -647,12 +647,12 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
   };
 
   return (
-    <PageShell title="Disponibilidad de Sala" backHref={isAdmin ? '/admin/dashboard' : '/profesor/dashboard'} subtitle={isAdmin ? 'Gestiona bloques horarios y reservas de la Sala de Cómputo.' : 'Consulta los bloques de tiempo libres y reservados en la Sala de Cómputo.'}>
+    <PageShell title="Disponibilidad de Sala" backHref={isAdmin ? '/admin/dashboard' : '/profesor/dashboard'} subtitle={isAdmin ? 'Gestiona bloques horarios y reservas de la Sala de Cómputo.' : 'Consulta los bloques de tiempo libres y separados en la Sala de Cómputo.'}>
       <Notice message={message} />
       {isAdmin && (
         <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-5`}>
           <div className="md:col-span-5 border-b border-slate-200 pb-2">
-            <h2 className="text-base font-bold text-slate-900">{editingId ? '✏️ Editar Bloque Horario' : '➕ Crear Nuevo Bloque Horario'}</h2>
+            <h2 className="text-base font-bold text-slate-900">{editingId ? 'Editar Bloque Horario' : 'Crear Nuevo Bloque Horario'}</h2>
           </div>
           <div><label className={label}>Nombre de Sala</label><input className={input} value={form.sala_nombre} onChange={(e) => setForm({ ...form, sala_nombre: e.target.value })} required /></div>
           <div><label className={label}>Día de la semana</label><select className={input} value={form.dia_semana} onChange={(e) => setForm({ ...form, dia_semana: e.target.value })}>{diasSemana.map((dia) => <option key={dia}>{dia}</option>)}</select></div>
@@ -660,7 +660,7 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
           <div><label className={label}>Hora Fin</label><input className={input} type="time" value={form.hora_fin} onChange={(e) => setForm({ ...form, hora_fin: e.target.value })} required /></div>
           <div><label className={label}>Estado</label><select className={input} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="separado">Separado</option></select></div>
           {form.estado === 'separado' && <div className="md:col-span-3"><label className={label}>Motivo de la Reserva</label><input className={input} value={form.motivo_reserva} onChange={(e) => setForm({ ...form, motivo_reserva: e.target.value })} placeholder="Ej. Examen final de programación" /></div>}
-          <div className="flex items-end gap-2 md:col-span-5 pt-2"><button className={primaryButton} type="submit">{editingId ? '💾 Guardar' : '🚀 Registrar Horario'}</button>{editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}</div>
+          <div className="flex items-end gap-2 md:col-span-5 pt-2"><button className={primaryButton} type="submit">{editingId ? 'Guardar' : 'Registrar Horario'}</button>{editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}</div>
         </form>
       )}
       <div className={`${panel} p-4 overflow-x-auto`}>
@@ -685,7 +685,7 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
                 <td><StatusBadge value={d.estado} /></td>
                 <td className="text-slate-700">{d.reservado_por_nombre ? `${d.reservado_por_nombre} ${d.reservado_por_apellido || ''}` : '-'}</td>
                 <td className="text-xs text-slate-600">{d.motivo_reserva || '-'}</td>
-                {isAdmin && <td className="text-right space-x-2"><button className={secondaryButton} onClick={() => edit(d)}>✏️ Editar</button><button className={dangerButton} onClick={() => remove(d.id)}>🗑️</button></td>}
+                {isAdmin && <td className="text-right space-x-2"><button className={secondaryButton} onClick={() => edit(d)}>Editar</button><button className={dangerButton} onClick={() => remove(d.id)}>Eliminar</button></td>}
               </tr>
             ))}
             {disponibilidades.length === 0 && <tr><td className="text-center py-6 text-slate-500" colSpan={isAdmin ? 7 : 6}>Sin horarios registrados</td></tr>}
@@ -762,7 +762,7 @@ export function ProfesorSolicitudesView() {
       <Notice message={message} />
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2">
-          <h2 className="text-base font-bold text-slate-900">➕ Nueva Solicitud de Reserva / Préstamo</h2>
+          <h2 className="text-base font-bold text-slate-900">Nueva Solicitud de Reserva / Préstamo</h2>
         </div>
         <div className="md:col-span-2">
           <label className={label}>Horario de Sala (Opcional si solo requiere equipo)</label>
@@ -791,7 +791,7 @@ export function ProfesorSolicitudesView() {
           <input className={input} value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} placeholder="Ej. Clase de Computación 2do Grado" required />
         </div>
         <div className="flex items-end">
-          <button className={primaryButton} type="submit">📨 Enviar Solicitud</button>
+          <button className={primaryButton} type="submit">Enviar Solicitud</button>
         </div>
       </form>
       <SolicitudesTable solicitudes={solicitudes} onCancel={cancel} />
