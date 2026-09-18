@@ -474,11 +474,310 @@ body {
   vertical-align: middle;
 }
 
-/* Sidebar Offset Adjustments for Admin Layout
-   NOTE: Admin layout already offsets main via inline margin-left: 260px.
-   We must NOT add further padding here to avoid a double offset. */
+/* ==========================================================================
+   Responsive Layout: Desktop Sidebar + Mobile Bottom Navigation
+   ========================================================================== */
+
+/* Admin main content: offset by the fixed sidebar on desktop only */
+.main-content-offset {
+  min-height: 100vh;
+}
+
 @media (min-width: 992px) {
-  body:has(aside.position-fixed) main {
-    padding-left: 0;
+  .main-content-offset {
+    margin-left: 260px;
+  }
+}
+
+/* Mobile bottom navigation bar: visible only on phones/tablet portrait.
+   NOTE: no backdrop-filter / blur here — it can make the fixed bar
+   fail to render or stick on iOS Safari. */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  min-height: 60px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background-color: #ffffff;
+  border-top: 1px solid var(--color-slate-200);
+  box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-bottom-nav .mb-nav-item {
+  -webkit-box-flex: 1;
+  -ms-flex: 1 1 0px;
+  flex: 1 1 0px;
+  min-width: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 4px 5px;
+  color: var(--color-slate-500);
+  text-decoration: none;
+  -webkit-tap-highlight-color: rgba(37, 99, 235, 0.08);
+  background: none;
+  border: none;
+  -webkit-transition: color 0.15s ease, background-color 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.mobile-bottom-nav .mb-nav-item:active {
+  background-color: rgba(37, 99, 235, 0.06);
+}
+
+.mobile-bottom-nav .mb-nav-icon {
+  width: 40px;
+  height: 28px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: inherit;
+  -webkit-transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease;
+}
+
+.mobile-bottom-nav .mb-nav-ico {
+  display: block;
+}
+
+.mobile-bottom-nav .mb-nav-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: inherit;
+}
+
+/* Active state */
+.mobile-bottom-nav .mb-nav-item.active {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.mobile-bottom-nav .mb-nav-item.active .mb-nav-icon {
+  background-color: var(--color-primary-light);
+}
+
+/* Hide social bottom bar on desktop screens */
+@media (min-width: 992px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Mobile top bar: sticky brand + user actions (shown only on phones) */
+.mobile-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  height: 56px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  background-color: var(--color-slate-900);
+  color: #ffffff;
+  border-bottom: 1px solid var(--color-slate-800);
+  box-shadow: 0 1px 8px rgba(2, 6, 23, 0.12);
+}
+
+.mobile-top-bar-brand {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 9px;
+  padding-left: 14px;
+  min-width: 0;
+}
+
+.mobile-top-bar-logo {
+  width: 34px;
+  height: 34px;
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  border-radius: 9px;
+}
+
+.mobile-top-bar-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-top-bar-role {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.mobile-top-bar-avatar {
+  width: 34px;
+  height: 34px;
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mobile-top-bar-logout {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid var(--color-slate-600);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease;
+}
+
+.mobile-top-bar-logout:active {
+  background-color: var(--color-slate-800);
+}
+
+/* Prevent content from hiding behind the fixed bottom bar on mobile */
+.pb-nav-mobile {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 992px) {
+  .pb-nav-mobile {
+    padding-bottom: 0;
+  }
+}
+
+/* ==========================================================================
+   Mobile / Phone Polish (< 576px and up to 768px)
+   ========================================================================== */
+
+@media (max-width: 767.98px) {
+  /* Scale down large page titles */
+  .text-3xl {
+    font-size: 1.45rem;
+    line-height: 1.8rem;
+  }
+  .display-6 {
+    font-size: 2.1rem;
+  }
+
+  /* Tighter horizontal padding on phone so content uses the width well */
+  .p-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .p-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .md\:p-8 {
+    padding: 1rem;
+  }
+
+  /* Ensure panels never overflow the screen width */
+  .inventory-panel {
+    max-width: 100%;
+  }
+
+  .inventory-table th,
+  .inventory-table td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Dashboard / header rows must not overflow */
+  .d-flex.justify-content-between {
+    -webkit-flex-wrap: wrap;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 575.98px) {
+  body {
+    font-size: 0.9375rem;
+  }
+
+  .h1,
+  .h2,
+  .h3 {
+    font-size: calc(1.3rem + 0.25vw);
+  }
+
+  .mobile-bottom-nav .mb-nav-label {
+    font-size: 0.6rem;
   }
 }
