@@ -2,6 +2,31 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import {
+  FiArrowLeft,
+  FiCheckCircle,
+  FiXCircle,
+  FiEdit2,
+  FiTrash2,
+  FiPlus,
+  FiSave,
+  FiSearch,
+  FiFilter,
+  FiPackage,
+  FiLayers,
+  FiAlertTriangle,
+  FiUser,
+  FiUsers,
+  FiMail,
+  FiPhone,
+  FiClock,
+  FiCalendar,
+  FiMapPin,
+  FiSend,
+  FiInbox,
+  FiTag,
+  FiInfo,
+} from 'react-icons/fi';
 
 type Usuario = {
   id: number;
@@ -83,20 +108,29 @@ function Notice({ message }: { message: Message }) {
   if (!message) return null;
 
   return (
-    <div className={`rounded-lg border px-4 py-3 text-sm font-semibold shadow-sm transition-all ${
-      message.type === 'success'
-        ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-red-200 bg-red-50 text-red-800'
-    }`}>
-      {message.text}
+    <div className={`rounded-lg border px-4 py-3 text-sm font-semibold shadow-sm transition-all d-flex align-items-center gap-2 ${message.type === 'success'
+      ? 'border-green-200 bg-green-50 text-green-800'
+      : 'border-red-200 bg-red-50 text-red-800'
+      }`}>
+      {message.type === 'success' ? <FiCheckCircle size={18} /> : <FiXCircle size={18} />}
+      <span>{message.text}</span>
     </div>
   );
 }
 
 function StatusBadge({ value }: { value: string }) {
+  const Icon =
+    value === 'disponible' || value === 'aprobada'
+      ? FiCheckCircle
+      : value === 'mantenimiento' || value === 'separado'
+        ? FiClock
+        : value === 'agotado' || value === 'rechazada'
+          ? FiXCircle
+          : FiInbox;
+
   return (
     <span className={`status-badge ${value}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-75"></span>
+      <Icon size={12} />
       {value}
     </span>
   );
@@ -108,6 +142,10 @@ function StockMeter({ disponible, total }: { disponible: number; total: number }
 
   return (
     <div className="flex items-center gap-2">
+      <div className={`rounded d-flex align-items-center justify-content-center ${percent > 50 ? 'bg-success bg-opacity-10 text-success' : percent > 15 ? 'bg-warning bg-opacity-10 text-warning' : 'bg-danger bg-opacity-10 text-danger'
+        }`} style={{ width: '28px', height: '28px', flexShrink: 0 }}>
+        {percent > 50 ? <FiPackage size={14} /> : percent > 15 ? <FiLayers size={14} /> : <FiAlertTriangle size={14} />}
+      </div>
       <div className="stock-bar-bg" title={`${percent}% disponible`}>
         <div className={`stock-bar-fill ${colorClass}`} style={{ width: `${percent}%` }}></div>
       </div>
@@ -127,7 +165,8 @@ function PageShell({ title, subtitle, backHref, children }: { title: string; sub
             <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">{title}</h1>
             <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
           </div>
-          <Link className={secondaryButton} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
+          <Link className={`${secondaryButton} d-inline-flex align-items-center gap-2 text-decoration-none`} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
+            <FiArrowLeft size={15} />
             Volver al panel
           </Link>
         </div>
@@ -234,19 +273,39 @@ export function AdminInventarioView() {
       {/* KPI Stats Overview */}
       <div className="grid gap-4 md:grid-cols-4">
         <div className="inventory-panel p-4 flex flex-col justify-between">
-          <span className="text-xs font-bold uppercase text-slate-500">Categorías y Tipos</span>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+              <FiTag size={17} />
+            </div>
+            <span className="text-xs font-bold uppercase text-slate-500">Categorías y Tipos</span>
+          </div>
           <div className="mt-2 text-2xl font-black text-slate-900">{stats.totalTipos} <span className="text-xs font-normal text-slate-500">artículos</span></div>
         </div>
         <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-blue-600">
-          <span className="text-xs font-bold uppercase text-slate-500">Stock Total</span>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+              <FiLayers size={17} />
+            </div>
+            <span className="text-xs font-bold uppercase text-slate-500">Stock Total</span>
+          </div>
           <div className="mt-2 text-2xl font-black text-blue-600">{stats.totalStock} <span className="text-xs font-normal text-slate-500">unidades</span></div>
         </div>
         <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-green-600">
-          <span className="text-xs font-bold uppercase text-slate-500">Disponibles</span>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+              <FiPackage size={17} />
+            </div>
+            <span className="text-xs font-bold uppercase text-slate-500">Disponibles</span>
+          </div>
           <div className="mt-2 text-2xl font-black text-green-600">{stats.totalDisponible} <span className="text-xs font-normal text-slate-500 font-semibold">para préstamo</span></div>
         </div>
         <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-amber-500">
-          <span className="text-xs font-bold uppercase text-slate-500">Mantenimiento / Agotados</span>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-amber-50 text-amber-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+              <FiAlertTriangle size={17} />
+            </div>
+            <span className="text-xs font-bold uppercase text-slate-500">Mantenimiento / Agotados</span>
+          </div>
           <div className="mt-2 text-2xl font-black text-amber-600">{stats.mantenimientos} <span className="text-xs font-normal text-slate-500 font-semibold">requieren atención</span></div>
         </div>
       </div>
@@ -254,7 +313,10 @@ export function AdminInventarioView() {
       {/* Add / Edit Form */}
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900">
+          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '30px', height: '30px' }}>
+              {editingId ? <FiEdit2 size={15} /> : <FiPlus size={15} />}
+            </span>
             {editingId ? 'Editar Artículo' : 'Agregar Nuevo Artículo'}
           </h2>
           {editingId && (
@@ -264,11 +326,11 @@ export function AdminInventarioView() {
           )}
         </div>
 
-        <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Proyector Epson" required /></div>
-        <div><label className={label}>Categoría</label><input className={input} value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} placeholder="Ej. Equipos Cómputo" required /></div>
+        <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
+        <div><label className={label}>Categoría</label><input className={input} value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} placeholder="Categorial al Que Pertenece" required /></div>
         <div><label className={label}>Cantidad Total</label><input className={input} type="number" min="0" value={form.cantidad_total} onChange={(e) => setForm({ ...form, cantidad_total: Number(e.target.value) })} required /></div>
         <div><label className={label}>Cantidad Disponible</label><input className={input} type="number" min="0" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: Number(e.target.value) })} required /></div>
-        <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ej. Sala 101 / Almacén" /></div>
+        <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ubicación / Almacén" /></div>
         <div>
           <label className={label}>Estado</label>
           <select className={input} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
@@ -277,10 +339,13 @@ export function AdminInventarioView() {
             <option value="agotado">Agotado</option>
           </select>
         </div>
-        <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Ej. Modelo HDMI 2.0 con soporte 4K" /></div>
-        
+        <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Modelo del equipo " /></div>
+
         <div className="flex gap-2 md:col-span-4 pt-2">
-          <button className={primaryButton} type="submit">{editingId ? 'Guardar Cambios' : 'Registrar Artículo'}</button>
+          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+            {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
+            {editingId ? 'Guardar Cambios' : 'Registrar Artículo'}
+          </button>
           {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
         </div>
       </form>
@@ -294,22 +359,28 @@ export function AdminInventarioView() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <input
-              className={`${input} md:w-64`}
-              placeholder="Buscar por nombre o ubicación..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className={`${input} md:w-48`}
-              value={selectedCategoria}
-              onChange={(e) => setSelectedCategoria(e.target.value)}
-            >
-              <option value="">Todas las categorías</option>
-              {categoriasDisponibles.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            <div className="d-flex align-items-center gap-2">
+              <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+              <input
+                className={`${input} md:w-64`}
+                placeholder="Buscar por nombre o ubicación..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <FiFilter className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+              <select
+                className={`${input} md:w-48`}
+                value={selectedCategoria}
+                onChange={(e) => setSelectedCategoria(e.target.value)}
+              >
+                <option value="">Todas las categorías</option>
+                {categoriasDisponibles.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -344,14 +415,17 @@ export function AdminInventarioView() {
                       <StockMeter disponible={item.cantidad_disponible} total={item.cantidad_total} />
                     </td>
                     <td className="text-sm text-slate-700 font-medium">
-                      {item.ubicacion || 'Sin especificar'}
+                      <span className="d-inline-flex align-items-center gap-1">
+                        <FiMapPin size={13} className="text-slate-400" />
+                        {item.ubicacion || 'Sin especificar'}
+                      </span>
                     </td>
                     <td>
                       <StatusBadge value={item.estado} />
                     </td>
                     <td className="text-right space-x-2">
-                      <button className={secondaryButton} onClick={() => edit(item)}>Editar</button>
-                      <button className={dangerButton} onClick={() => remove(item.id)}>Eliminar</button>
+                      <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(item)}><FiEdit2 size={13} />Editar</button>
+                      <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => remove(item.id)}><FiTrash2 size={13} />Eliminar</button>
                     </td>
                   </tr>
                 ))
@@ -429,10 +503,15 @@ export function AdminProfesoresView() {
   return (
     <PageShell title="Profesores y Usuarios" subtitle="Gestión de cuentas de docentes y administradores, credenciales y contacto.">
       <Notice message={message} />
-      
+
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
-          <h2 className="text-base font-bold text-slate-900">{editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h2>
+          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+            <span className="rounded d-flex align-items-center justify-content-center bg-purple-50 text-purple-700" style={{ width: '30px', height: '30px' }}>
+              {editingId ? <FiEdit2 size={15} /> : <FiUser size={15} />}
+            </span>
+            {editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+          </h2>
         </div>
         <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
         <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
@@ -447,15 +526,24 @@ export function AdminProfesoresView() {
           </label>
         </div>
         <div className="flex items-end gap-2 md:col-span-4 pt-2">
-          <button className={primaryButton} type="submit">{editingId ? 'Guardar Cambios' : 'Crear Usuario'}</button>
+          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+            {editingId ? <FiSave size={15} /> : <FiUser size={15} />}
+            {editingId ? 'Guardar Cambios' : 'Crear Usuario'}
+          </button>
           {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
         </div>
       </form>
 
       <div className={`${panel} p-4 space-y-4`}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
-          <h3 className="text-sm font-bold text-slate-900">Directorio de Usuarios ({filteredUsuarios.length})</h3>
-          <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2">
+            <FiUsers size={17} className="text-slate-500" />
+            Directorio de Usuarios ({filteredUsuarios.length})
+          </h3>
+          <div className="d-flex align-items-center gap-2">
+            <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+            <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="inventory-table">
@@ -473,10 +561,27 @@ export function AdminProfesoresView() {
             <tbody>
               {filteredUsuarios.map((usuario) => (
                 <tr key={usuario.id}>
-                  <td className="font-bold text-slate-900">{usuario.nombre} {usuario.apellido}</td>
+                  <td className="font-bold text-slate-900">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style={{ width: '34px', height: '34px', flexShrink: 0 }}>
+                        {usuario.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      {usuario.nombre} {usuario.apellido}
+                    </div>
+                  </td>
                   <td className="font-mono text-sm">{usuario.email}</td>
-                  <td className="text-slate-600">{usuario.correo_personal || '-'}</td>
-                  <td className="text-slate-600">{usuario.telefono || '-'}</td>
+                  <td className="text-slate-600">
+                    <span className="d-inline-flex align-items-center gap-1">
+                      <FiMail size={13} className="text-slate-400" />
+                      {usuario.correo_personal || '-'}
+                    </span>
+                  </td>
+                  <td className="text-slate-600">
+                    <span className="d-inline-flex align-items-center gap-1">
+                      <FiPhone size={13} className="text-slate-400" />
+                      {usuario.telefono || '-'}
+                    </span>
+                  </td>
                   <td>
                     <span className={`category-chip ${usuario.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
                       {usuario.role === 'admin' ? 'Admin' : 'Profesor'}
@@ -486,8 +591,8 @@ export function AdminProfesoresView() {
                     <StatusBadge value={usuario.activo ? 'disponible' : 'agotado'} />
                   </td>
                   <td className="text-right space-x-2">
-                    <button className={secondaryButton} onClick={() => edit(usuario)}>Editar</button>
-                    <button className={dangerButton} onClick={() => deactivate(usuario.id)}>Desactivar</button>
+                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}><FiEdit2 size={13} />Editar</button>
+                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}><FiTrash2 size={13} />Desactivar</button>
                   </td>
                 </tr>
               ))}
@@ -567,7 +672,7 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
             <tr key={solicitud.id}>
               <td className="font-bold text-slate-900">{solicitud.profesor_nombre} {solicitud.apellido}</td>
               <td>{solicitud.item_nombre ? <span className="font-semibold text-slate-800">{solicitud.item_nombre}</span> : <span className="text-slate-400">-</span>}</td>
-              <td>{solicitud.sala_nombre ? <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded font-semibold">{solicitud.sala_nombre} ({solicitud.dia_semana} {solicitud.hora_inicio}-{solicitud.hora_fin})</span> : <span className="text-slate-400">-</span>}</td>
+              <td>{solicitud.sala_nombre ? <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded font-semibold d-inline-flex align-items-center gap-1"><FiClock size={11} />{solicitud.sala_nombre} ({solicitud.dia_semana} {solicitud.hora_inicio}-{solicitud.hora_fin})</span> : <span className="text-slate-400">-</span>}</td>
               <td className="font-semibold">{solicitud.item_nombre ? solicitud.cantidad_solicitada : '-'}</td>
               <td className="text-xs text-slate-600">{solicitud.motivo || '-'}</td>
               <td><StatusBadge value={solicitud.estado} /></td>
@@ -577,9 +682,9 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
                   <input className={`${input} text-xs py-1 px-2 mb-1 w-full`} placeholder="Añadir nota / observación..." value={comentarios?.[solicitud.id] || ''} onChange={(e) => setComentarios({ ...(comentarios || {}), [solicitud.id]: e.target.value })} />
                 )}
                 <div className="flex justify-end gap-1">
-                  {solicitud.estado === 'pendiente' && onApprove && <button className={primaryButton} onClick={() => onApprove(solicitud.id)}>Aprobar</button>}
-                  {solicitud.estado === 'pendiente' && onReject && <button className={dangerButton} onClick={() => onReject(solicitud.id)}>Rechazar</button>}
-                  {solicitud.estado === 'pendiente' && onCancel && <button className={dangerButton} onClick={() => onCancel(solicitud.id)}>Cancelar</button>}
+                  {solicitud.estado === 'pendiente' && onApprove && <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => onApprove(solicitud.id)}><FiCheckCircle size={13} />Aprobar</button>}
+                  {solicitud.estado === 'pendiente' && onReject && <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => onReject(solicitud.id)}><FiXCircle size={13} />Rechazar</button>}
+                  {solicitud.estado === 'pendiente' && onCancel && <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => onCancel(solicitud.id)}><FiXCircle size={13} />Cancelar</button>}
                 </div>
               </td>
             </tr>
@@ -652,7 +757,12 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
       {isAdmin && (
         <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-5`}>
           <div className="md:col-span-5 border-b border-slate-200 pb-2">
-            <h2 className="text-base font-bold text-slate-900">{editingId ? 'Editar Bloque Horario' : 'Crear Nuevo Bloque Horario'}</h2>
+            <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+              <span className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-700" style={{ width: '30px', height: '30px' }}>
+                {editingId ? <FiEdit2 size={15} /> : <FiCalendar size={15} />}
+              </span>
+              {editingId ? 'Editar Bloque Horario' : 'Crear Nuevo Bloque Horario'}
+            </h2>
           </div>
           <div><label className={label}>Nombre de Sala</label><input className={input} value={form.sala_nombre} onChange={(e) => setForm({ ...form, sala_nombre: e.target.value })} required /></div>
           <div><label className={label}>Día de la semana</label><select className={input} value={form.dia_semana} onChange={(e) => setForm({ ...form, dia_semana: e.target.value })}>{diasSemana.map((dia) => <option key={dia}>{dia}</option>)}</select></div>
@@ -660,7 +770,10 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
           <div><label className={label}>Hora Fin</label><input className={input} type="time" value={form.hora_fin} onChange={(e) => setForm({ ...form, hora_fin: e.target.value })} required /></div>
           <div><label className={label}>Estado</label><select className={input} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="separado">Separado</option></select></div>
           {form.estado === 'separado' && <div className="md:col-span-3"><label className={label}>Motivo de la Reserva</label><input className={input} value={form.motivo_reserva} onChange={(e) => setForm({ ...form, motivo_reserva: e.target.value })} placeholder="Ej. Examen final de programación" /></div>}
-          <div className="flex items-end gap-2 md:col-span-5 pt-2"><button className={primaryButton} type="submit">{editingId ? 'Guardar' : 'Registrar Horario'}</button>{editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}</div>
+          <div className="flex items-end gap-2 md:col-span-5 pt-2"><button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+            {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
+            {editingId ? 'Guardar' : 'Registrar Horario'}
+          </button>{editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}</div>
         </form>
       )}
       <div className={`${panel} p-4 overflow-x-auto`}>
@@ -679,13 +792,21 @@ export function DisponibilidadCrudView({ scope }: { scope: 'admin' | 'profesor' 
           <tbody>
             {disponibilidades.map((d) => (
               <tr key={d.id}>
-                <td className="font-bold text-slate-900">{d.sala_nombre}</td>
-                <td><span className="category-chip">{d.dia_semana}</span></td>
+                <td className="font-bold text-slate-900">
+                  <span className="d-inline-flex align-items-center gap-1">
+                    <FiInfo size={13} className="text-slate-400" />
+                    {d.sala_nombre}
+                  </span>
+                </td>
+                <td><span className="category-chip d-inline-flex align-items-center gap-1"><FiCalendar size={11} />{d.dia_semana}</span></td>
                 <td className="font-mono text-sm">{d.hora_inicio} - {d.hora_fin}</td>
                 <td><StatusBadge value={d.estado} /></td>
                 <td className="text-slate-700">{d.reservado_por_nombre ? `${d.reservado_por_nombre} ${d.reservado_por_apellido || ''}` : '-'}</td>
                 <td className="text-xs text-slate-600">{d.motivo_reserva || '-'}</td>
-                {isAdmin && <td className="text-right space-x-2"><button className={secondaryButton} onClick={() => edit(d)}>Editar</button><button className={dangerButton} onClick={() => remove(d.id)}>Eliminar</button></td>}
+                {isAdmin && <td className="text-right space-x-2">
+                  <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(d)}><FiEdit2 size={13} />Editar</button>
+                  <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => remove(d.id)}><FiTrash2 size={13} />Eliminar</button>
+                </td>}
               </tr>
             ))}
             {disponibilidades.length === 0 && <tr><td className="text-center py-6 text-slate-500" colSpan={isAdmin ? 7 : 6}>Sin horarios registrados</td></tr>}
@@ -762,7 +883,12 @@ export function ProfesorSolicitudesView() {
       <Notice message={message} />
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2">
-          <h2 className="text-base font-bold text-slate-900">Nueva Solicitud de Reserva / Préstamo</h2>
+          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
+              <FiSend size={15} />
+            </span>
+            Nueva Solicitud de Reserva / Préstamo
+          </h2>
         </div>
         <div className="md:col-span-2">
           <label className={label}>Horario de Sala (Opcional si solo requiere equipo)</label>
@@ -791,7 +917,7 @@ export function ProfesorSolicitudesView() {
           <input className={input} value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} placeholder="Ej. Clase de Computación 2do Grado" required />
         </div>
         <div className="flex items-end">
-          <button className={primaryButton} type="submit">Enviar Solicitud</button>
+          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit"><FiSend size={14} />Enviar Solicitud</button>
         </div>
       </form>
       <SolicitudesTable solicitudes={solicitudes} onCancel={cancel} />

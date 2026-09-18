@@ -2,6 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  FiUser,
+  FiMail,
+  FiPhone,
+  FiShield,
+  FiKey,
+  FiSave,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiArrowLeft,
+  FiBriefcase,
+  FiHash,
+} from 'react-icons/fi';
 
 type UsuarioInfo = {
   id: number;
@@ -95,61 +108,200 @@ export default function PerfilView() {
     setMessage('Perfil actualizado correctamente');
   };
 
-  if (loading) return <p>Cargando perfil…</p>;
-  if (!user) return <p>No se pudo cargar el perfil</p>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status" />
+          <div className="text-secondary">Cargando perfil...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 d-flex align-items-center justify-content-center">
+        <div className="text-center text-secondary">No se pudo cargar el perfil</div>
+      </div>
+    );
+  }
+
+  const isAdmin = user.role === 'admin';
 
   return (
-    <div>
-      <h1>Mi Perfil</h1>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <div className="mx-auto" style={{ maxWidth: '72rem' }}>
 
-      {message && <p style={{ color: 'green' }}>{message}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center border-b border-slate-200 pb-4 mb-4">
+          <div>
+            <h1 className="h3 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+              <FiUser className="text-primary" size={26} />
+              Mi Perfil
+            </h1>
+            <p className="text-secondary small mb-0">
+              Consulta tu información personal y administra tus credenciales de acceso.
+            </p>
+          </div>
 
-      <h2>Información</h2>
-      <table border={1} cellPadding={8} cellSpacing={0}>
-        <tbody>
-          <tr><td><strong>Nombres</strong></td><td>{user.nombre}</td></tr>
-          <tr><td><strong>Apellidos</strong></td><td>{user.apellido}</td></tr>
-          <tr><td><strong>DNI</strong></td><td>{user.dni || user.email}</td></tr>
-          <tr><td><strong>Rol</strong></td><td>{user.role === 'admin' ? 'Administrador' : 'Profesor'}</td></tr>
-          <tr><td><strong>Área</strong></td><td>{user.area || '—'}</td></tr>
-        </tbody>
-      </table>
-
-      <h2>Credenciales de acceso</h2>
-      <form onSubmit={handleSave}>
-        <div>
-          <label htmlFor="email">Usuario (DNI)</label>
-          <br />
-          <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} />
+          <a
+            href={isAdmin ? '/admin/dashboard' : '/profesor/dashboard'}
+            className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2 align-self-start mt-2 mt-sm-0"
+          >
+            <FiArrowLeft size={14} />
+            Volver al panel
+          </a>
         </div>
 
-        <div>
-          <label htmlFor="password">Nueva contraseña (opcional)</label>
-          <br />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Dejar vacío para no cambiar"
-          />
+        {message && (
+          <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
+            <FiCheckCircle size={18} />
+            <span>{message}</span>
+          </div>
+        )}
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
+            <FiAlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* TARJETA DE PERFIL */}
+        <div className="card border-0 shadow-sm mb-4">
+          <div className="card-body p-4 p-md-5">
+            <div className="d-flex flex-column flex-md-row align-items-start gap-4">
+              <div
+                className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                style={{ width: '80px', height: '80px', fontSize: '32px', flexShrink: 0 }}
+              >
+                {user.nombre.charAt(0).toUpperCase()}
+              </div>
+
+              <div className="w-100">
+                <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                  <h2 className="h4 fw-bold text-dark mb-0">
+                    {user.nombre} {user.apellido}
+                  </h2>
+                  <span className={`badge ${isAdmin ? 'bg-purple' : 'bg-success'}`}>
+                    {isAdmin ? 'Administrador' : 'Profesor'}
+                  </span>
+                </div>
+                <p className="text-secondary small mb-3">{user.email}</p>
+
+                <div className="row g-3">
+                  <div className="col-12 col-sm-6 col-lg-3">
+                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
+                      <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+                        <FiHash size={16} />
+                      </span>
+                      <div>
+                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>DNI</div>
+                        <div className="font-semibold text-dark small">{user.dni || user.email}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-sm-6 col-lg-3">
+                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
+                      <span className="rounded d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+                        <FiBriefcase size={16} />
+                      </span>
+                      <div>
+                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Área</div>
+                        <div className="font-semibold text-dark small">{user.area || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-sm-6 col-lg-3">
+                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
+                      <span className="rounded d-flex align-items-center justify-content-center bg-info bg-opacity-10 text-info" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+                        <FiPhone size={16} />
+                      </span>
+                      <div>
+                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Teléfono</div>
+                        <div className="font-semibold text-dark small">{user.telefono || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-sm-6 col-lg-3">
+                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
+                      <span className="rounded d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+                        <FiMail size={16} />
+                      </span>
+                      <div>
+                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Correo</div>
+                        <div className="font-semibold text-dark small">{user.correo_personal || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="telefono">Teléfono</label>
-          <br />
-          <input id="telefono" type="text" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+51999999999" />
+        {/* CREDENCIALES */}
+        <div className="card border-0 shadow-sm">
+          <div className="card-body p-4 p-md-5">
+            <h2 className="h5 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+              <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
+                <FiKey size={17} />
+              </span>
+              Credenciales de acceso
+            </h2>
+            <p className="text-secondary small mb-4">
+              Actualiza tu usuario, contraseña o datos de contacto.
+            </p>
+
+            <form onSubmit={handleSave} className="row g-4">
+              <div className="col-12 col-md-6">
+                <label className="inventory-form-label">
+                  <span className="d-inline-flex align-items-center gap-1"><FiUser size={12} /> Usuario (DNI)</span>
+                </label>
+                <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} className="inventory-form-input" required />
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="inventory-form-label">
+                  <span className="d-inline-flex align-items-center gap-1"><FiMail size={12} /> Correo personal</span>
+                </label>
+                <input id="correoPersonal" type="email" value={correoPersonal} onChange={e => setCorreoPersonal(e.target.value)} className="inventory-form-input" placeholder="contacto@email.com" />
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="inventory-form-label">
+                  <span className="d-inline-flex align-items-center gap-1"><FiPhone size={12} /> Teléfono / WhatsApp</span>
+                </label>
+                <input id="telefono" type="text" value={telefono} onChange={e => setTelefono(e.target.value)} className="inventory-form-input" placeholder="+51999999999" />
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="inventory-form-label">
+                  <span className="d-inline-flex align-items-center gap-1"><FiKey size={12} /> Nueva contraseña</span>
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="inventory-form-input"
+                  placeholder="Dejar vacío para no cambiar"
+                />
+              </div>
+
+              <div className="col-12">
+                <button type="submit" className="btn-primary-custom d-inline-flex align-items-center gap-2">
+                  <FiSave size={15} />
+                  Guardar cambios
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="correoPersonal">Correo personal</label>
-          <br />
-          <input id="correoPersonal" type="email" value={correoPersonal} onChange={e => setCorreoPersonal(e.target.value)} />
-        </div>
-
-        <button type="submit">Guardar cambios</button>
-      </form>
+      </div>
     </div>
   );
 }

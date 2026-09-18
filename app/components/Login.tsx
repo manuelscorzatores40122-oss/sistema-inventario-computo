@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FiShield, FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -26,6 +27,7 @@ export default function Login() {
 
       if (!response.ok) {
         setError(data.error || 'Error al iniciar sesión');
+        setLoading(false);
         return;
       }
 
@@ -44,14 +46,24 @@ export default function Login() {
   };
 
   return (
-    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
-      <div className="card shadow p-4 w-100" style={{ maxWidth: '400px' }}>
-        <h1 className="h3 fw-bold text-dark text-center mb-2">Colegio</h1>
-        <p className="text-secondary text-center mb-4">Sistema de Inventarios</p>
+    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light" style={{ backgroundColor: 'var(--color-slate-50) !important' }}>
+      <div className="card shadow p-4 p-md-5 w-100" style={{ maxWidth: '420px', border: 'none', borderRadius: '1rem' }}>
+        <div className="text-center mb-4">
+          <div
+            className="bg-primary rounded-3 d-inline-flex align-items-center justify-content-center text-white mb-3 mx-auto"
+            style={{ width: '64px', height: '64px', boxShadow: '0 8px 16px rgba(37, 99, 235, 0.3)' }}
+          >
+            <FiShield size={32} />
+          </div>
+
+          <h1 className="h3 fw-bold text-dark mb-1">Colegio</h1>
+          <p className="text-secondary mb-0">Sistema de Inventarios</p>
+        </div>
 
         {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
+          <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
+            <FiAlertTriangle className="flex-shrink-0" size={18} />
+            <span>{error}</span>
           </div>
         )}
 
@@ -60,40 +72,56 @@ export default function Login() {
             <label className="form-label fw-bold">
               Usuario
             </label>
-            <input
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="form-control"
-              placeholder="Usuario"
-              required
-            />
+            <div className="input-group">
+              <span className="input-group-text bg-white">
+                <FiUser className="text-secondary" size={17} />
+              </span>
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="form-control"
+                placeholder="Usuario"
+                required
+              />
+            </div>
           </div>
 
           <div className="mb-4">
             <label className="form-label fw-bold">
               Contraseña
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-control"
-              placeholder="••••••••"
-              required
-            />
+            <div className="input-group">
+              <span className="input-group-text bg-white">
+                <FiLock className="text-secondary" size={17} />
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="form-control"
+                placeholder="••••••••"
+                required
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-100 fw-bold py-2"
+            className="btn btn-primary w-100 fw-bold py-2 d-flex align-items-center justify-content-center gap-2"
+            style={{ borderRadius: '0.5rem' }}
           >
+            <FiLogIn size={18} />
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
         </form>
 
-
+        <div className="text-center mt-4">
+          <p className="small text-secondary mb-0">
+            Sistema de gestión para colegios
+          </p>
+        </div>
       </div>
     </div>
   );

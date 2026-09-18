@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  FiCalendar,
+  FiCheckCircle,
+  FiXCircle,
+  FiClock,
+  FiEdit2,
+  FiSettings,
+  FiCheck,
+  FiLock,
+  FiUnlock,
+} from 'react-icons/fi';
 
 type Disponibilidad = {
   id: number;
@@ -144,42 +155,62 @@ export default function AdminHorarioView() {
     <div className="p-4 md:p-6 space-y-6">
       {message && (
         <div
-          className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
+          className={`rounded-lg border px-4 py-3 text-sm font-semibold d-flex align-items-center gap-2 ${
             message.type === 'success'
               ? 'border-green-200 bg-green-50 text-green-800'
               : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
-          {message.text}
+          {message.type === 'success' ? <FiCheckCircle size={18} /> : <FiXCircle size={18} />}
+          <span>{message.text}</span>
         </div>
       )}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">Horario Semanal</h1>
+          <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2">
+            <FiCalendar className="text-primary" size={26} />
+            Horario Semanal
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
             Matriz de uso de la Sala de Cómputo. Asigna profesores o libera bloques horarios.
           </p>
         </div>
 
-        <Link href="/admin/disponibilidad" className="btn-secondary-custom text-decoration-none">
+        <Link href="/admin/disponibilidad" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-2">
+          <FiSettings size={15} />
           Gestionar bloques disponibles
         </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="inventory-panel p-4 border-l-4 border-l-slate-700">
-          <p className="text-xs font-bold uppercase text-slate-500">Total de Horarios Registrados</p>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600" style={{ width: '34px', height: '34px' }}>
+              <FiClock size={16} />
+            </div>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Total de Horarios Registrados</p>
+          </div>
           <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : total}</h3>
         </div>
 
         <div className="inventory-panel p-4 border-l-4 border-l-green-600">
-          <p className="text-xs font-bold uppercase text-slate-500">Bloques Libres</p>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-600" style={{ width: '34px', height: '34px' }}>
+              <FiCheck size={16} />
+            </div>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques Libres</p>
+          </div>
           <h3 className="text-2xl font-black text-green-600 mt-1">{loading ? '...' : disponibles}</h3>
         </div>
 
         <div className="inventory-panel p-4 border-l-4 border-l-red-600">
-          <p className="text-xs font-bold uppercase text-slate-500">Bloques Reservados</p>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="rounded d-flex align-items-center justify-content-center bg-red-50 text-red-600" style={{ width: '34px', height: '34px' }}>
+              <FiLock size={16} />
+            </div>
+            <p className="text-xs font-bold uppercase text-slate-500 mb-0">Bloques Reservados</p>
+          </div>
           <h3 className="text-2xl font-black text-red-600 mt-1">{loading ? '...' : separados}</h3>
         </div>
       </div>
@@ -190,6 +221,7 @@ export default function AdminHorarioView() {
         </div>
       ) : total === 0 ? (
         <div className="inventory-panel p-8 text-center">
+          <FiCalendar className="text-slate-400 mx-auto mb-3" size={40} />
           <h3 className="text-lg font-bold text-slate-900">No hay horarios registrados</h3>
           <p className="text-sm text-slate-500 mt-1">
             Crea bloques de tiempo desde "Gestionar disponibilidad".
@@ -239,16 +271,18 @@ export default function AdminHorarioView() {
                           {isDisponible ? (
                             <button
                               onClick={() => abrirReserva(slot)}
-                              className="btn-primary-custom w-full text-xs py-1"
+                              className="btn-primary-custom w-full text-xs py-1 d-inline-flex align-items-center justify-content-center gap-1"
                             >
+                              <FiCheck size={12} />
                               Reservar
                             </button>
                           ) : (
                             <button
                               onClick={() => liberar(slot.id)}
                               disabled={liberandoId === slot.id}
-                              className="btn-danger-custom w-full text-xs py-1"
+                              className="btn-danger-custom w-full text-xs py-1 d-inline-flex align-items-center justify-content-center gap-1"
                             >
+                              <FiUnlock size={12} />
                               {liberandoId === slot.id ? 'Liberando...' : 'Liberar'}
                             </button>
                           )}
@@ -269,7 +303,12 @@ export default function AdminHorarioView() {
             <div className="modal-dialog" role="document">
               <div className="modal-content border-0 shadow-lg">
                 <div className="modal-header border-b border-slate-200 p-4">
-                  <h5 className="modal-title font-bold text-slate-900">Reservar Bloque Horario</h5>
+                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
+                    <FiEdit2 size={15} />
+                  </span>
+                  Reservar Bloque Horario
+                </h5>
                   <button type="button" className="btn-close" onClick={() => setSlotReservando(null)} />
                 </div>
 

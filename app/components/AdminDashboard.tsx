@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+  FiInbox,
+  FiPackage,
+  FiUsers,
+  FiCheckCircle,
+  FiXCircle,
+  FiArrowRight,
+  FiUser,
+} from 'react-icons/fi';
 
 interface Solicitud {
   id: number;
@@ -16,6 +25,8 @@ export default function AdminDashboard() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [aprobarId, setAprobarId] = useState<number | null>(null);
+  const [rechazarId, setRechazarId] = useState<number | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -41,6 +52,7 @@ export default function AdminDashboard() {
   };
 
   const handleAprobar = async (solicitudId: number) => {
+    setAprobarId(solicitudId);
     try {
       const response = await fetch(`/api/solicitudes/${solicitudId}`, {
         method: 'PUT',
@@ -58,10 +70,13 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error al aprobar:', error);
+    } finally {
+      setAprobarId(null);
     }
   };
 
   const handleRechazar = async (solicitudId: number) => {
+    setRechazarId(solicitudId);
     try {
       const response = await fetch(`/api/solicitudes/${solicitudId}`, {
         method: 'PUT',
@@ -79,6 +94,8 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error al rechazar:', error);
+    } finally {
+      setRechazarId(null);
     }
   };
 
@@ -103,12 +120,17 @@ export default function AdminDashboard() {
             </div>
 
             <div className="text-end">
-              <div className="small text-secondary">
-                Sesión iniciada como
-              </div>
+              <div className="d-flex align-items-center gap-2 justify-content-end">
+                <FiUser className="text-secondary" size={18} />
+                <div>
+                  <div className="small text-secondary">
+                    Sesión iniciada como
+                  </div>
 
-              <div className="fw-semibold text-dark">
-                {user?.nombre || 'Administrador'}
+                  <div className="fw-semibold text-dark">
+                    {user?.nombre || 'Administrador'}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -140,9 +162,10 @@ export default function AdminDashboard() {
                     </div>
 
                     <div
-                      className="rounded p-3 bg-warning bg-opacity-10 text-warning"
+                      className="rounded-3 d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning"
+                      style={{ width: '48px', height: '48px' }}
                     >
-                      ✓
+                      <FiInbox size={24} />
                     </div>
 
                   </div>
@@ -163,13 +186,24 @@ export default function AdminDashboard() {
 
                 <div className="card-body p-4">
 
-                  <p className="text-secondary small fw-semibold mb-2">
-                    MÓDULO DE INVENTARIO
-                  </p>
+                  <div className="d-flex align-items-start mb-3">
+                    <div
+                      className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary me-3"
+                      style={{ width: '48px', height: '48px', flexShrink: 0 }}
+                    >
+                      <FiPackage size={24} />
+                    </div>
 
-                  <h2 className="h4 fw-bold text-dark">
-                    Gestión de Stock
-                  </h2>
+                    <div>
+                      <p className="text-secondary small fw-semibold mb-1">
+                        MÓDULO DE INVENTARIO
+                      </p>
+
+                      <h2 className="h4 fw-bold text-dark mb-0">
+                        Gestión de Stock
+                      </h2>
+                    </div>
+                  </div>
 
                   <p className="text-secondary small mb-3">
                     Administra productos y cantidades disponibles.
@@ -177,9 +211,10 @@ export default function AdminDashboard() {
 
                   <Link
                     href="/admin/inventario"
-                    className="btn btn-outline-primary btn-sm"
+                    className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
                   >
                     Ir al inventario
+                    <FiArrowRight size={14} />
                   </Link>
 
                 </div>
@@ -194,13 +229,24 @@ export default function AdminDashboard() {
 
                 <div className="card-body p-4">
 
-                  <p className="text-secondary small fw-semibold mb-2">
-                    PROFESORES
-                  </p>
+                  <div className="d-flex align-items-start mb-3">
+                    <div
+                      className="rounded-3 d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success me-3"
+                      style={{ width: '48px', height: '48px', flexShrink: 0 }}
+                    >
+                      <FiUsers size={24} />
+                    </div>
 
-                  <h2 className="h4 fw-bold text-dark">
-                    Usuarios del sistema
-                  </h2>
+                    <div>
+                      <p className="text-secondary small fw-semibold mb-1">
+                        PROFESORES
+                      </p>
+
+                      <h2 className="h4 fw-bold text-dark mb-0">
+                        Usuarios del sistema
+                      </h2>
+                    </div>
+                  </div>
 
                   <p className="text-secondary small mb-3">
                     Gestiona profesores y sus accesos.
@@ -208,9 +254,10 @@ export default function AdminDashboard() {
 
                   <Link
                     href="/admin/profesores"
-                    className="btn btn-outline-primary btn-sm"
+                    className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
                   >
                     Ver profesores
+                    <FiArrowRight size={14} />
                   </Link>
 
                 </div>
@@ -240,9 +287,10 @@ export default function AdminDashboard() {
 
                 <Link
                   href="/admin/solicitudes"
-                  className="btn btn-outline-primary btn-sm"
+                  className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
                 >
                   Ver todas
+                  <FiArrowRight size={14} />
                 </Link>
 
               </div>
@@ -268,8 +316,8 @@ export default function AdminDashboard() {
 
               <div className="p-5 text-center">
 
-                <div className="mb-3 fs-1 text-secondary">
-                  ✓
+                <div className="mb-3">
+                  <FiCheckCircle className="text-success" size={56} />
                 </div>
 
                 <h3 className="h6 fw-bold text-dark">
@@ -328,8 +376,16 @@ export default function AdminDashboard() {
 
                         <td className="px-4">
 
-                          <div className="fw-semibold text-dark">
-                            {solicitud.profesor_nombre}
+                          <div className="d-flex align-items-center gap-2">
+                            <div
+                              className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold"
+                              style={{ width: '32px', height: '32px', fontSize: '13px' }}
+                            >
+                              {solicitud.profesor_nombre.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="fw-semibold text-dark">
+                              {solicitud.profesor_nombre}
+                            </div>
                           </div>
 
                         </td>
@@ -354,7 +410,8 @@ export default function AdminDashboard() {
 
                         <td>
 
-                          <span className="badge bg-warning text-dark">
+                          <span className="badge bg-warning text-dark d-inline-flex align-items-center gap-1">
+                            <FiInbox size={12} />
                             Pendiente
                           </span>
 
@@ -366,18 +423,22 @@ export default function AdminDashboard() {
                             onClick={() =>
                               handleAprobar(solicitud.id)
                             }
-                            className="btn btn-success btn-sm me-2"
+                            disabled={aprobarId === solicitud.id}
+                            className="btn btn-success btn-sm d-inline-flex align-items-center gap-1 me-2"
                           >
-                            Aprobar
+                            <FiCheckCircle size={14} />
+                            {aprobarId === solicitud.id ? 'Aprobando...' : 'Aprobar'}
                           </button>
 
                           <button
                             onClick={() =>
                               handleRechazar(solicitud.id)
                             }
-                            className="btn btn-danger btn-sm"
+                            disabled={rechazarId === solicitud.id}
+                            className="btn btn-danger btn-sm d-inline-flex align-items-center gap-1"
                           >
-                            Rechazar
+                            <FiXCircle size={14} />
+                            {rechazarId === solicitud.id ? 'Rechazando...' : 'Rechazar'}
                           </button>
 
                         </td>
@@ -403,4 +464,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-

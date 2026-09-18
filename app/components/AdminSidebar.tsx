@@ -3,15 +3,26 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import {
+  FiGrid,
+  FiPackage,
+  FiUsers,
+  FiClock,
+  FiCalendar,
+  FiInbox,
+  FiUser,
+  FiLogOut,
+  FiShield,
+} from 'react-icons/fi';
 
 const menuItems = [
-  { href: '/admin/dashboard', title: 'Dashboard' },
-  { href: '/admin/inventario', title: 'Inventario' },
-  { href: '/admin/profesores', title: 'Profesores' },
-  { href: '/admin/disponibilidad', title: 'Disponibilidad' },
-  { href: '/admin/horario', title: 'Horario' },
-  { href: '/admin/solicitudes', title: 'Solicitudes' },
-  { href: '/admin/perfil', title: 'Perfil' },
+  { href: '/admin/dashboard', title: 'Dashboard', icon: FiGrid },
+  { href: '/admin/inventario', title: 'Inventario', icon: FiPackage },
+  { href: '/admin/profesores', title: 'Profesores', icon: FiUsers },
+  { href: '/admin/disponibilidad', title: 'Disponibilidad', icon: FiClock },
+  { href: '/admin/horario', title: 'Horario', icon: FiCalendar },
+  { href: '/admin/solicitudes', title: 'Solicitudes', icon: FiInbox },
+  { href: '/admin/perfil', title: 'Perfil', icon: FiUser },
 ];
 
 export default function AdminSidebar() {
@@ -43,11 +54,17 @@ export default function AdminSidebar() {
       }}
     >
       <div className="p-4 border-bottom border-secondary">
-        <h2 className="h5 fw-bold mb-1">
-          Sistema de Inventario
-        </h2>
+        <div className="d-flex align-items-center mb-2">
+          <div
+            className="rounded-3 bg-primary d-flex align-items-center justify-content-center me-3"
+            style={{ width: '38px', height: '38px' }}
+          >
+            <FiShield size={20} />
+          </div>
+          <h2 className="h6 fw-bold mb-0">Sistema de Inventario</h2>
+        </div>
 
-        <p className="text-secondary small mb-0">
+        <p className="text-secondary small mb-0 ps-1">
           Panel de Administración
         </p>
       </div>
@@ -83,6 +100,7 @@ export default function AdminSidebar() {
 
         {menuItems.map((item) => {
           const active = isActive(item.href);
+          const Icon = item.icon;
 
           return (
             <Link
@@ -105,6 +123,11 @@ export default function AdminSidebar() {
                 }
               }}
             >
+              <Icon
+                className="me-3"
+                size={17}
+                style={{ flexShrink: 0 }}
+              />
               <span>{item.title}</span>
             </Link>
           );
@@ -112,13 +135,26 @@ export default function AdminSidebar() {
       </nav>
 
       <div className="position-absolute bottom-0 start-0 end-0 p-3 border-top border-secondary">
-        <div className="small text-secondary px-2">
-          Sistema de Gestión
-        </div>
-
-        <div className="small text-secondary px-2">
-          Administración
-        </div>
+        <button
+          className="d-flex align-items-center w-100 bg-transparent border-0 text-white-50 small text-start px-2 py-2 rounded-3 text-decoration-none"
+          style={{ transition: 'background-color 0.2s, color 0.2s' }}
+          onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/auth/login';
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#343a40';
+            e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.55)';
+          }}
+        >
+          <FiLogOut className="me-3" size={17} />
+          <span>Cerrar sesión</span>
+        </button>
       </div>
     </aside>
   );

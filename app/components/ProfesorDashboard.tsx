@@ -1,8 +1,18 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+  FiFileText,
+  FiClock,
+  FiUser,
+  FiArrowRight,
+  FiPackage,
+  FiCalendar,
+  FiSend,
+  FiCheckCircle,
+  FiAlertCircle,
+} from 'react-icons/fi';
 
 interface Item {
   id: number;
@@ -162,7 +172,7 @@ export default function ProfesorDashboard() {
         {/* ACCESOS RÁPIDOS */}
         <div className="row g-4 mb-4">
 
-          <div className="col-12 col-md-6">
+          <div className="col-12 col-md-4">
             <Link
               href="/profesor/solicitudes"
               className="text-decoration-none"
@@ -187,18 +197,20 @@ export default function ProfesorDashboard() {
                       </p>
                     </div>
 
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between mt-3">
                     <div
                       className="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
                       style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '44px',
+                        height: '44px',
                       }}
                     >
-                      <span className="text-primary fw-bold fs-5">
-                        →
-                      </span>
+                      <FiFileText className="text-primary" size={22} />
                     </div>
 
+                    <FiArrowRight className="text-primary" size={18} />
                   </div>
 
                 </div>
@@ -206,7 +218,7 @@ export default function ProfesorDashboard() {
             </Link>
           </div>
 
-          <div className="col-12 col-md-6">
+          <div className="col-12 col-md-4">
             <Link
               href="/profesor/disponibilidad"
               className="text-decoration-none"
@@ -231,18 +243,20 @@ export default function ProfesorDashboard() {
                       </p>
                     </div>
 
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between mt-3">
                     <div
                       className="bg-success bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
                       style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '44px',
+                        height: '44px',
                       }}
                     >
-                      <span className="text-success fw-bold fs-5">
-                        →
-                      </span>
+                      <FiClock className="text-success" size={22} />
                     </div>
 
+                    <FiArrowRight className="text-success" size={18} />
                   </div>
 
                 </div>
@@ -250,7 +264,7 @@ export default function ProfesorDashboard() {
             </Link>
           </div>
 
-          <div className="col-12 col-md-6">
+          <div className="col-12 col-md-4">
             <Link
               href="/profesor/perfil"
               className="text-decoration-none"
@@ -275,18 +289,20 @@ export default function ProfesorDashboard() {
                       </p>
                     </div>
 
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between mt-3">
                     <div
                       className="bg-secondary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
                       style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '44px',
+                        height: '44px',
                       }}
                     >
-                      <span className="text-secondary fw-bold fs-5">
-                        →
-                      </span>
+                      <FiUser className="text-secondary" size={22} />
                     </div>
 
+                    <FiArrowRight className="text-secondary" size={18} />
                   </div>
 
                 </div>
@@ -303,20 +319,26 @@ export default function ProfesorDashboard() {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
 
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center justify-content-between">
 
                   <div>
-                    <p className="small text-secondary mb-1">
-                      Artículos disponibles
-                    </p>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <FiPackage className="text-primary" size={18} />
+                      <p className="small text-secondary mb-0">
+                        Artículos disponibles
+                      </p>
+                    </div>
 
                     <h3 className="h3 fw-bold mb-0 text-dark">
                       {loading ? '...' : totalDisponibles}
                     </h3>
                   </div>
 
-                  <div className="text-primary fs-3 fw-bold">
-                    {inventario.length}
+                  <div
+                    className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary"
+                    style={{ width: '48px', height: '48px' }}
+                  >
+                    <FiPackage size={24} />
                   </div>
 
                 </div>
@@ -329,20 +351,26 @@ export default function ProfesorDashboard() {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
 
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center justify-content-between">
 
                   <div>
-                    <p className="small text-secondary mb-1">
-                      Horarios disponibles
-                    </p>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <FiCalendar className="text-success" size={18} />
+                      <p className="small text-secondary mb-0">
+                        Horarios disponibles
+                      </p>
+                    </div>
 
                     <h3 className="h3 fw-bold mb-0 text-dark">
                       {loading ? '...' : horariosDisponibles}
                     </h3>
                   </div>
 
-                  <div className="text-success fs-3 fw-bold">
-                    ✓
+                  <div
+                    className="rounded-3 d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success"
+                    style={{ width: '48px', height: '48px' }}
+                  >
+                    <FiCheckCircle size={24} />
                   </div>
 
                 </div>
@@ -355,20 +383,26 @@ export default function ProfesorDashboard() {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
 
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center justify-content-between">
 
                   <div>
-                    <p className="small text-secondary mb-1">
-                      Horarios reservados
-                    </p>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <FiAlertCircle className="text-danger" size={18} />
+                      <p className="small text-secondary mb-0">
+                        Horarios reservados
+                      </p>
+                    </div>
 
                     <h3 className="h3 fw-bold mb-0 text-dark">
                       {loading ? '...' : horariosSeparados}
                     </h3>
                   </div>
 
-                  <div className="text-danger fs-3 fw-bold">
-                    {horariosSeparados}
+                  <div
+                    className="rounded-3 d-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger"
+                    style={{ width: '48px', height: '48px' }}
+                  >
+                    <FiClock size={24} />
                   </div>
 
                 </div>
@@ -388,6 +422,7 @@ export default function ProfesorDashboard() {
 
               <div>
                 <h2 className="h5 fw-bold text-dark mb-1">
+                  <FiClock className="text-primary me-2" size={20} />
                   Mi disponibilidad
                 </h2>
 
@@ -398,9 +433,10 @@ export default function ProfesorDashboard() {
 
               <Link
                 href="/profesor/disponibilidad"
-                className="btn btn-outline-primary btn-sm align-self-start"
+                className="btn btn-outline-primary btn-sm align-self-start d-inline-flex align-items-center gap-2"
               >
                 Administrar horarios
+                <FiArrowRight size={14} />
               </Link>
 
             </div>
@@ -425,7 +461,8 @@ export default function ProfesorDashboard() {
 
                     <div className="border rounded-3 h-100 bg-white">
 
-                      <div className="border-bottom px-3 py-3">
+                      <div className="border-bottom px-3 py-3 d-flex align-items-center gap-2">
+                        <FiCalendar className="text-secondary" size={14} />
                         <h3 className="h6 fw-bold mb-0">
                           {dia}
                         </h3>
@@ -520,6 +557,7 @@ export default function ProfesorDashboard() {
 
             <div>
               <h2 className="h5 fw-bold text-dark mb-1">
+                <FiSend className="text-primary me-2" size={20} />
                 Solicitar artículos
               </h2>
 
@@ -538,7 +576,8 @@ export default function ProfesorDashboard() {
               {/* ARTÍCULO */}
               <div className="col-12 col-md-5">
 
-                <label className="form-label fw-semibold">
+                <label className="form-label fw-semibold d-flex align-items-center gap-2">
+                  <FiPackage className="text-primary" size={16} />
                   Artículo
                 </label>
 
@@ -594,7 +633,8 @@ export default function ProfesorDashboard() {
               {/* CANTIDAD */}
               <div className="col-12 col-md-3">
 
-                <label className="form-label fw-semibold">
+                <label className="form-label fw-semibold d-flex align-items-center gap-2">
+                  <FiAlertCircle className="text-primary" size={16} />
                   Cantidad
                 </label>
 
@@ -617,7 +657,8 @@ export default function ProfesorDashboard() {
               {/* MOTIVO */}
               <div className="col-12 col-md-4">
 
-                <label className="form-label fw-semibold">
+                <label className="form-label fw-semibold d-flex align-items-center gap-2">
+                  <FiFileText className="text-primary" size={16} />
                   Motivo de solicitud
                 </label>
 
@@ -676,8 +717,9 @@ export default function ProfesorDashboard() {
                   loading ||
                   enviando
                 }
-                className="btn btn-primary btn-lg px-4 fw-semibold"
+                className="btn btn-primary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
               >
+                <FiSend size={18} />
                 {enviando
                   ? 'Enviando solicitud...'
                   : 'Enviar solicitud'}
@@ -685,8 +727,9 @@ export default function ProfesorDashboard() {
 
               <Link
                 href="/profesor/solicitudes"
-                className="btn btn-outline-secondary btn-lg px-4 fw-semibold"
+                className="btn btn-outline-secondary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
               >
+                <FiFileText size={18} />
                 Ver mis solicitudes
               </Link>
 
@@ -712,4 +755,3 @@ export default function ProfesorDashboard() {
     </div>
   );
 }
-
