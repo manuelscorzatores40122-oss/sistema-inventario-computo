@@ -126,6 +126,7 @@ body {
 
 .w-full { width: 100%; }
 .h-full { height: 100%; }
+.min-w-0 { min-width: 0; }
 
 .p-3 { padding: 0.75rem; }
 .p-4 { padding: 1rem; }
@@ -138,6 +139,7 @@ body {
 
 .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
 .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
 .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
 .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 

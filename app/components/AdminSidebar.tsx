@@ -47,7 +47,7 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className="position-fixed top-0 start-0 h-100 bg-dark text-white"
+      className="position-fixed top-0 start-0 h-100 bg-dark text-white d-flex flex-column"
       style={{
         width: '260px',
         zIndex: 1000,
@@ -57,7 +57,7 @@ export default function AdminSidebar() {
         <div className="d-flex align-items-center mb-2">
           <div
             className="rounded-3 bg-primary d-flex align-items-center justify-content-center me-3"
-            style={{ width: '38px', height: '38px' }}
+            style={{ width: '38px', height: '38px', flexShrink: 0 }}
           >
             <FiShield size={20} />
           </div>
@@ -76,13 +76,14 @@ export default function AdminSidebar() {
             style={{
               width: '42px',
               height: '42px',
+              flexShrink: 0,
             }}
           >
             {user?.nombre?.charAt(0)?.toUpperCase() || 'A'}
           </div>
 
-          <div>
-            <div className="fw-semibold">
+          <div className="min-w-0">
+            <div className="fw-semibold text-truncate">
               {user?.nombre || 'Administrador'}
             </div>
 
@@ -93,8 +94,8 @@ export default function AdminSidebar() {
         </div>
       </div>
 
-      <nav className="p-3">
-        <div className="text-uppercase text-secondary small fw-bold px-3 mb-2">
+      <nav className="flex-grow-1 overflow-auto py-3">
+        <div className="text-uppercase text-secondary small fw-bold px-4 mb-3">
           Menú Principal
         </div>
 
@@ -106,7 +107,7 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`d-flex align-items-center rounded-3 px-3 py-2.5 mb-1 text-decoration-none small font-semibold ${
+              className={`d-flex align-items-center rounded-3 mx-3 px-3 py-2.5 mb-2 text-decoration-none small font-semibold ${
                 active ? 'text-white bg-primary' : 'text-white-50'
               }`}
               style={{ transition: 'background-color 0.2s, color 0.2s' }}
@@ -134,9 +135,9 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="position-absolute bottom-0 start-0 end-0 p-3 border-top border-secondary">
+      <div className="p-3 border-top border-secondary">
         <button
-          className="d-flex align-items-center w-100 bg-transparent border-0 text-white-50 small text-start px-2 py-2 rounded-3 text-decoration-none"
+          className="d-flex align-items-center w-100 bg-transparent border-0 text-white-50 small text-start px-3 py-2.5 rounded-3 text-decoration-none"
           style={{ transition: 'background-color 0.2s, color 0.2s' }}
           onClick={() => {
             localStorage.removeItem('token');
@@ -152,7 +153,7 @@ export default function AdminSidebar() {
             e.currentTarget.style.color = 'rgba(255, 255, 255, 0.55)';
           }}
         >
-          <FiLogOut className="me-3" size={17} />
+          <FiLogOut className="me-3" size={17} style={{ flexShrink: 0 }} />
           <span>Cerrar sesión</span>
         </button>
       </div>
