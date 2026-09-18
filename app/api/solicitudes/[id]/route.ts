@@ -11,15 +11,10 @@ export async function GET(
               u.nombre as profesor_nombre,
               u.apellido,
               u.telefono,
-              i.nombre as item_nombre,
-              d.sala_nombre,
-              d.dia_semana,
-              d.hora_inicio,
-              d.hora_fin
+              i.nombre as item_nombre
        FROM solicitudes s
        JOIN usuarios u ON s.profesor_id = u.id
        LEFT JOIN inventario i ON s.inventario_id = i.id
-       LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
        WHERE s.id = $1`,
       [params.id]
     );
@@ -75,16 +70,10 @@ export async function PUT(
         `SELECT s.*,
                 u.telefono,
                 i.nombre as item_nombre,
-                i.cantidad_disponible,
-                d.sala_nombre,
-                d.dia_semana,
-                d.hora_inicio,
-                d.hora_fin,
-                d.estado as disponibilidad_estado
+                i.cantidad_disponible
          FROM solicitudes s
          JOIN usuarios u ON s.profesor_id = u.id
          LEFT JOIN inventario i ON s.inventario_id = i.id
-         LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
          WHERE s.id = $1
          FOR UPDATE`,
         [params.id]
@@ -138,27 +127,6 @@ export async function PUT(
             [sol.inventario_id, 'salida', nextCantidad, sol.profesor_id, `Solicitud #${sol.id} aprobada`]
           );
         }
-
-        if (sol.disponibilidad_id) {
-          if (sol.disponibilidad_estado !== 'disponible') {
-            await client.query('ROLLBACK');
-            return NextResponse.json(
-              { error: 'El horario de sala ya no está disponible' },
-              { status: 400 }
-            );
-          }
-
-          await client.query(
-            `UPDATE disponibilidad
-             SET estado = 'separado',
-                 reservado_por = $1,
-                 motivo_reserva = $2,
-                 fecha_reserva = CURRENT_TIMESTAMP,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $3`,
-            [sol.profesor_id, comentarios || sol.motivo || `Solicitud #${sol.id} aprobada`, sol.disponibilidad_id]
-          );
-        }
       }
 
       const result = await client.query(
@@ -181,7 +149,7 @@ export async function PUT(
           [
             sol.profesor_id,
             sol.telefono,
-            `Tu solicitud #${sol.id} ${sol.item_nombre ? `de ${nextCantidad} ${sol.item_nombre}` : ''}${sol.sala_nombre ? ` para ${sol.sala_nombre} ${sol.dia_semana} ${sol.hora_inicio}-${sol.hora_fin}` : ''} fue ${nextEstado}.`,
+            `Tu solicitud #${sol.id} ${sol.item_nombre ? `de ${nextCantidad} ${sol.item_nombre}` : ''} fue ${nextEstado}.`,
             `solicitud_${nextEstado}`,
             sol.id,
             'pendiente',

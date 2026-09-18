@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   FiHome,
   FiFileText,
-  FiClock,
   FiUser,
   FiLogOut,
   FiShield,
@@ -15,7 +14,6 @@ import {
 const menuItems = [
   { href: '/profesor/dashboard', title: 'Dashboard', icon: FiHome },
   { href: '/profesor/solicitudes', title: 'Mis Solicitudes', icon: FiFileText },
-  { href: '/profesor/disponibilidad', title: 'Mi Disponibilidad', icon: FiClock },
   { href: '/profesor/perfil', title: 'Mi Perfil', icon: FiUser },
 ];
 

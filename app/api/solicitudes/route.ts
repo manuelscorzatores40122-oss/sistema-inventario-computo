@@ -11,15 +11,10 @@ export async function GET(request: NextRequest) {
     let sql = `SELECT s.*,
                       u.nombre as profesor_nombre,
                       u.apellido,
-                      i.nombre as item_nombre,
-                      d.sala_nombre,
-                      d.dia_semana,
-                      d.hora_inicio,
-                      d.hora_fin
+                      i.nombre as item_nombre
                FROM solicitudes s
                JOIN usuarios u ON s.profesor_id = u.id
                LEFT JOIN inventario i ON s.inventario_id = i.id
-               LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
                WHERE 1=1`;
     const params: any[] = [];
 
@@ -53,12 +48,12 @@ export async function GET(request: NextRequest) {
 // POST - Crear solicitud (profesor)
 export async function POST(request: NextRequest) {
   try {
-    const { profesor_id, inventario_id, disponibilidad_id, cantidad_solicitada, motivo } = await request.json();
+    const { profesor_id, inventario_id, cantidad_solicitada, motivo } = await request.json();
     const cantidad = inventario_id ? Number(cantidad_solicitada || 1) : 1;
 
-    if (!profesor_id || (!inventario_id && !disponibilidad_id) || !Number.isInteger(cantidad) || cantidad <= 0) {
+    if (!profesor_id || !inventario_id || !Number.isInteger(cantidad) || cantidad <= 0) {
       return NextResponse.json(
-        { error: 'Selecciona un artículo o un horario de sala válido' },
+        { error: 'Selecciona un artículo de inventario válido' },
         { status: 400 }
       );
     }
@@ -68,56 +63,32 @@ export async function POST(request: NextRequest) {
     try {
       await client.query('BEGIN');
 
-      let itemNombre = '';
+      const inventario = await client.query(
+        'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
+        [inventario_id, 'disponible']
+      );
 
-      if (inventario_id) {
-        const inventario = await client.query(
-          'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
-          [inventario_id, 'disponible']
+      if (inventario.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return NextResponse.json(
+          { error: 'Artículo no disponible' },
+          { status: 404 }
         );
-
-        if (inventario.rows.length === 0) {
-          await client.query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'Artículo no disponible' },
-            { status: 404 }
-          );
-        }
-
-        if (inventario.rows[0].cantidad_disponible < cantidad) {
-          await client.query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'No hay suficiente stock disponible' },
-            { status: 400 }
-          );
-        }
-
-        itemNombre = `${cantidad} ${inventario.rows[0].nombre}`;
       }
 
-      let salaDetalle = '';
-
-      if (disponibilidad_id) {
-        const disponibilidad = await client.query(
-          'SELECT id, sala_nombre, dia_semana, hora_inicio, hora_fin, estado FROM disponibilidad WHERE id = $1 FOR UPDATE',
-          [disponibilidad_id]
+      if (inventario.rows[0].cantidad_disponible < cantidad) {
+        await client.query('ROLLBACK');
+        return NextResponse.json(
+          { error: 'No hay suficiente stock disponible' },
+          { status: 400 }
         );
-
-        if (disponibilidad.rows.length === 0 || disponibilidad.rows[0].estado !== 'disponible') {
-          await client.query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'Horario de sala no disponible' },
-            { status: 400 }
-          );
-        }
-
-        const sala = disponibilidad.rows[0];
-        salaDetalle = `${sala.sala_nombre} ${sala.dia_semana} ${sala.hora_inicio}-${sala.hora_fin}`;
       }
+
+      const itemNombre = `${cantidad} ${inventario.rows[0].nombre}`;
 
       const result = await client.query(
-        'INSERT INTO solicitudes (profesor_id, inventario_id, disponibilidad_id, cantidad_solicitada, motivo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [profesor_id, inventario_id || null, disponibilidad_id || null, cantidad, motivo]
+        'INSERT INTO solicitudes (profesor_id, inventario_id, cantidad_solicitada, motivo) VALUES ($1, $2, $3, $4) RETURNING *',
+        [profesor_id, inventario_id, cantidad, motivo]
       );
 
       const admins = await client.query(
@@ -131,7 +102,7 @@ export async function POST(request: NextRequest) {
           [
             admin.id,
             admin.telefono,
-            `Nueva solicitud #${result.rows[0].id}: ${[itemNombre, salaDetalle].filter(Boolean).join(' + ')}`,
+            `Nueva solicitud #${result.rows[0].id}: ${itemNombre}`,
             'solicitud_creada',
             result.rows[0].id,
             'pendiente',

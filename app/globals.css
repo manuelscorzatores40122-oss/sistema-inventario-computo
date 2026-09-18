@@ -1022,21 +1022,3 @@ body {
 .btn-icon:disabled {
   opacity: 0.5;
 }
-
-.solicitud-card {
-  padding: 10px 12px;
-  border: 1px solid #fde68a;
-  border-radius: 12px;
-  background: #fffbeb;
-  cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-.solicitud-card:hover {
-  border-color: #f59e0b;
-  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.18);
-}
-
-.solicitud-card:active {
-  transform: scale(0.99);
-}

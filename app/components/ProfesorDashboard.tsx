@@ -4,13 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   FiFileText,
-  FiClock,
   FiUser,
   FiArrowRight,
   FiPackage,
-  FiCalendar,
   FiSend,
-  FiCheckCircle,
   FiAlertCircle,
 } from 'react-icons/fi';
 
@@ -21,19 +18,8 @@ interface Item {
   cantidad_disponible: number;
 }
 
-interface Disponibilidad {
-  id: number;
-  dia_semana: string;
-  hora_inicio: string;
-  hora_fin: string;
-  estado: string;
-  reservado_por_nombre?: string;
-  motivo_reserva?: string;
-}
-
 export default function ProfesorDashboard() {
   const [inventario, setInventario] = useState<Item[]>([]);
-  const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([]);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -57,19 +43,11 @@ export default function ProfesorDashboard() {
 
   const fetchData = async () => {
     try {
-      const [invRes, dispRes] = await Promise.all([
-        fetch('/api/inventario'),
-        fetch('/api/disponibilidad'),
-      ]);
+      const invRes = await fetch('/api/inventario');
 
       if (invRes.ok) {
         const invData = await invRes.json();
         setInventario(invData.items || []);
-      }
-
-      if (dispRes.ok) {
-        const dispData = await dispRes.json();
-        setDisponibilidades(dispData.disponibilidades || []);
       }
     } catch (error) {
       console.error('Error al obtener datos:', error);
@@ -143,26 +121,10 @@ export default function ProfesorDashboard() {
     }
   };
 
-  const diasSemana = [
-    'Lunes',
-    'Martes',
-    'Miércoles',
-    'Jueves',
-    'Viernes',
-  ];
-
   const totalDisponibles = inventario.reduce(
     (total, item) => total + item.cantidad_disponible,
     0
   );
-
-  const horariosDisponibles = disponibilidades.filter(
-    (d) => d.estado === 'disponible'
-  ).length;
-
-  const horariosSeparados = disponibilidades.filter(
-    (d) => d.estado === 'separado'
-  ).length;
 
   return (
     <div className="min-vh-100 bg-light">
@@ -172,7 +134,7 @@ export default function ProfesorDashboard() {
         {/* ACCESOS RÁPIDOS */}
         <div className="row g-4 mb-4">
 
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-6">
             <Link
               href="/profesor/solicitudes"
               className="text-decoration-none"
@@ -218,53 +180,7 @@ export default function ProfesorDashboard() {
             </Link>
           </div>
 
-          <div className="col-12 col-md-4">
-            <Link
-              href="/profesor/disponibilidad"
-              className="text-decoration-none"
-            >
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-4">
-
-                  <div className="d-flex justify-content-between align-items-start">
-
-                    <div>
-                      <div className="text-success small fw-bold text-uppercase mb-2">
-                        Horarios
-                      </div>
-
-                      <h2 className="h5 fw-bold text-dark mb-2">
-                        Mi disponibilidad
-                      </h2>
-
-                      <p className="text-secondary small mb-0">
-                        Administra tus horarios disponibles y
-                        reservados.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between mt-3">
-                    <div
-                      className="bg-success bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                      }}
-                    >
-                      <FiClock className="text-success" size={22} />
-                    </div>
-
-                    <FiArrowRight className="text-success" size={18} />
-                  </div>
-
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-6">
             <Link
               href="/profesor/perfil"
               className="text-decoration-none"
@@ -347,208 +263,7 @@ export default function ProfesorDashboard() {
             </div>
           </div>
 
-          <div className="col-12 col-md-4">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-
-                <div className="d-flex align-items-center justify-content-between">
-
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      <FiCalendar className="text-success" size={18} />
-                      <p className="small text-secondary mb-0">
-                        Horarios disponibles
-                      </p>
-                    </div>
-
-                    <h3 className="h3 fw-bold mb-0 text-dark">
-                      {loading ? '...' : horariosDisponibles}
-                    </h3>
-                  </div>
-
-                  <div
-                    className="rounded-3 d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success"
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <FiCheckCircle size={24} />
-                  </div>
-
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          <div className="col-12 col-md-4">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-
-                <div className="d-flex align-items-center justify-content-between">
-
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      <FiAlertCircle className="text-danger" size={18} />
-                      <p className="small text-secondary mb-0">
-                        Horarios reservados
-                      </p>
-                    </div>
-
-                    <h3 className="h3 fw-bold mb-0 text-dark">
-                      {loading ? '...' : horariosSeparados}
-                    </h3>
-                  </div>
-
-                  <div
-                    className="rounded-3 d-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger"
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <FiClock size={24} />
-                  </div>
-
-                </div>
-
-              </div>
-            </div>
-          </div>
-
         </div>
-
-        {/* DISPONIBILIDAD */}
-        <section className="card border-0 shadow-sm mb-4">
-
-          <div className="card-header bg-white border-bottom p-4">
-
-            <div className="d-flex flex-column flex-md-row justify-content-between gap-2">
-
-              <div>
-                <h2 className="h5 fw-bold text-dark mb-1">
-                  <FiClock className="text-primary me-2" size={20} />
-                  Mi disponibilidad
-                </h2>
-
-                <p className="small text-secondary mb-0">
-                  Consulta tus horarios de atención durante la semana.
-                </p>
-              </div>
-
-              <Link
-                href="/profesor/disponibilidad"
-                className="btn btn-outline-primary btn-sm align-self-start d-inline-flex align-items-center gap-2"
-              >
-                Administrar horarios
-                <FiArrowRight size={14} />
-              </Link>
-
-            </div>
-
-          </div>
-
-          <div className="card-body p-4">
-
-            <div className="row g-3">
-
-              {diasSemana.map((dia) => {
-
-                const horariosDia = disponibilidades.filter(
-                  (d) => d.dia_semana === dia
-                );
-
-                return (
-                  <div
-                    key={dia}
-                    className="col-12 col-sm-6 col-lg"
-                  >
-
-                    <div className="border rounded-3 h-100 bg-white">
-
-                      <div className="border-bottom px-3 py-3 d-flex align-items-center gap-2">
-                        <FiCalendar className="text-secondary" size={14} />
-                        <h3 className="h6 fw-bold mb-0">
-                          {dia}
-                        </h3>
-                      </div>
-
-                      <div className="p-3">
-
-                        {horariosDia.length === 0 ? (
-
-                          <div className="text-center py-3">
-                            <p className="small text-secondary mb-0">
-                              Sin horarios
-                            </p>
-                          </div>
-
-                        ) : (
-
-                          horariosDia.map((d) => (
-
-                            <div
-                              key={d.id}
-                              className={`rounded-3 p-3 mb-2 border ${
-                                d.estado === 'disponible'
-                                  ? 'border-success bg-success bg-opacity-10'
-                                  : 'border-danger bg-danger bg-opacity-10'
-                              }`}
-                            >
-
-                              <div className="d-flex justify-content-between align-items-center mb-2">
-
-                                <span className="fw-bold small">
-                                  {d.hora_inicio} - {d.hora_fin}
-                                </span>
-
-                                <span
-                                  className={`badge ${
-                                    d.estado === 'disponible'
-                                      ? 'text-bg-success'
-                                      : 'text-bg-danger'
-                                  }`}
-                                >
-                                  {d.estado === 'disponible'
-                                    ? 'Disponible'
-                                    : 'Reservado'}
-                                </span>
-
-                              </div>
-
-                              {d.estado === 'separado' && (
-                                <div className="small text-secondary">
-
-                                  {d.reservado_por_nombre && (
-                                    <div>
-                                      <strong>Reservado por:</strong>{' '}
-                                      {d.reservado_por_nombre}
-                                    </div>
-                                  )}
-
-                                  {d.motivo_reserva && (
-                                    <div className="mt-1">
-                                      <strong>Motivo:</strong>{' '}
-                                      {d.motivo_reserva}
-                                    </div>
-                                  )}
-
-                                </div>
-                              )}
-
-                            </div>
-
-                          ))
-
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                );
-              })}
-
-            </div>
-
-          </div>
-        </section>
 
         {/* SOLICITUD DE ARTÍCULOS */}
         <section className="card border-0 shadow-sm">
