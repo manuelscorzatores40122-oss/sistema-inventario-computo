@@ -13,6 +13,7 @@ import {
   FiLock,
   FiUnlock,
 } from 'react-icons/fi';
+import RealCalendar from './RealCalendar';
 
 type Disponibilidad = {
   id: number;
@@ -36,6 +37,16 @@ type Profesor = {
 type Message = { type: 'success' | 'error'; text: string } | null;
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+const DIAS_MAP: Record<string, number> = {
+  Lunes: 0,
+  Martes: 1,
+  Miércoles: 2,
+  Jueves: 3,
+  Viernes: 4,
+  Sábado: 5,
+  Domingo: 6,
+};
 
 export default function AdminHorarioView() {
   const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([]);
@@ -151,6 +162,21 @@ export default function AdminHorarioView() {
   const disponibles = disponibilidades.filter((d) => d.estado === 'disponible').length;
   const separados = disponibilidades.filter((d) => d.estado === 'separado').length;
 
+  const reservadosPorDia = Array.from(
+    new Set(
+      disponibilidades
+        .filter((d) => d.estado === 'separado')
+        .map((d) => DIAS_MAP[d.dia_semana])
+        .filter((idx) => idx !== undefined)
+    )
+  ).sort((a, b) => a - b);
+
+  const hoyIdx = (new Date().getDay() + 6) % 7;
+  const hoyNombre = DIAS[hoyIdx];
+  const reservasHoy = disponibilidades.filter(
+    (d) => d.estado === 'separado' && d.dia_semana === hoyNombre
+  ).length;
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {message && (
@@ -182,6 +208,8 @@ export default function AdminHorarioView() {
           Gestionar bloques disponibles
         </Link>
       </div>
+
+      <RealCalendar reservadosPorDia={reservadosPorDia} reservasHoy={reservasHoy} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="inventory-panel p-4 border-l-4 border-l-slate-700">
