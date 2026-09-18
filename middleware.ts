@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
 
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
   try {
@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
     // Verificamos si expiró
     const isExpired = decoded.exp * 1000 < Date.now();
     if (isExpired) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/auth/login', request.url));
     }
 
     // Verificamos permisos según la ruta
@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   } catch (error) {
     // Si el token es inválido (mal formado, etc.)
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 }
 
