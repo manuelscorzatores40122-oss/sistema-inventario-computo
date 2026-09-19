@@ -715,3 +715,50 @@
     font-size: 13px;
   }
 }
+
+
+/* ==================================================
+   ENLACES DEL PIE
+================================================== */
+
+.login-footer {
+  margin-top: 22px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.login-back-link,
+.login-register-link {
+  text-decoration: none;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* Volver: discreto */
+.login-back-link {
+  color: #6c757d;
+}
+
+.login-back-link:hover {
+  color: #343a40;
+  text-decoration: underline;
+}
+
+/* Registrarse: destacado sutilmente */
+.login-register-link {
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.login-register-link:hover {
+  color: #0b5ed7;
+  text-decoration: underline;
+}
+
+/* Separador */
+.login-footer-separator {
+  margin: 0 9px;
+  color: #ced4da;
+}

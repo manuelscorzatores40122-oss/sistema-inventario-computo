@@ -353,10 +353,18 @@ export default function Login() {
 
         <div className="login-footer">
           <a
-            href="https://tu-url.com"
-            className="login-back-button"
+            href="https://manuel-scorza-web-olive.vercel.app/"
+            className="login-back-link"
           >
             ← Volver
+          </a>
+
+          <span className="login-footer-separator">|</span>
+
+          <a
+            href="/auth/register"
+            className="login-register-link"
+          >
           </a>
         </div>
 
