@@ -642,3 +642,76 @@
 
 }
 
+/* ==================================================
+   BOTÓN VOLVER
+================================================== */
+
+.login-back-button {
+  width: 100%;
+  min-height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin-top: 12px;
+  padding: 10px 16px;
+
+  border: 1px solid #dee2e6;
+  border-radius: 9px;
+
+  background: #ffffff;
+  color: #495057;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+  text-decoration: none;
+
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Al pasar el mouse */
+.login-back-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #212529;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Al hacer clic */
+.login-back-button:active {
+  transform: translateY(0);
+
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Enlace visitado */
+.login-back-button:visited {
+  color: #495057;
+}
+
+/* ==================================================
+   BOTÓN VOLVER - MÓVIL
+================================================== */
+
+@media (max-width: 576px) {
+  .login-back-button {
+    min-height: 40px;
+    font-size: 13px;
+  }
+}

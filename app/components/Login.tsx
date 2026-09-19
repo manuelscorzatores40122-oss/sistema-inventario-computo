@@ -37,8 +37,7 @@ export default function Login() {
   const backgrounds = [
     '/fondo.jpeg',
     '/fondo3.jpeg',
-    '/fondo4.jp',
-    
+
 
   ];
 
@@ -64,7 +63,7 @@ export default function Login() {
 
         return next;
       });
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [backgrounds.length]);
@@ -353,9 +352,12 @@ export default function Login() {
         ==================================== */}
 
         <div className="login-footer">
-
-          Sistema de gestión para colegios
-
+          <a
+            href="https://tu-url.com"
+            className="login-back-button"
+          >
+            ← Volver
+          </a>
         </div>
 
       </section>
