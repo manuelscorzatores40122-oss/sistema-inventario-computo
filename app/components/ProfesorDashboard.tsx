@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   FiFileText,
@@ -9,6 +9,16 @@ import {
   FiPackage,
   FiSend,
   FiAlertCircle,
+  FiCheckCircle,
+  FiClock,
+  FiXCircle,
+  FiPlus,
+  FiMinus,
+  FiFilter,
+  FiCalendar,
+  FiTag,
+  FiTrendingUp,
+  FiStar,
 } from 'react-icons/fi';
 
 interface Item {
@@ -16,38 +26,64 @@ interface Item {
   nombre: string;
   categoria: string;
   cantidad_disponible: number;
+  cantidad_total: number;
+  estado: string;
+}
+
+interface Solicitud {
+  id: number;
+  item_nombre: string | null;
+  cantidad_solicitada: number;
+  motivo: string | null;
+  estado: string;
+  fecha_solicitud: string;
+  comentarios: string | null;
 }
 
 export default function ProfesorDashboard() {
   const [inventario, setInventario] = useState<Item[]>([]);
+  const [misSolicitudes, setMisSolicitudes] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [cantidad, setCantidad] = useState(1);
   const [motivo, setMotivo] = useState('');
+  const [alertNotice, setAlertNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
-
     if (userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        fetchData(parsed.id);
       } catch (error) {
         console.error('Error al leer usuario:', error);
+        fetchData();
       }
+    } else {
+      fetchData();
     }
-
-    fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (profesorId?: number) => {
+    setLoading(true);
     try {
       const invRes = await fetch('/api/inventario');
-
       if (invRes.ok) {
         const invData = await invRes.json();
         setInventario(invData.items || []);
+      }
+
+      const profId = profesorId || user?.id;
+      if (profId) {
+        const solRes = await fetch(`/api/solicitudes?profesor_id=${profId}`);
+        if (solRes.ok) {
+          const solData = await solRes.json();
+          setMisSolicitudes(solData.solicitudes || []);
+        }
       }
     } catch (error) {
       console.error('Error al obtener datos:', error);
@@ -56,32 +92,56 @@ export default function ProfesorDashboard() {
     }
   };
 
+  // Categories list
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    inventario.forEach((item) => {
+      if (item.categoria) set.add(item.categoria);
+    });
+    return ['Todas', ...Array.from(set)];
+  }, [inventario]);
+
+  // Filtered inventory items
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === 'Todas') return inventario;
+    return inventario.filter((item) => item.categoria === selectedCategory);
+  }, [inventario, selectedCategory]);
+
+  const itemSeleccionado = useMemo(() => {
+    return inventario.find((item) => item.id === selectedItem) || null;
+  }, [inventario, selectedItem]);
+
+  const maxStock = itemSeleccionado ? itemSeleccionado.cantidad_disponible : 1;
+
+  // Stats
+  const totalDisponibles = inventario.reduce(
+    (total, item) => total + (item.cantidad_disponible || 0),
+    0
+  );
+  const pendientesCount = misSolicitudes.filter((s) => s.estado === 'pendiente').length;
+  const aprobadasCount = misSolicitudes.filter((s) => s.estado === 'aprobada').length;
+
   const handleSolicitar = async () => {
     if (!selectedItem || !user) {
-      alert('Selecciona un artículo antes de continuar.');
+      setAlertNotice({ type: 'error', text: 'Selecciona un artículo antes de continuar.' });
       return;
     }
 
     if (cantidad < 1) {
-      alert('La cantidad debe ser mayor a 0.');
+      setAlertNotice({ type: 'error', text: 'La cantidad debe ser al menos 1.' });
       return;
     }
 
-    const itemSeleccionado = inventario.find(
-      (item) => item.id === selectedItem
-    );
-
-    if (
-      itemSeleccionado &&
-      cantidad > itemSeleccionado.cantidad_disponible
-    ) {
-      alert(
-        `Solo hay ${itemSeleccionado.cantidad_disponible} unidades disponibles.`
-      );
+    if (itemSeleccionado && cantidad > itemSeleccionado.cantidad_disponible) {
+      setAlertNotice({
+        type: 'error',
+        text: `Solo hay ${itemSeleccionado.cantidad_disponible} unidad(es) disponible(s).`,
+      });
       return;
     }
 
     setEnviando(true);
+    setAlertNotice(null);
 
     try {
       const response = await fetch('/api/solicitudes', {
@@ -93,380 +153,425 @@ export default function ProfesorDashboard() {
           profesor_id: user.id,
           inventario_id: selectedItem,
           cantidad_solicitada: cantidad,
-          motivo,
+          motivo: motivo.trim() || 'Uso docente en clase',
         }),
       });
 
       if (response.ok) {
-        alert('Solicitud creada exitosamente.');
+        setAlertNotice({
+          type: 'success',
+          text: '¡Solicitud registrada con éxito! Administración la evaluará a la brevedad.',
+        });
 
         setSelectedItem(null);
         setCantidad(1);
         setMotivo('');
 
-        fetchData();
+        // Refresh requests
+        if (user?.id) {
+          fetchData(user.id);
+        }
       } else {
         const data = await response.json().catch(() => null);
-
-        alert(
-          data?.message ||
-            'No se pudo crear la solicitud.'
-        );
+        setAlertNotice({
+          type: 'error',
+          text: data?.error || data?.message || 'No se pudo registrar la solicitud.',
+        });
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Ocurrió un error al enviar la solicitud.');
+      setAlertNotice({
+        type: 'error',
+        text: 'Ocurrió un error de conexión al enviar la solicitud.',
+      });
     } finally {
       setEnviando(false);
     }
   };
 
-  const totalDisponibles = inventario.reduce(
-    (total, item) => total + item.cantidad_disponible,
-    0
-  );
+  // Time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '¡Buenos días';
+    if (hour < 19) return '¡Buenas tardes';
+    return '¡Buenas noches';
+  };
+
+  const getFormattedDate = () => {
+    return new Date().toLocaleDateString('es-PE', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+  };
+
+  const motivosPredefinidos = [
+    'Clase práctica de cómputo',
+    'Examen / Evaluación',
+    'Presentación / Proyección',
+    'Taller docente',
+  ];
 
   return (
-    <div className="min-vh-100 bg-light">
-
-      <main className="container-xl py-4">
-
-        {/* ACCESOS RÁPIDOS */}
-        <div className="row g-4 mb-4">
-
-          <div className="col-12 col-md-6">
-            <Link
-              href="/profesor/solicitudes"
-              className="text-decoration-none"
-            >
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-4">
-
-                  <div className="d-flex justify-content-between align-items-start">
-
-                    <div>
-                      <div className="text-primary small fw-bold text-uppercase mb-2">
-                        Gestión
-                      </div>
-
-                      <h2 className="h5 fw-bold text-dark mb-2">
-                        Mis solicitudes
-                      </h2>
-
-                      <p className="text-secondary small mb-0">
-                        Revisa, crea y controla el estado de tus
-                        solicitudes de artículos.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between mt-3">
-                    <div
-                      className="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                      }}
-                    >
-                      <FiFileText className="text-primary" size={22} />
-                    </div>
-
-                    <FiArrowRight className="text-primary" size={18} />
-                  </div>
-
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          <div className="col-12 col-md-6">
-            <Link
-              href="/profesor/perfil"
-              className="text-decoration-none"
-            >
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-4">
-
-                  <div className="d-flex justify-content-between align-items-start">
-
-                    <div>
-                      <div className="text-secondary small fw-bold text-uppercase mb-2">
-                        Cuenta
-                      </div>
-
-                      <h2 className="h5 fw-bold text-dark mb-2">
-                        Mi Perfil
-                      </h2>
-
-                      <p className="text-secondary small mb-0">
-                        Ver mi información y cambiar
-                        credenciales de acceso.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between mt-3">
-                    <div
-                      className="bg-secondary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                      }}
-                    >
-                      <FiUser className="text-secondary" size={22} />
-                    </div>
-
-                    <FiArrowRight className="text-secondary" size={18} />
-                  </div>
-
-                </div>
-              </div>
-            </Link>
-          </div>
-
-        </div>
-
-        {/* ESTADÍSTICAS */}
-        <div className="row g-3 mb-4">
-
-          <div className="col-12 col-md-4">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-
-                <div className="d-flex align-items-center justify-content-between">
-
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      <FiPackage className="text-primary" size={18} />
-                      <p className="small text-secondary mb-0">
-                        Artículos disponibles
-                      </p>
-                    </div>
-
-                    <h3 className="h3 fw-bold mb-0 text-dark">
-                      {loading ? '...' : totalDisponibles}
-                    </h3>
-                  </div>
-
-                  <div
-                    className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary"
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <FiPackage size={24} />
-                  </div>
-
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* SOLICITUD DE ARTÍCULOS */}
-        <section className="card border-0 shadow-sm">
-
-          <div className="card-header bg-white border-bottom p-4">
-
+    <div className="min-vh-100 bg-slate-50">
+      <main className="container-xl py-3 py-md-4" style={{ maxWidth: '1080px' }}>
+        
+        {/* MOBILE HERO BANNER */}
+        <section className="mobile-hero-banner mb-3 mb-md-4">
+          <div className="d-flex justify-content-between align-items-start">
             <div>
-              <h2 className="h5 fw-bold text-dark mb-1">
-                <FiSend className="text-primary me-2" size={20} />
-                Solicitar artículos
-              </h2>
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <span className="badge bg-white bg-opacity-25 text-white text-capitalize px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                  <FiStar className="me-1" size={11} />
+                  Docente Activo
+                </span>
+                {user?.area && (
+                  <span className="badge bg-white bg-opacity-20 text-white px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                    {user.area}
+                  </span>
+                )}
+              </div>
 
-              <p className="small text-secondary mb-0">
-                Selecciona un artículo del inventario y registra tu
-                solicitud.
+              <h1 className="h4 fw-bold text-white mb-1">
+                {getGreeting()}, {user?.nombre ? `Prof. ${user.nombre}` : 'Profesor'}!
+              </h1>
+              
+              <p className="small text-white-50 mb-0 d-flex align-items-center gap-1 text-capitalize">
+                <FiCalendar size={13} />
+                {getFormattedDate()}
               </p>
             </div>
 
+            <div
+              className="rounded-circle bg-white bg-opacity-20 d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+              style={{ width: '48px', height: '48px', fontSize: '1.25rem', flexShrink: 0 }}
+            >
+              {user?.nombre ? user.nombre.charAt(0).toUpperCase() : 'P'}
+            </div>
+          </div>
+        </section>
+
+        {/* STATS TILES GRID */}
+        <div className="row g-2 g-md-3 mb-3 mb-md-4">
+          <div className="col-4">
+            <div className="mobile-stat-tile">
+              <div className="mobile-stat-icon bg-primary bg-opacity-10 text-primary">
+                <FiPackage size={18} />
+              </div>
+              <div className="mobile-stat-value">{loading ? '...' : totalDisponibles}</div>
+              <div className="mobile-stat-label">Disponibles</div>
+            </div>
           </div>
 
-          <div className="card-body p-4">
-
-            <div className="row g-4">
-
-              {/* ARTÍCULO */}
-              <div className="col-12 col-md-5">
-
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiPackage className="text-primary" size={16} />
-                  Artículo
-                </label>
-
-                <select
-                  value={selectedItem || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedItem(
-                      value ? Number(value) : null
-                    );
-                  }}
-                  className="form-select form-select-lg"
-                >
-
-                  <option value="">
-                    Seleccionar artículo
-                  </option>
-
-                  {inventario.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.id}
-                      disabled={item.cantidad_disponible <= 0}
-                    >
-                      {item.nombre} — {item.cantidad_disponible}{' '}
-                      disponibles
-                    </option>
-                  ))}
-
-                </select>
-
-                {selectedItem && (
-                  <div className="small text-secondary mt-2">
-                    {(() => {
-                      const item = inventario.find(
-                        (i) => i.id === selectedItem
-                      );
-
-                      if (!item) return null;
-
-                      return (
-                        <>
-                          Categoría:{' '}
-                          <strong>{item.categoria}</strong>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-
+          <div className="col-4">
+            <Link href="/profesor/solicitudes" className="text-decoration-none">
+              <div className="mobile-stat-tile">
+                <div className="mobile-stat-icon bg-warning bg-opacity-10 text-warning">
+                  <FiClock size={18} />
+                </div>
+                <div className="mobile-stat-value text-warning">{loading ? '...' : pendientesCount}</div>
+                <div className="mobile-stat-label">Pendientes</div>
               </div>
+            </Link>
+          </div>
 
-              {/* CANTIDAD */}
-              <div className="col-12 col-md-3">
-
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiAlertCircle className="text-primary" size={16} />
-                  Cantidad
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={cantidad}
-                  onChange={(e) => {
-                    const value = Number(e.target.value);
-
-                    setCantidad(
-                      value > 0 ? value : 1
-                    );
-                  }}
-                  className="form-control form-control-lg"
-                />
-
+          <div className="col-4">
+            <Link href="/profesor/solicitudes" className="text-decoration-none">
+              <div className="mobile-stat-tile">
+                <div className="mobile-stat-icon bg-success bg-opacity-10 text-success">
+                  <FiCheckCircle size={18} />
+                </div>
+                <div className="mobile-stat-value text-success">{loading ? '...' : aprobadasCount}</div>
+                <div className="mobile-stat-label">Aprobadas</div>
               </div>
+            </Link>
+          </div>
+        </div>
 
-              {/* MOTIVO */}
-              <div className="col-12 col-md-4">
-
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiFileText className="text-primary" size={16} />
-                  Motivo de solicitud
-                </label>
-
-                <input
-                  type="text"
-                  value={motivo}
-                  onChange={(e) =>
-                    setMotivo(e.target.value)
-                  }
-                  className="form-control form-control-lg"
-                  placeholder="Ej. Reparación de equipos"
-                />
-
+        {/* ACCESOS RÁPIDOS MÓVILES */}
+        <div className="row g-2 g-md-3 mb-3 mb-md-4">
+          <div className="col-12 col-md-6">
+            <Link href="/profesor/solicitudes" className="mobile-action-card">
+              <div className="action-icon-wrap bg-primary bg-opacity-10 text-primary">
+                <FiFileText size={22} />
               </div>
+              <div className="flex-grow-1 min-w-0">
+                <div className="d-flex align-items-center justify-content-between">
+                  <h2 className="h6 fw-bold text-dark mb-0">Mis Solicitudes</h2>
+                  {pendientesCount > 0 && (
+                    <span className="badge bg-warning text-dark rounded-pill px-2 py-1" style={{ fontSize: '0.65rem' }}>
+                      {pendientesCount} pendiente{pendientesCount > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                <p className="text-secondary small mb-0 text-truncate">
+                  Historial de préstamos y estado en tiempo real
+                </p>
+              </div>
+              <FiArrowRight className="text-primary flex-shrink-0" size={18} />
+            </Link>
+          </div>
 
+          <div className="col-12 col-md-6">
+            <Link href="/profesor/perfil" className="mobile-action-card">
+              <div className="action-icon-wrap bg-secondary bg-opacity-10 text-secondary">
+                <FiUser size={22} />
+              </div>
+              <div className="flex-grow-1 min-w-0">
+                <h2 className="h6 fw-bold text-dark mb-0">Mi Perfil & Seguridad</h2>
+                <p className="text-secondary small mb-0 text-truncate">
+                  DNI, contacto y cambio de clave
+                </p>
+              </div>
+              <FiArrowRight className="text-secondary flex-shrink-0" size={18} />
+            </Link>
+          </div>
+        </div>
+
+        {/* FEEDBACK NOTICE */}
+        {alertNotice && (
+          <div
+            className={`alert d-flex align-items-center gap-2 mb-3 rounded-3 shadow-sm ${
+              alertNotice.type === 'success'
+                ? 'alert-success border-success'
+                : 'alert-danger border-danger'
+            }`}
+            role="alert"
+          >
+            {alertNotice.type === 'success' ? (
+              <FiCheckCircle size={20} className="text-success flex-shrink-0" />
+            ) : (
+              <FiAlertCircle size={20} className="text-danger flex-shrink-0" />
+            )}
+            <div className="small fw-semibold">{alertNotice.text}</div>
+          </div>
+        )}
+
+        {/* SOLICITUD RÁPIDA DE ARTÍCULOS */}
+        <section className="card border-0 shadow-sm rounded-4 mb-4">
+          <div className="card-header bg-white border-bottom p-3 p-md-4">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <h2 className="h6 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                  <span className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '32px', height: '32px' }}>
+                    <FiSend size={16} />
+                  </span>
+                  Solicitar Artículo de Inventario
+                </h2>
+                <p className="small text-secondary mb-0">
+                  Selecciona el material necesario para tus clases.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-body p-3 p-md-4">
+            {/* Categorías pill horizontal scroll */}
+            <div className="mb-3">
+              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
+                <FiFilter size={12} />
+                Filtrar por categoría
+              </label>
+              <div className="mobile-pill-scroll">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`mobile-filter-pill ${selectedCategory === cat ? 'active' : ''}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* RESUMEN */}
-            {selectedItem && (
-              <div className="alert alert-primary mt-4 mb-0">
+            {/* Selector de artículo visual */}
+            <div className="mb-3">
+              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
+                <FiPackage size={12} />
+                Selecciona el equipo o accesorio
+              </label>
 
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+              {/* Selector desplegable estilizado */}
+              <select
+                value={selectedItem || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  setSelectedItem(val);
+                  setCantidad(1);
+                }}
+                className="form-select form-select-lg rounded-3 fw-semibold text-dark shadow-none border-slate-300"
+                style={{ fontSize: '0.95rem' }}
+              >
+                <option value="">-- Toca aquí para elegir un artículo --</option>
+                {filteredItems.map((item) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                    disabled={item.cantidad_disponible <= 0}
+                  >
+                    {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                  <div>
-
-                    <div className="fw-bold mb-1">
-                      Resumen de solicitud
-                    </div>
-
-                    <div className="small">
-                      {inventario.find(
-                        (item) => item.id === selectedItem
-                      )?.nombre}{' '}
-                      × {cantidad}
-                    </div>
-
-                  </div>
-
-                  <div className="small">
-                    Estado inicial:{' '}
-                    <strong>Pendiente de aprobación</strong>
-                  </div>
-
+            {/* DETALLES CUANDO HAY ARTÍCULO SELECCIONADO */}
+            {itemSeleccionado && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-3 mb-3 animate__animated animate__fadeIn">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="badge bg-primary text-white text-uppercase" style={{ fontSize: '0.65rem' }}>
+                    {itemSeleccionado.categoria}
+                  </span>
+                  <span className="small fw-bold text-primary">
+                    {itemSeleccionado.cantidad_disponible} unidades disponibles
+                  </span>
                 </div>
 
+                <div className="fw-bold text-dark h6 mb-3">
+                  {itemSeleccionado.nombre}
+                </div>
+
+                {/* STEPPER DE CANTIDAD TOUCH-FRIENDLY */}
+                <div className="d-flex flex-column flex-sm-row sm:align-items-center justify-content-between gap-3 pt-2 border-top border-blue-200">
+                  <div>
+                    <div className="small fw-bold text-slate-700">Cantidad a solicitar:</div>
+                    <div className="small text-slate-500" style={{ fontSize: '0.72rem' }}>
+                      Máximo disponible: {maxStock}
+                    </div>
+                  </div>
+
+                  <div className="mobile-stepper">
+                    <button
+                      type="button"
+                      className="mobile-stepper-btn"
+                      onClick={() => setCantidad((prev) => Math.max(1, prev - 1))}
+                      disabled={cantidad <= 1}
+                      title="Disminuir"
+                    >
+                      <FiMinus size={14} />
+                    </button>
+
+                    <span className="mobile-stepper-val">{cantidad}</span>
+
+                    <button
+                      type="button"
+                      className="mobile-stepper-btn"
+                      onClick={() => setCantidad((prev) => Math.min(maxStock, prev + 1))}
+                      disabled={cantidad >= maxStock}
+                      title="Aumentar"
+                    >
+                      <FiPlus size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* BOTONES */}
-            <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
+            {/* MOTIVO DE SOLICITUD */}
+            <div className="mb-3">
+              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
+                <FiTag size={12} />
+                Motivo / Justificación
+              </label>
 
-              <button
-                onClick={handleSolicitar}
-                disabled={
-                  !selectedItem ||
-                  loading ||
-                  enviando
-                }
-                className="btn btn-primary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
-              >
-                <FiSend size={18} />
-                {enviando
-                  ? 'Enviando solicitud...'
-                  : 'Enviar solicitud'}
-              </button>
+              {/* Chips de motivos rápidos */}
+              <div className="d-flex flex-wrap gap-1 mb-2">
+                {motivosPredefinidos.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setMotivo(preset)}
+                    className={`reason-preset-chip ${motivo === preset ? 'active' : ''}`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
 
-              <Link
-                href="/profesor/solicitudes"
-                className="btn btn-outline-secondary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
-              >
-                <FiFileText size={18} />
-                Ver mis solicitudes
-              </Link>
-
+              <input
+                type="text"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                className="form-control rounded-3 border-slate-300"
+                placeholder="Escribe el motivo o selecciona una sugerencia arriba..."
+                style={{ fontSize: '0.9rem', padding: '0.65rem 0.85rem' }}
+              />
             </div>
 
+            {/* BOTÓN ENVIAR */}
+            <button
+              onClick={handleSolicitar}
+              disabled={!selectedItem || loading || enviando}
+              className="btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+              style={{ fontSize: '0.95rem' }}
+            >
+              <FiSend size={18} />
+              {enviando ? 'Enviando solicitud...' : 'Enviar Solicitud'}
+            </button>
+          </div>
+        </section>
+
+        {/* FEED DE ÚLTIMAS SOLICITUDES RECIENTES */}
+        <section className="card border-0 shadow-sm rounded-4 mb-4">
+          <div className="card-header bg-white border-bottom p-3 p-md-4 d-flex align-items-center justify-content-between">
+            <h2 className="h6 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+              <span className="rounded-3 d-flex align-items-center justify-content-center bg-slate-100 text-slate-700" style={{ width: '32px', height: '32px' }}>
+                <FiClock size={16} />
+              </span>
+              Mis Solicitudes Recientes
+            </h2>
+
+            <Link href="/profesor/solicitudes" className="small fw-bold text-primary text-decoration-none d-flex align-items-center gap-1">
+              Ver todas
+              <FiArrowRight size={14} />
+            </Link>
           </div>
 
+          <div className="card-body p-3">
+            {loading ? (
+              <div className="text-center py-4 text-secondary">
+                <div className="spinner-border spinner-border-sm text-primary mb-2" role="status" />
+                <div className="small">Cargando tus solicitudes...</div>
+              </div>
+            ) : misSolicitudes.length === 0 ? (
+              <div className="text-center py-4 text-secondary">
+                <FiPackage className="text-slate-300 mb-2" size={32} />
+                <p className="small mb-0">Aún no has registrado solicitudes de material.</p>
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-2">
+                {misSolicitudes.slice(0, 3).map((sol) => (
+                  <div
+                    key={sol.id}
+                    className={`mobile-solicitud-card status-${sol.estado}`}
+                  >
+                    <div className="d-flex justify-content-between align-items-start mb-1">
+                      <div className="fw-bold text-dark text-truncate pe-2">
+                        {sol.item_nombre || 'Artículo sin especificar'}
+                      </div>
+                      <span className={`status-badge ${sol.estado}`}>
+                        {sol.estado}
+                      </span>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-content-between text-secondary small" style={{ fontSize: '0.75rem' }}>
+                      <div>
+                        Cant: <strong className="text-dark">{sol.cantidad_solicitada}</strong> • {sol.motivo || 'Sin motivo'}
+                      </div>
+                      <div className="text-slate-400">
+                        {new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
       </main>
-
-      {/* FOOTER */}
-      <footer className="container-xl py-4">
-
-        <div className="border-top pt-3 text-center">
-          <p className="small text-secondary mb-0">
-            Sistema de Inventario — Panel del Profesor
-          </p>
-        </div>
-
-      </footer>
-
     </div>
   );
 }

@@ -193,16 +193,19 @@ export function AdminInventarioView() {
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
 
-  const fetchItems = async () => {
-    setLoading(true);
-    const response = await fetch('/api/inventario?estado=todos');
-    const data = await response.json();
-    setItems(data.items || []);
-    setLoading(false);
+  const fetchItems = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
+    try {
+      const response = await fetch('/api/inventario?estado=todos');
+      const data = await response.json();
+      setItems(data.items || []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchItems().catch(() => setMessage({ type: 'error', text: 'Error al cargar inventario' }));
+    fetchItems(true).catch(() => setMessage({ type: 'error', text: 'Error al cargar inventario' }));
   }, []);
 
   const categoriasDisponibles = useMemo(() => {
@@ -242,10 +245,22 @@ export function AdminInventarioView() {
       return;
     }
 
+    const data = await response.json();
+    const savedItem = data.item as Item | undefined;
+
     setForm(empty);
     setEditingId(null);
     setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
-    fetchItems();
+
+    if (savedItem) {
+      setItems((prev) =>
+        editingId
+          ? prev.map((i) => (i.id === savedItem.id ? savedItem : i))
+          : [savedItem, ...prev]
+      );
+    } else {
+      fetchItems();
+    }
   };
 
   const edit = (item: Item) => {
@@ -259,7 +274,6 @@ export function AdminInventarioView() {
       ubicacion: item.ubicacion || '',
       estado: item.estado,
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const remove = async (id: number) => {
@@ -270,7 +284,7 @@ export function AdminInventarioView() {
       return;
     }
     setMessage({ type: 'success', text: 'Artículo eliminado correctamente' });
-    fetchItems();
+    setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
   return (
@@ -507,7 +521,6 @@ export function AdminProfesoresView() {
   const edit = (usuario: Usuario) => {
     setEditingId(usuario.id);
     setForm({ email: usuario.email, nombre: usuario.nombre, apellido: usuario.apellido, password: '', role: usuario.role, telefono: usuario.telefono || '', correo_personal: usuario.correo_personal || '', activo: usuario.activo });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deactivate = async (id: number) => {
@@ -922,6 +935,10 @@ export function ProfesorSolicitudesView() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [form, setForm] = useState({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
   const [message, setMessage] = useState<Message>(null);
+  const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'>('todas');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
     const [invRes, solRes] = await Promise.all([
@@ -938,26 +955,39 @@ export function ProfesorSolicitudesView() {
     fetchData().catch(() => setMessage({ type: 'error', text: 'Error al cargar solicitudes' }));
   }, []);
 
+  const selectedItemData = useMemo(() => {
+    return items.find((i) => i.id === form.inventario_id) || null;
+  }, [items, form.inventario_id]);
+
+  const maxStock = selectedItemData ? selectedItemData.cantidad_disponible : 1;
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!form.inventario_id) {
+      setMessage({ type: 'error', text: 'Por favor selecciona un artículo de inventario.' });
+      return;
+    }
+    setSubmitting(true);
     const response = await fetch('/api/solicitudes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, profesor_id: user?.id }),
     });
 
+    setSubmitting(false);
     if (!response.ok) {
       setMessage({ type: 'error', text: await readError(response) });
       return;
     }
 
     setForm({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
+    setShowNewForm(false);
     setMessage({ type: 'success', text: 'Solicitud enviada correctamente a administración' });
     fetchData();
   };
 
   const cancel = async (id: number) => {
-    if (!confirm('¿Seguro que deseas cancelar esta solicitud?')) return;
+    if (!confirm('¿Estás seguro de que deseas cancelar esta solicitud?')) return;
     const response = await fetch(`/api/solicitudes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -969,44 +999,282 @@ export function ProfesorSolicitudesView() {
       return;
     }
 
-    setMessage({ type: 'success', text: 'Solicitud cancelada' });
+    setMessage({ type: 'success', text: 'Solicitud cancelada correctamente' });
     fetchData();
   };
 
+  // Filtered requests
+  const filteredSolicitudes = useMemo(() => {
+    return solicitudes.filter((s) => {
+      const matchTab = activeTab === 'todas' ? true : s.estado === activeTab;
+      const matchSearch =
+        !searchQuery.trim() ||
+        (s.item_nombre && s.item_nombre.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (s.motivo && s.motivo.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchTab && matchSearch;
+    });
+  }, [solicitudes, activeTab, searchQuery]);
+
+  const counts = useMemo(() => {
+    return {
+      todas: solicitudes.length,
+      pendiente: solicitudes.filter((s) => s.estado === 'pendiente').length,
+      aprobada: solicitudes.filter((s) => s.estado === 'aprobada').length,
+      rechazada: solicitudes.filter((s) => s.estado === 'rechazada').length,
+      cancelada: solicitudes.filter((s) => s.estado === 'cancelada').length,
+    };
+  }, [solicitudes]);
+
+  const motivosPredefinidos = [
+    'Clase de Cómputo',
+    'Examen Escolar',
+    'Presentación',
+    'Taller Práctico',
+  ];
+
   return (
-    <PageShell title="Mis Solicitudes" subtitle="Solicita préstamos de artículos de inventario para tus clases.">
+    <PageShell title="Mis Solicitudes" subtitle="Revisa el estado de tus solicitudes de material o genera una nueva.">
       <Notice message={message} />
-      <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
-        <div className="md:col-span-4 border-b border-slate-200 pb-2">
-          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
-            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
-              <FiSend size={15} />
-            </span>
-            Nueva Solicitud de Préstamo
-          </h2>
+
+      {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowNewForm(!showNewForm)}
+            className={`${primaryButton} d-inline-flex align-items-center gap-2`}
+          >
+            {showNewForm ? <FiX size={16} /> : <FiPlus size={16} />}
+            {showNewForm ? 'Ocultar Formulario' : 'Nueva Solicitud'}
+          </button>
         </div>
-        <div>
-          <label className={label}>Artículo de Inventario</label>
-          <select className={input} value={form.inventario_id} onChange={(e) => setForm({ ...form, inventario_id: Number(e.target.value) })}>
-            <option value="0">Seleccionar artículo...</option>
-            {items.map((item) => (
-              <option key={item.id} value={item.id}>{item.nombre} (Disponibles: {item.cantidad_disponible})</option>
+
+        {/* SEARCH BAR */}
+        <div className="position-relative" style={{ minWidth: '240px' }}>
+          <FiSearch className="position-absolute text-secondary" size={15} style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text"
+            className="inventory-form-input ps-5"
+            placeholder="Buscar por artículo o motivo..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* NEW REQUEST FORM (COLLAPSIBLE / ACCORDION) */}
+      {showNewForm && (
+        <form onSubmit={submit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
+          <div className="border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-0">
+              <span className="rounded-3 d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '32px', height: '32px' }}>
+                <FiSend size={16} />
+              </span>
+              Registrar Nueva Solicitud
+            </h2>
+          </div>
+
+          <div className="row g-3">
+            <div className="col-12 col-md-6">
+              <label className={label}>Artículo de Inventario</label>
+              <select
+                className={`${input} fw-semibold`}
+                value={form.inventario_id}
+                onChange={(e) => {
+                  setForm({ ...form, inventario_id: Number(e.target.value), cantidad_solicitada: 1 });
+                }}
+                required
+              >
+                <option value="0">-- Seleccionar artículo --</option>
+                {items.map((item) => (
+                  <option key={item.id} value={item.id} disabled={item.cantidad_disponible <= 0}>
+                    {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-12 col-md-6">
+              <label className={label}>Cantidad a solicitar</label>
+              <div className="d-flex align-items-center gap-3">
+                <div className="mobile-stepper">
+                  <button
+                    type="button"
+                    className="mobile-stepper-btn"
+                    onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.max(1, prev.cantidad_solicitada - 1) }))}
+                    disabled={form.cantidad_solicitada <= 1 || !form.inventario_id}
+                  >
+                    -
+                  </button>
+                  <span className="mobile-stepper-val">{form.cantidad_solicitada}</span>
+                  <button
+                    type="button"
+                    className="mobile-stepper-btn"
+                    onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.min(maxStock, prev.cantidad_solicitada + 1) }))}
+                    disabled={form.cantidad_solicitada >= maxStock || !form.inventario_id}
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="text-secondary small">
+                  {selectedItemData ? `(De ${selectedItemData.cantidad_disponible} en stock)` : 'Selecciona un artículo primero'}
+                </span>
+              </div>
+            </div>
+
+            <div className="col-12">
+              <label className={label}>Motivo o justificación de la clase</label>
+              <div className="d-flex flex-wrap gap-1 mb-2">
+                {motivosPredefinidos.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setForm({ ...form, motivo: preset })}
+                    className={`reason-preset-chip ${form.motivo === preset ? 'active' : ''}`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <input
+                className={input}
+                value={form.motivo}
+                onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                placeholder="Ej. Clase de Computación 2do Grado o Examen Final"
+                required
+              />
+            </div>
+
+            <div className="col-12 d-flex gap-2 pt-2">
+              <button
+                className={`${primaryButton} d-inline-flex align-items-center gap-2`}
+                type="submit"
+                disabled={submitting || !form.inventario_id}
+              >
+                <FiSend size={15} />
+                {submitting ? 'Enviando...' : 'Enviar Solicitud'}
+              </button>
+              <button
+                type="button"
+                className={secondaryButton}
+                onClick={() => setShowNewForm(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* MOBILE SEGMENT / FILTER TABS */}
+      <div className="mobile-segment-control mb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('todas')}
+          className={`mobile-segment-tab ${activeTab === 'todas' ? 'active' : ''}`}
+        >
+          Todas ({counts.todas})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('pendiente')}
+          className={`mobile-segment-tab ${activeTab === 'pendiente' ? 'active' : ''}`}
+        >
+          ⏳ Pendientes ({counts.pendiente})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('aprobada')}
+          className={`mobile-segment-tab ${activeTab === 'aprobada' ? 'active' : ''}`}
+        >
+          ✅ Aprobadas ({counts.aprobada})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('rechazada')}
+          className={`mobile-segment-tab ${activeTab === 'rechazada' ? 'active' : ''}`}
+        >
+          ❌ Rechazadas ({counts.rechazada})
+        </button>
+      </div>
+
+      {/* MOBILE VIEW: NATIVE CARDS (VISIBLE ON PHONES) */}
+      <div className="d-block d-md-none">
+        {filteredSolicitudes.length === 0 ? (
+          <div className={`${panel} p-4 text-center text-secondary`}>
+            <FiInbox className="text-slate-300 mb-2" size={36} />
+            <p className="small mb-0">No se encontraron solicitudes para este filtro.</p>
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-2">
+            {filteredSolicitudes.map((sol) => (
+              <div
+                key={sol.id}
+                className={`mobile-solicitud-card status-${sol.estado}`}
+              >
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h3 className="h6 fw-bold text-dark mb-0">
+                      {sol.item_nombre || 'Artículo sin especificar'}
+                    </h3>
+                    <div className="small text-secondary" style={{ fontSize: '0.72rem' }}>
+                      <FiCalendar className="me-1" size={11} />
+                      {new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                  <span className={`status-badge ${sol.estado}`}>
+                    {sol.estado}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 rounded-3 p-2 mb-2">
+                  <div className="small text-dark mb-1">
+                    <span className="text-secondary fw-semibold">Cantidad: </span>
+                    <strong className="badge bg-primary text-white rounded-pill px-2">
+                      {sol.cantidad_solicitada} unidad{sol.cantidad_solicitada > 1 ? 'es' : ''}
+                    </strong>
+                  </div>
+                  <div className="small text-slate-700">
+                    <span className="text-secondary fw-semibold">Motivo: </span>
+                    {sol.motivo || 'Sin motivo especificado'}
+                  </div>
+                  {sol.comentarios && (
+                    <div className="small text-primary mt-1 border-top pt-1" style={{ fontSize: '0.75rem' }}>
+                      <strong>Nota de Administración: </strong>
+                      {sol.comentarios}
+                    </div>
+                  )}
+                </div>
+
+                {sol.estado === 'pendiente' && (
+                  <div className="d-flex justify-content-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => cancel(sol.id)}
+                      className="btn btn-outline-danger btn-sm py-1 px-3 fw-semibold d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: '0.78rem' }}
+                    >
+                      <FiXCircle size={13} />
+                      Cancelar Solicitud
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
-          </select>
-        </div>
-        <div>
-          <label className={label}>Cantidad</label>
-          <input className={input} type="number" min="1" value={form.cantidad_solicitada} onChange={(e) => setForm({ ...form, cantidad_solicitada: Number(e.target.value) })} disabled={!form.inventario_id} required={!!form.inventario_id} />
-        </div>
-        <div className="md:col-span-2">
-          <label className={label}>Motivo / Justificación de la clase</label>
-          <input className={input} value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} placeholder="Ej. Clase de Computación 2do Grado" required />
-        </div>
-        <div className="flex items-end">
-          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit"><FiSend size={14} />Enviar Solicitud</button>
-        </div>
-      </form>
-      <SolicitudesTable solicitudes={solicitudes} onCancel={cancel} />
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP VIEW: TABLE (VISIBLE ON TABLETS & DESKTOPS) */}
+      <div className="d-none d-md-block">
+        <SolicitudesTable solicitudes={filteredSolicitudes} onCancel={cancel} />
+      </div>
     </PageShell>
   );
 }
@@ -1058,13 +1326,32 @@ export function AdminPrestamosView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
+      const data = await response.json().catch(() => null);
       if (response.ok) {
-        const data = await response.json();
-        setMessage({ type: 'success', text: data.message || 'Préstamo registrado' });
+        setMessage({ type: 'success', text: data?.message || 'Préstamo registrado' });
+        if (data?.prestamo) {
+          const itemOrigen = items.find((i) => i.id === data.prestamo.inventario_id);
+          const profe = profesores.find((p) => p.id === data.prestamo.profesor_id);
+          setPrestamos((prev) => [
+            {
+              ...data.prestamo,
+              item_nombre: itemOrigen?.nombre || null,
+              categoria: itemOrigen?.categoria || null,
+              profesor_nombre: profe?.nombre || null,
+              apellido: profe?.apellido || null,
+            },
+            ...prev,
+          ]);
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === data.prestamo.inventario_id
+                ? { ...i, cantidad_disponible: i.cantidad_disponible - data.prestamo.cantidad }
+                : i
+            )
+          );
+        }
         setForm({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
-        await fetchData();
       } else {
-        const data = await response.json().catch(() => null);
         setMessage({ type: 'error', text: data?.error || 'No se pudo registrar el préstamo' });
       }
     } catch (error) {
@@ -1082,7 +1369,23 @@ export function AdminPrestamosView() {
       const response = await fetch(`/api/prestamos/${id}`, { method: 'PUT' });
       if (response.ok) {
         setMessage({ type: 'success', text: 'Equipo entregado, vuelve a estar disponible en el inventario' });
-        await fetchData();
+        const prestamo = prestamos.find((p) => p.id === id);
+        setPrestamos((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, estado: 'devuelto', fecha_devolucion: new Date().toISOString() }
+              : p
+          )
+        );
+        if (prestamo) {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === prestamo.inventario_id
+                ? { ...i, cantidad_disponible: i.cantidad_disponible + prestamo.cantidad }
+                : i
+            )
+          );
+        }
       } else {
         const data = await response.json().catch(() => null);
         setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como entregado' });
@@ -1100,7 +1403,7 @@ export function AdminPrestamosView() {
     const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
     if (response.ok) {
       setMessage({ type: 'success', text: 'Registro eliminado' });
-      fetchData();
+      setPrestamos((prev) => prev.filter((p) => p.id !== id));
     } else {
       const data = await response.json().catch(() => null);
       setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar el registro' });
@@ -1110,6 +1413,7 @@ export function AdminPrestamosView() {
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
   const list = tab === 'prestado' ? activos : devueltos;
+  const itemsDisponibles = items.filter((i) => i.cantidad_disponible > 0);
 
   return (
     <PageShell title="Préstamos de Equipos" subtitle="Registra qué equipo se presta a cada profesor; al devolverlo queda Entregado y vuelve al inventario.">
@@ -1128,7 +1432,7 @@ export function AdminPrestamosView() {
           <label className={label}>Equipo / Artículo</label>
           <select className={input} value={form.inventario_id} onChange={(e) => setForm({ ...form, inventario_id: Number(e.target.value) })}>
             <option value="0">Seleccionar equipo...</option>
-            {items.map((item) => (
+            {itemsDisponibles.map((item) => (
               <option key={item.id} value={item.id}>{item.nombre} (Disponibles: {item.cantidad_disponible})</option>
             ))}
           </select>

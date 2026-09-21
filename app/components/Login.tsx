@@ -36,9 +36,9 @@ export default function Login() {
 
   const backgrounds = [
     '/fondo.jpeg',
+    '/fondo2.jpg',
     '/fondo3.jpeg',
-
-
+    '/fondo4.jpg',
   ];
 
   const [currentBackground, setCurrentBackground] = useState(0);
@@ -227,7 +227,7 @@ export default function Login() {
           </h1>
 
           <p className="login-subtitle">
-            Sistema de Inventarios
+            Sistema de gestión del aula de computo
           </p>
 
         </div>
@@ -360,12 +360,7 @@ export default function Login() {
           </a>
 
           <span className="login-footer-separator">|</span>
-
-          <a
-            href="/auth/register"
-            className="login-register-link"
-          >
-          </a>
+          <span className="small text-secondary">Sistema de gestión del aula de cómputo</span>
         </div>
 
       </section>
