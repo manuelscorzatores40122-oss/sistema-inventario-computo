@@ -46,16 +46,16 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className="position-fixed top-0 start-0 h-100 bg-dark text-white d-flex flex-column"
+      className="position-fixed top-0 start-0 h-100 d-flex flex-column admin-sidebar"
       style={{
         width: '260px',
         zIndex: 1000,
       }}
     >
-      <div className="p-4 border-bottom border-secondary">
+      <div className="sidebar-header">
         <div className="d-flex align-items-center mb-2">
           <div
-            className="rounded-3 bg-primary d-flex align-items-center justify-content-center me-3"
+            className="rounded-3 d-flex align-items-center justify-content-center me-3 sidebar-brand-icon"
             style={{ width: '38px', height: '38px', flexShrink: 0 }}
           >
             <FiShield size={20} />
@@ -63,15 +63,15 @@ export default function AdminSidebar() {
           <h2 className="h6 fw-bold mb-0">Sistema de Inventario</h2>
         </div>
 
-        <p className="text-secondary small mb-0 ps-1">
+        <p className="text-secondary small mb-0 ps-1" style={{ color: 'var(--color-slate-400)' }}>
           Panel de Administración
         </p>
       </div>
 
-      <div className="p-4 border-bottom border-secondary">
+      <div className="p-4 border-bottom" style={{ borderColor: 'var(--color-slate-800)' }}>
         <div className="d-flex align-items-center">
           <div
-            className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold me-3 text-white"
+            className="rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 sidebar-brand-icon"
             style={{
               width: '42px',
               height: '42px',
@@ -86,7 +86,7 @@ export default function AdminSidebar() {
               {user?.nombre || 'Administrador'}
             </div>
 
-            <div className="text-secondary small">
+            <div className="small" style={{ color: 'var(--color-slate-400)' }}>
               Administrador
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-grow-1 overflow-auto py-3">
-        <div className="text-uppercase text-secondary small fw-bold px-4 mb-3">
+        <div className="text-uppercase small fw-bold px-4 mb-3" style={{ color: 'var(--color-slate-500)', letterSpacing: '0.05em' }}>
           Menú Principal
         </div>
 
@@ -106,22 +106,7 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`d-flex align-items-center rounded-3 mx-3 px-3 py-2.5 mb-2 text-decoration-none small font-semibold ${
-                active ? 'text-white bg-primary' : 'text-white-50'
-              }`}
-              style={{ transition: 'background-color 0.2s, color 0.2s' }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = '#343a40';
-                  e.currentTarget.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.55)';
-                }
-              }}
+              className={`sidebar-nav-item ${active ? 'active' : ''}`}
             >
               <Icon
                 className="me-3"
@@ -134,22 +119,13 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-top border-secondary">
+      <div className="p-3 border-top" style={{ borderColor: 'var(--color-slate-800)' }}>
         <button
-          className="d-flex align-items-center w-100 bg-transparent border-0 text-white-50 small text-start px-3 py-2.5 rounded-3 text-decoration-none"
-          style={{ transition: 'background-color 0.2s, color 0.2s' }}
+          className="sidebar-footer-btn"
           onClick={() => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/auth/login';
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#343a40';
-            e.currentTarget.style.color = '#ffffff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.55)';
           }}
         >
           <FiLogOut className="me-3" size={17} style={{ flexShrink: 0 }} />

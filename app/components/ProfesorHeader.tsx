@@ -38,18 +38,18 @@ export default function ProfesorHeader() {
       : pathname.startsWith(href);
 
   return (
-    <header className="bg-dark text-white shadow-sm">
+    <header className="profesor-header shadow-sm">
       <div className="container-xl py-3">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
           <div className="d-flex align-items-center">
             <div
-              className="bg-primary rounded-3 d-flex align-items-center justify-content-center me-3"
+              className="sidebar-brand-icon rounded-3 d-flex align-items-center justify-content-center me-3"
               style={{ width: '40px', height: '40px' }}
             >
               <FiShield size={22} />
             </div>
             <div>
-              <div className="text-uppercase small text-secondary fw-bold mb-1">
+              <div className="text-uppercase small fw-bold mb-1" style={{ color: 'var(--color-slate-400)' }}>
                 Sistema de Inventario
               </div>
 
@@ -68,20 +68,7 @@ export default function ProfesorHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`d-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none small fw-semibold ${
-                    active ? 'bg-primary text-white' : 'text-white-50'
-                  }`}
-                  style={{ transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = '#343a40';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
+                  className={`header-nav-item ${active ? 'active' : ''}`}
                 >
                   <Icon size={16} />
                   {item.title}
@@ -89,19 +76,19 @@ export default function ProfesorHeader() {
               );
             })}
 
-            <div className="d-flex align-items-center gap-2 ms-2 border-start border-secondary ps-3">
+            <div className="d-flex align-items-center gap-2 ms-2 border-start ps-3" style={{ borderColor: 'var(--color-slate-800)' }}>
               <div className="text-end d-none d-sm-block">
                 <div className="fw-semibold small">
                   {user?.nombre || 'Profesor'}
                 </div>
 
-                <div className="small text-white-50">
+                <div className="small" style={{ color: 'var(--color-slate-400)' }}>
                   Profesor
                 </div>
               </div>
 
               <div
-                className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold text-white"
+                className="rounded-circle sidebar-brand-icon d-flex align-items-center justify-content-center fw-bold"
                 style={{
                   width: '42px',
                   height: '42px',
@@ -114,19 +101,12 @@ export default function ProfesorHeader() {
               </div>
 
               <button
-                className="text-white-50 bg-transparent border-0"
-                style={{ padding: '6px', borderRadius: '8px' }}
+                className="header-btn"
                 title="Cerrar sesión"
                 onClick={() => {
                   localStorage.removeItem('token');
                   localStorage.removeItem('user');
                   window.location.href = '/auth/login';
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#343a40';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
                 <FiLogOut size={18} />

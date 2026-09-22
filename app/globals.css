@@ -798,9 +798,119 @@ body {
   .h1,
   .h2,
   .h3 {
-    font-size: calc(1.3rem + 0.25vw);
+    font-size: 1.5rem;
   }
+}
 
+/* ==========================================================================
+   Navigation (Sidebar & Header) Professional Styles
+   ========================================================================== */
+
+.admin-sidebar {
+  background-color: var(--color-slate-900);
+  color: #ffffff;
+  border-right: 1px solid var(--color-slate-800);
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-slate-800);
+}
+
+.sidebar-brand-icon {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  margin: 0.25rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-slate-300);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--color-slate-800);
+  color: #ffffff;
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.sidebar-footer-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-slate-300);
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar-footer-btn:hover {
+  background-color: var(--color-slate-800);
+  color: #ffffff;
+}
+
+.profesor-header {
+  background-color: var(--color-slate-900);
+  color: #ffffff;
+  border-bottom: 1px solid var(--color-slate-800);
+}
+
+.header-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-slate-300);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.header-nav-item:hover {
+  background-color: var(--color-slate-800);
+  color: #ffffff;
+}
+
+.header-nav-item.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.header-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-slate-300);
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.header-btn:hover {
+  background-color: var(--color-slate-800);
+  color: #ffffff;
+}
+
+@media (max-width: 575.98px) {
   .mobile-bottom-nav .mb-nav-label {
     font-size: 0.6rem;
   }
