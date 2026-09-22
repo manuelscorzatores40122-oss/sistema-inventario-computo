@@ -1,0 +1,396 @@
+/* =========================================================
+   Dashboard del profesor — mobile-first
+   Las variables (--surface, --c-coral, …) vienen de ProfesorShell.
+   < 640px : una columna
+   ≥ 640px : accesos en dos columnas
+   ≥ 960px : bento (resumen grande a la izquierda, accesos a la derecha)
+   ========================================================= */
+
+.root {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  padding-bottom: calc(clamp(1rem, 3vw, 2.5rem) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Resumen (tarjeta naranja) ---------- */
+.hero {
+  min-height: 190px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, var(--c-coral) 0%, var(--c-orange) 100%);
+  color: #3d0f00; /* contraste AA sobre el degradado */
+}
+
+.heroCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroTitulo {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.heroIcono {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-cream);
+  color: var(--c-ink);
+}
+
+.heroNumero {
+  margin: 0;
+  font-size: clamp(3.5rem, 12vw, 5.5rem);
+  font-weight: 300; /* Roboto Light, como en la referencia */
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #6b1700;
+}
+
+.heroCaption {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+/* ---------- Accesos rápidos ---------- */
+.acceso {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.acceso:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.kicker {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.kickerDestacado {
+  color: var(--c-rust);
+}
+
+.accesoTitulo {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.15rem, 2.5vw, 1.375rem);
+  font-weight: 500;
+}
+
+.accesoTexto {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+
+.accesoPie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.iconTile {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--c-peach);
+  color: var(--c-brown);
+}
+
+.flecha {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-cream);
+  color: var(--c-ink);
+}
+
+/* ---------- Formulario ---------- */
+.formHeader {
+  padding: clamp(1.25rem, 3vw, 1.75rem) clamp(1.25rem, 3vw, 1.75rem) 0;
+}
+
+.formTitulo {
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: clamp(1.15rem, 2.5vw, 1.375rem);
+  font-weight: 500;
+}
+
+.formTitulo svg {
+  color: var(--c-brown);
+}
+
+.formSubtitulo {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+
+.formBody {
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.campos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.campo {
+  min-width: 0; /* evita desbordes dentro del grid */
+}
+
+.label {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.label svg {
+  color: var(--c-brown);
+}
+
+.control {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.6rem 0.9rem;
+  font: inherit;
+  font-size: 1rem; /* 16px: evita el zoom automático en iOS */
+  color: var(--text);
+  background: var(--c-cream);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.control:focus-visible {
+  outline: 3px solid rgba(139, 69, 19, 0.3);
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+
+.control::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.ayuda {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ---------- Resumen y mensajes ---------- */
+.resumen,
+.feedback {
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+}
+
+.resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--c-peach);
+  color: #3b2300;
+}
+
+.resumenTitulo {
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+}
+
+.feedbackExito {
+  background: #dde8c9;
+  color: #24401a;
+}
+
+.feedbackError {
+  background: #f5cfc2;
+  color: #6b1700;
+}
+
+/* ---------- Botones ---------- */
+.acciones {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.btn {
+  min-height: var(--tap);
+  padding: 0.6rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btnPrimary {
+  background: var(--c-coral);
+  color: var(--c-ink); /* el blanco no da contraste sobre el coral */
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--c-orange);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--field-border);
+}
+
+.btnOutline:hover {
+  background: var(--surface-hover);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Pie ---------- */
+.footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* =========================================================
+   Tablet ≥ 640px
+   ========================================================= */
+@media (min-width: 640px) {
+  .bento {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hero,
+  .formCard {
+    grid-column: 1 / -1;
+  }
+
+  .campos {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .campoArticulo {
+    grid-column: 1 / -1;
+  }
+
+  .resumen {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .acciones {
+    flex-direction: row;
+  }
+
+  .btn {
+    width: auto;
+  }
+}
+
+/* =========================================================
+   Escritorio ≥ 960px
+   ========================================================= */
+@media (min-width: 960px) {
+  .bento {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  /* El resumen ocupa la altura de las dos tarjetas de acceso */
+  .hero {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .campos {
+    grid-template-columns: 5fr 3fr 4fr;
+  }
+
+  .campoArticulo {
+    grid-column: auto;
+  }
+}
+
+/* Hover solo con mouse */
+@media (hover: hover) and (pointer: fine) {
+  .acceso:hover {
+    background: var(--surface-hover);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acceso,
+  .btn,
+  .control {
+    transition: none;
+  }
+}

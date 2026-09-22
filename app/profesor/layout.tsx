@@ -1,22 +1,12 @@
-import ProfesorHeader from '@/app/components/ProfesorHeader';
-import ProfesorBottomNav from '@/app/components/ProfesorBottomNav';
-import MobileTopBar from '@/app/components/MobileTopBar';
+import type { ReactNode } from 'react';
+import ProfesorShell from '../components/ProfesorShell';
+import ProfesorBottomNav from '../components/ProfesorBottomNav';
 
-export default function ProfesorLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ProfesorLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-vh-100 bg-light pb-nav-mobile">
-      <div className="d-lg-none">
-        <MobileTopBar />
-      </div>
-      <div className="d-none d-lg-block">
-        <ProfesorHeader />
-      </div>
+    <ProfesorShell>
       {children}
       <ProfesorBottomNav />
-    </div>
+    </ProfesorShell>
   );
 }

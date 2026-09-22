@@ -1,0 +1,294 @@
+/* =========================================================
+   Cabecera del Profesor — mobile-first
+   < 640px  : logo + título + "Hola, nombre" · avatar · salir
+   640–959  : igual, con nombre y rol junto al avatar
+   ≥ 960px  : logo · usuario + salir (izquierda) · navegación en píldora (derecha)
+   (En móvil/tablet la navegación la da la barra inferior)
+   ========================================================= */
+
+.header {
+  --h-bg: #12161d;
+  --h-surface: rgba(255, 255, 255, 0.06);
+  --h-line: rgba(255, 255, 255, 0.1);
+  --h-text: #f8fafc;
+  --h-muted: #9aa4b2;
+  --h-primary: #0d6efd;
+  --h-focus: #6ea8fe;
+  --gutter: clamp(1rem, 3vw, 2rem);
+
+  color: var(--h-text);
+}
+
+.barra {
+  background: var(--h-bg);
+  border-bottom: 1px solid var(--h-line);
+  padding-top: env(safe-area-inset-top, 0px); /* notch */
+}
+
+.container {
+  max-width: 1200px;
+  min-height: 64px;
+  margin-inline: auto;
+  padding: 0.625rem max(var(--gutter), env(safe-area-inset-right, 0px)) 0.625rem
+    max(var(--gutter), env(safe-area-inset-left, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* ---------- Marca ---------- */
+.brand {
+  flex: 1;
+  min-width: 0; /* deja que el texto se recorte en vez de empujar al avatar */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--h-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px rgba(13, 110, 253, 0.35);
+}
+
+.brandTexto {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.titulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  font-size: 0.8rem;
+  line-height: 1.2;
+  color: var(--h-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subEscritorio {
+  display: none;
+}
+
+/* ---------- Navegación (solo escritorio) ---------- */
+.nav {
+  display: none;
+}
+
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  display: flex;
+  gap: 2px;
+  background: var(--h-surface);
+  border: 1px solid var(--h-line);
+  border-radius: 14px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 40px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  color: var(--h-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.linkActivo {
+  background: var(--h-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(13, 110, 253, 0.4);
+}
+
+/* ---------- Usuario ---------- */
+.usuario {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usuarioInfo {
+  display: none;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.usuarioNombre {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.usuarioRol {
+  font-size: 0.75rem;
+  color: var(--h-muted);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--h-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  /* anillo: separa el avatar del fondo y lo hace el foco visual */
+  box-shadow: 0 0 0 2px var(--h-bg), 0 0 0 4px rgba(13, 110, 253, 0.55);
+}
+
+.logout {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--h-muted);
+  background: transparent;
+  border: 1px solid var(--h-line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.logoutTexto {
+  display: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.logout:active {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+/* ---------- Foco visible ---------- */
+.link:focus-visible,
+.logout:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: 2px;
+}
+
+/* Hover solo con mouse (en táctil se quedaba "pegado") */
+@media (hover: hover) and (pointer: fine) {
+  .link:not(.linkActivo):hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+
+  .logout:hover {
+    color: #fca5a5; /* rojo suave: avisa que es una acción de salida */
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+  }
+}
+
+/* =========================================================
+   Tablet ≥ 640px
+   ========================================================= */
+@media (min-width: 640px) {
+  .subMovil {
+    display: none;
+  }
+
+  .subEscritorio {
+    display: block;
+  }
+
+  .usuarioInfo {
+    display: block;
+  }
+}
+
+/* =========================================================
+   Escritorio ≥ 960px
+   ========================================================= */
+@media (min-width: 960px) {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  .container {
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 1.5rem;
+  }
+
+  .titulo {
+    font-size: 1.25rem;
+  }
+
+  /* Usuario + salir junto a la marca, separados por una línea */
+  .usuario {
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--h-line);
+  }
+
+  .nav {
+    display: block;
+    justify-self: end;
+  }
+
+  .usuarioInfo {
+    display: none; /* poco espacio entre 960 y 1100px */
+  }
+
+  .logout {
+    width: 40px;
+    height: 40px;
+    border-color: transparent;
+  }
+}
+
+@media (min-width: 1100px) {
+  .usuarioInfo {
+    display: block;
+  }
+
+  .logout {
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.9rem;
+    border-color: var(--h-line);
+  }
+
+  .logoutTexto {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .logout {
+    transition: none;
+  }
+}
