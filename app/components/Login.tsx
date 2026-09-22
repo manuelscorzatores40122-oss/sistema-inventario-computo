@@ -223,12 +223,10 @@ export default function Login() {
           </div>
 
           <h1 className="login-title">
-            Colegio
+            Manuel Scorza Torres
           </h1>
 
-          <p className="login-subtitle">
-            Sistema de Inventarios
-          </p>
+
 
         </div>
 
@@ -365,6 +363,7 @@ export default function Login() {
             href="/auth/register"
             className="login-register-link"
           >
+            
           </a>
         </div>
 

@@ -1,15 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import {
-  FiHome,
-  FiFileText,
-  FiUser,
-  FiLogOut,
-  FiShield,
-} from 'react-icons/fi';
+import { FiHome, FiFileText, FiUser, FiLogOut, FiShield } from 'react-icons/fi';
+
+import styles from './ProfesorHeader.module.css';
+import { useProfesorHeader } from './useProfesorHeader';
 
 const menuItems = [
   { href: '/profesor/dashboard', title: 'Dashboard', icon: FiHome },
@@ -18,122 +13,69 @@ const menuItems = [
 ];
 
 export default function ProfesorHeader() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const data = localStorage.getItem('user');
-    if (data) {
-      try {
-        setUser(JSON.parse(data));
-      } catch (error) {
-        console.error('Error al leer usuario:', error);
-      }
-    }
-  }, []);
-
-  const isActive = (href: string) =>
-    href === '/profesor/dashboard'
-      ? pathname === href
-      : pathname.startsWith(href);
+  const { nombre, primerNombre, inicial, isActive, cerrarSesion } = useProfesorHeader();
 
   return (
-    <header className="bg-dark text-white shadow-sm">
-      <div className="container-xl py-3">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-          <div className="d-flex align-items-center">
-            <div
-              className="bg-primary rounded-3 d-flex align-items-center justify-content-center me-3"
-              style={{ width: '40px', height: '40px' }}
-            >
-              <FiShield size={22} />
-            </div>
-            <div>
-              <div className="text-uppercase small text-secondary fw-bold mb-1">
-                Sistema de Inventario
-              </div>
+    <header className={styles.header}>
+      <div className={styles.panel}>
+        {/* MARCA */}
 
-              <h1 className="h4 fw-bold mb-0">
-                Panel del Profesor
-              </h1>
-            </div>
+
+        
+        <div className={styles.brand}>
+          <div className={styles.logo}>
+            <img
+              src="/logo.png"
+              alt="Logo del colegio"
+              className={styles.logoImagen}
+            />
           </div>
 
-          <nav className="d-flex flex-wrap align-items-center gap-1">
-            {menuItems.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
+          <div className={styles.brandTexto}>
+            <h1 className={styles.titulo}>Panel del Profesor</h1>
+            <span className={`${styles.sub} ${styles.subMovil}`}>Hola, {primerNombre}</span>
+            <span className={`${styles.sub} ${styles.subEscritorio}`}>Sistema de Inventario</span>
+          </div>
+        </div>
+
+
+        {/* NAVEGACIÓN (barra lateral en escritorio; en móvil la da la barra inferior) */}
+        <nav className={styles.nav} aria-label="Principal">
+          <ul className={styles.links}>
+            {menuItems.map(({ href, title, icon: Icon }) => {
+              const active = isActive(href);
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`d-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none small fw-semibold ${
-                    active ? 'bg-primary text-white' : 'text-white-50'
-                  }`}
-                  style={{ transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = '#343a40';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <Icon size={16} />
-                  {item.title}
-                </Link>
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`${styles.link} ${active ? styles.linkActivo : ''}`}
+                  >
+                    <span className={styles.linkIcono}>
+                      <Icon size={18} aria-hidden="true" />
+                    </span>
+                    <span>{title}</span>
+                  </Link>
+                </li>
               );
             })}
+          </ul>
+        </nav>
 
-            <div className="d-flex align-items-center gap-2 ms-2 border-start border-secondary ps-3">
-              <div className="text-end d-none d-sm-block">
-                <div className="fw-semibold small">
-                  {user?.nombre || 'Profesor'}
-                </div>
-
-                <div className="small text-white-50">
-                  Profesor
-                </div>
-              </div>
-
-              <div
-                className="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold text-white"
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  fontSize: '16px',
-                }}
-              >
-                {user?.nombre
-                  ? user.nombre.charAt(0).toUpperCase()
-                  : 'P'}
-              </div>
-
-              <button
-                className="text-white-50 bg-transparent border-0"
-                style={{ padding: '6px', borderRadius: '8px' }}
-                title="Cerrar sesión"
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/auth/login';
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#343a40';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <FiLogOut size={18} />
-              </button>
-            </div>
-          </nav>
-        </div>
+        {/* SALIR */}
+        <button
+          type="button"
+          className={styles.logout}
+          title="Cerrar sesión"
+          aria-label="Salir"
+          onClick={cerrarSesion}
+        >
+          <span className={styles.logoutIcono}>
+            <FiLogOut size={20} aria-hidden="true" />
+          </span>
+          <span className={styles.logoutTexto}>Salir</span>
+        </button>
       </div>
     </header>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   FiFileText,
@@ -11,302 +11,265 @@ import {
   FiAlertCircle,
 } from 'react-icons/fi';
 
-interface Item {
-  id: number;
-  nombre: string;
-  categoria: string;
-  cantidad_disponible: number;
+import styles from './ProfesorDashboard.module.css';
+import { useProfesorDashboard } from './useProfesorDashboard';
+
+/* ============================================================
+   TARJETA DE ACCESO RÁPIDO
+============================================================ */
+
+interface AccesoProps {
+  href: string;
+  kicker: string;
+  titulo: string;
+  descripcion: string;
+  icono: ReactNode;
+  destacado?: boolean;
 }
 
+function AccesoRapido({
+  href,
+  kicker,
+  titulo,
+  descripcion,
+  icono,
+  destacado,
+}: AccesoProps) {
+  return (
+    <Link
+      href={href}
+      className={`${styles.card} ${styles.acceso}`}
+    >
+      <div>
+        <div
+          className={`${styles.kicker} ${
+            destacado ? styles.kickerDestacado : ''
+          }`}
+        >
+          {kicker}
+        </div>
+
+        <h2 className={styles.accesoTitulo}>
+          {titulo}
+        </h2>
+
+        <p className={styles.accesoTexto}>
+          {descripcion}
+        </p>
+      </div>
+
+      <div className={styles.accesoPie}>
+        <div className={styles.iconTile}>
+          {icono}
+        </div>
+
+        <div className={styles.flecha}>
+          <FiArrowRight
+            size={18}
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ============================================================
+   DASHBOARD DEL PROFESOR
+============================================================ */
+
 export default function ProfesorDashboard() {
-  const [inventario, setInventario] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [selectedItem, setSelectedItem] = useState<number | null>(null);
-  const [cantidad, setCantidad] = useState(1);
-  const [motivo, setMotivo] = useState('');
+  /* ----------------------------------------------------------
+     NOMBRE DEL PROFESOR
+
+     Importante:
+     NO leemos localStorage durante el render.
+     Esto evita el error de hidratación de Next.js.
+  ---------------------------------------------------------- */
+
+  const [primerNombre, setPrimerNombre] =
+    useState('Profesor');
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error('Error al leer usuario:', error);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
     try {
-      const invRes = await fetch('/api/inventario');
+      const usuarioGuardado =
+        localStorage.getItem('user');
 
-      if (invRes.ok) {
-        const invData = await invRes.json();
-        setInventario(invData.items || []);
+      if (!usuarioGuardado) {
+        return;
       }
-    } catch (error) {
-      console.error('Error al obtener datos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleSolicitar = async () => {
-    if (!selectedItem || !user) {
-      alert('Selecciona un artículo antes de continuar.');
-      return;
-    }
+      const usuario = JSON.parse(usuarioGuardado);
 
-    if (cantidad < 1) {
-      alert('La cantidad debe ser mayor a 0.');
-      return;
-    }
+      const nombre =
+        usuario?.nombre ||
+        usuario?.name ||
+        usuario?.nombres ||
+        usuario?.nombre_completo ||
+        '';
 
-    const itemSeleccionado = inventario.find(
-      (item) => item.id === selectedItem
-    );
-
-    if (
-      itemSeleccionado &&
-      cantidad > itemSeleccionado.cantidad_disponible
-    ) {
-      alert(
-        `Solo hay ${itemSeleccionado.cantidad_disponible} unidades disponibles.`
-      );
-      return;
-    }
-
-    setEnviando(true);
-
-    try {
-      const response = await fetch('/api/solicitudes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          profesor_id: user.id,
-          inventario_id: selectedItem,
-          cantidad_solicitada: cantidad,
-          motivo,
-        }),
-      });
-
-      if (response.ok) {
-        alert('Solicitud creada exitosamente.');
-
-        setSelectedItem(null);
-        setCantidad(1);
-        setMotivo('');
-
-        fetchData();
-      } else {
-        const data = await response.json().catch(() => null);
-
-        alert(
-          data?.message ||
-            'No se pudo crear la solicitud.'
+      if (nombre) {
+        setPrimerNombre(
+          String(nombre).trim().split(' ')[0]
         );
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Ocurrió un error al enviar la solicitud.');
-    } finally {
-      setEnviando(false);
+      console.error(
+        'Error leyendo usuario:',
+        error
+      );
     }
-  };
+  }, []);
 
-  const totalDisponibles = inventario.reduce(
-    (total, item) => total + item.cantidad_disponible,
-    0
-  );
+  /* ----------------------------------------------------------
+     DATOS DEL DASHBOARD
+  ---------------------------------------------------------- */
+
+  const {
+    inventario,
+    loading,
+    enviando,
+    selectedItem,
+    itemSeleccionado,
+    cantidad,
+    motivo,
+    feedback,
+    totalDisponibles,
+    puedeEnviar,
+    seleccionarItem,
+    cambiarCantidad,
+    setMotivo,
+    enviarSolicitud,
+  } = useProfesorDashboard();
+
+  /* ----------------------------------------------------------
+     RENDER
+  ---------------------------------------------------------- */
 
   return (
-    <div className="min-vh-100 bg-light">
+    <div className={styles.root}>
+      <main className={styles.bento}>
 
-      <main className="container-xl py-4">
 
-        {/* ACCESOS RÁPIDOS */}
-        <div className="row g-4 mb-4">
+        {/* ==================================================
+      {/* ==================================================
+          MI PERFIL
+      ================================================== */}
 
-          <div className="col-12 col-md-6">
-            <Link
-              href="/profesor/solicitudes"
-              className="text-decoration-none"
-            >
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-4">
+      <Link
+        href="/profesor/perfil"
+        className={styles.heroLink}
+        aria-label="Ir a Mi Perfil"
+      >
+        <section
+          className={styles.hero}
+          aria-label="Mi Perfil"
+        >
+          <div className={styles.heroCabecera}>
+            <h2 className={styles.heroTitulo}>
+              Mi Perfil
+            </h2>
 
-                  <div className="d-flex justify-content-between align-items-start">
-
-                    <div>
-                      <div className="text-primary small fw-bold text-uppercase mb-2">
-                        Gestión
-                      </div>
-
-                      <h2 className="h5 fw-bold text-dark mb-2">
-                        Mis solicitudes
-                      </h2>
-
-                      <p className="text-secondary small mb-0">
-                        Revisa, crea y controla el estado de tus
-                        solicitudes de artículos.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between mt-3">
-                    <div
-                      className="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                      }}
-                    >
-                      <FiFileText className="text-primary" size={22} />
-                    </div>
-
-                    <FiArrowRight className="text-primary" size={18} />
-                  </div>
-
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          <div className="col-12 col-md-6">
-            <Link
-              href="/profesor/perfil"
-              className="text-decoration-none"
-            >
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-4">
-
-                  <div className="d-flex justify-content-between align-items-start">
-
-                    <div>
-                      <div className="text-secondary small fw-bold text-uppercase mb-2">
-                        Cuenta
-                      </div>
-
-                      <h2 className="h5 fw-bold text-dark mb-2">
-                        Mi Perfil
-                      </h2>
-
-                      <p className="text-secondary small mb-0">
-                        Ver mi información y cambiar
-                        credenciales de acceso.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between mt-3">
-                    <div
-                      className="bg-secondary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                      }}
-                    >
-                      <FiUser className="text-secondary" size={22} />
-                    </div>
-
-                    <FiArrowRight className="text-secondary" size={18} />
-                  </div>
-
-                </div>
-              </div>
-            </Link>
-          </div>
-
-        </div>
-
-        {/* ESTADÍSTICAS */}
-        <div className="row g-3 mb-4">
-
-          <div className="col-12 col-md-4">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-
-                <div className="d-flex align-items-center justify-content-between">
-
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      <FiPackage className="text-primary" size={18} />
-                      <p className="small text-secondary mb-0">
-                        Artículos disponibles
-                      </p>
-                    </div>
-
-                    <h3 className="h3 fw-bold mb-0 text-dark">
-                      {loading ? '...' : totalDisponibles}
-                    </h3>
-                  </div>
-
-                  <div
-                    className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary"
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <FiPackage size={24} />
-                  </div>
-
-                </div>
-
-              </div>
+            <div className={styles.heroIcono}>
+              <FiUser
+                size={22}
+                aria-hidden="true"
+              />
             </div>
           </div>
 
-        </div>
+          <div>
+            <p className={styles.heroNumero}>
+              {primerNombre}
+            </p>
 
-        {/* SOLICITUD DE ARTÍCULOS */}
-        <section className="card border-0 shadow-sm">
+            <p className={styles.heroCaption}>
+              Ver y administrar mi cuenta
+            </p>
+          </div>
+        </section>
+      </Link>
+        <AccesoRapido
+          href="/profesor/solicitudes"
+          kicker="Gestión"
+          titulo="Mis solicitudes"
+          descripcion="Revisa, crea y controla el estado de tus solicitudes de artículos."
+          icono={
+            <FiFileText
+              size={22}
+              aria-hidden="true"
+            />
+          }
+          destacado
+        />
 
-          <div className="card-header bg-white border-bottom p-4">
 
-            <div>
-              <h2 className="h5 fw-bold text-dark mb-1">
-                <FiSend className="text-primary me-2" size={20} />
-                Solicitar artículos
-              </h2>
+        {/* ==================================================
+            SOLICITAR ARTÍCULOS
+        =================================================== */}
 
-              <p className="small text-secondary mb-0">
-                Selecciona un artículo del inventario y registra tu
-                solicitud.
-              </p>
-            </div>
+        <section
+          className={`${styles.card} ${styles.formCard}`}
+        >
+          {/* CABECERA */}
 
+          <div className={styles.formHeader}>
+            <h2 className={styles.formTitulo}>
+              <FiSend
+                size={20}
+                aria-hidden="true"
+              />
+
+              Solicitar artículos
+            </h2>
+
+            <p className={styles.formSubtitulo}>
+              Selecciona un artículo del inventario
+              y registra tu solicitud.
+            </p>
           </div>
 
-          <div className="card-body p-4">
+          {/* FORMULARIO */}
 
-            <div className="row g-4">
+          <form
+            className={styles.formBody}
+            onSubmit={(e) => {
+              e.preventDefault();
+              enviarSolicitud();
+            }}
+            noValidate
+          >
+            <div className={styles.campos}>
 
-              {/* ARTÍCULO */}
-              <div className="col-12 col-md-5">
+              {/* ==========================================
+                  ARTÍCULO
+              =========================================== */}
 
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiPackage className="text-primary" size={16} />
+              <div
+                className={`${styles.campo} ${styles.campoArticulo}`}
+              >
+                <label
+                  htmlFor="articulo"
+                  className={styles.label}
+                >
+                  <FiPackage
+                    size={16}
+                    aria-hidden="true"
+                  />
+
                   Artículo
                 </label>
 
                 <select
-                  value={selectedItem || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedItem(
-                      value ? Number(value) : null
-                    );
-                  }}
-                  className="form-select form-select-lg"
+                  id="articulo"
+                  value={selectedItem ?? ''}
+                  onChange={(e) =>
+                    seleccionarItem(
+                      e.target.value
+                    )
+                  }
+                  className={styles.control}
                 >
-
                   <option value="">
                     Seleccionar artículo
                   </option>
@@ -315,126 +278,158 @@ export default function ProfesorDashboard() {
                     <option
                       key={item.id}
                       value={item.id}
-                      disabled={item.cantidad_disponible <= 0}
+                      disabled={
+                        item.cantidad_disponible <= 0
+                      }
                     >
-                      {item.nombre} — {item.cantidad_disponible}{' '}
+                      {item.nombre} —{' '}
+                      {item.cantidad_disponible}{' '}
                       disponibles
                     </option>
                   ))}
-
                 </select>
 
-                {selectedItem && (
-                  <div className="small text-secondary mt-2">
-                    {(() => {
-                      const item = inventario.find(
-                        (i) => i.id === selectedItem
-                      );
+                {itemSeleccionado && (
+                  <p className={styles.ayuda}>
+                    Categoría:{' '}
 
-                      if (!item) return null;
-
-                      return (
-                        <>
-                          Categoría:{' '}
-                          <strong>{item.categoria}</strong>
-                        </>
-                      );
-                    })()}
-                  </div>
+                    <strong>
+                      {itemSeleccionado.categoria}
+                    </strong>
+                  </p>
                 )}
-
               </div>
 
-              {/* CANTIDAD */}
-              <div className="col-12 col-md-3">
+              {/* ==========================================
+                  CANTIDAD
+              =========================================== */}
 
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiAlertCircle className="text-primary" size={16} />
+              <div className={styles.campo}>
+                <label
+                  htmlFor="cantidad"
+                  className={styles.label}
+                >
+                  <FiAlertCircle
+                    size={16}
+                    aria-hidden="true"
+                  />
+
                   Cantidad
                 </label>
 
                 <input
+                  id="cantidad"
                   type="number"
-                  min="1"
+                  inputMode="numeric"
+                  min={1}
+                  max={
+                    itemSeleccionado?.cantidad_disponible
+                  }
                   value={cantidad}
-                  onChange={(e) => {
-                    const value = Number(e.target.value);
-
-                    setCantidad(
-                      value > 0 ? value : 1
-                    );
-                  }}
-                  className="form-control form-control-lg"
+                  onChange={(e) =>
+                    cambiarCantidad(
+                      e.target.value
+                    )
+                  }
+                  className={styles.control}
                 />
-
               </div>
 
-              {/* MOTIVO */}
-              <div className="col-12 col-md-4">
+              {/* ==========================================
+                  MOTIVO
+              =========================================== */}
 
-                <label className="form-label fw-semibold d-flex align-items-center gap-2">
-                  <FiFileText className="text-primary" size={16} />
+              <div className={styles.campo}>
+                <label
+                  htmlFor="motivo"
+                  className={styles.label}
+                >
+                  <FiFileText
+                    size={16}
+                    aria-hidden="true"
+                  />
+
                   Motivo de solicitud
                 </label>
 
                 <input
+                  id="motivo"
                   type="text"
                   value={motivo}
                   onChange={(e) =>
                     setMotivo(e.target.value)
                   }
-                  className="form-control form-control-lg"
+                  className={styles.control}
                   placeholder="Ej. Reparación de equipos"
                 />
-
               </div>
-
             </div>
 
-            {/* RESUMEN */}
-            {selectedItem && (
-              <div className="alert alert-primary mt-4 mb-0">
+            {/* ==================================================
+                RESUMEN
+            =================================================== */}
 
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            {itemSeleccionado && (
+              <div className={styles.resumen}>
+                <div>
+                  <div
+                    className={
+                      styles.resumenTitulo
+                    }
+                  >
+                    Resumen de solicitud
+                  </div>
 
                   <div>
-
-                    <div className="fw-bold mb-1">
-                      Resumen de solicitud
-                    </div>
-
-                    <div className="small">
-                      {inventario.find(
-                        (item) => item.id === selectedItem
-                      )?.nombre}{' '}
-                      × {cantidad}
-                    </div>
-
+                    {itemSeleccionado.nombre} ×{' '}
+                    {cantidad}
                   </div>
-
-                  <div className="small">
-                    Estado inicial:{' '}
-                    <strong>Pendiente de aprobación</strong>
-                  </div>
-
                 </div>
 
+                <div>
+                  Estado inicial:{' '}
+
+                  <strong>
+                    Pendiente de aprobación
+                  </strong>
+                </div>
               </div>
             )}
 
-            {/* BOTONES */}
-            <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
+            {/* ==================================================
+                MENSAJE
+            =================================================== */}
+
+            {feedback && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`${styles.feedback} ${
+                  feedback.tipo === 'exito'
+                    ? styles.feedbackExito
+                    : styles.feedbackError
+                }`}
+              >
+                {feedback.texto}
+              </div>
+            )}
+
+            {/* ==================================================
+                BOTONES
+            =================================================== */}
+
+            <div className={styles.acciones}>
 
               <button
-                onClick={handleSolicitar}
-                disabled={
-                  !selectedItem ||
-                  loading ||
-                  enviando
-                }
-                className="btn btn-primary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
+                type="submit"
+                disabled={!puedeEnviar}
+                className={`${styles.btn} ${styles.btnPrimary}`}
               >
-                <FiSend size={18} />
+                <FiSend
+                  size={18}
+                  aria-hidden="true"
+                />
+
                 {enviando
                   ? 'Enviando solicitud...'
                   : 'Enviar solicitud'}
@@ -442,31 +437,28 @@ export default function ProfesorDashboard() {
 
               <Link
                 href="/profesor/solicitudes"
-                className="btn btn-outline-secondary btn-lg px-4 fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
+                className={`${styles.btn} ${styles.btnOutline}`}
               >
-                <FiFileText size={18} />
+                <FiFileText
+                  size={18}
+                  aria-hidden="true"
+                />
+
                 Ver mis solicitudes
               </Link>
 
             </div>
-
-          </div>
-
+          </form>
         </section>
-
       </main>
 
-      {/* FOOTER */}
-      <footer className="container-xl py-4">
+      {/* ======================================================
+          FOOTER
+      ======================================================= */}
 
-        <div className="border-top pt-3 text-center">
-          <p className="small text-secondary mb-0">
-            Sistema de Inventario — Panel del Profesor
-          </p>
-        </div>
-
+      <footer className={styles.footer}>
+        Sistema de Inventario — Panel del Profesor
       </footer>
-
     </div>
   );
 }

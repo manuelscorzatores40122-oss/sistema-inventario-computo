@@ -1,0 +1,64 @@
+/* =========================================================
+   Marco del panel del profesor + paleta
+   Móvil: columna (barra superior, contenido)
+   ≥ 960px: barra lateral de 264px + contenido
+   ========================================================= */
+
+.shell {
+  /* ---- Paleta (tomada de la referencia) ---- */
+  --c-coral: #ff7f50;
+  --c-orange: #e06236;
+  --c-rust: #952200;
+  --c-brown: #8b4513;
+  --c-peach: #ffd09b;
+  --c-cream: #f7eddd;
+  --c-sand: #ede3d3;
+  --c-sand-dark: #e2d6c0;
+  --c-taupe: #c4bba8;
+  --c-ink: #2b2b2b;
+
+  /* ---- Roles ---- */
+  --bg: var(--c-cream);
+  --surface: var(--c-sand);
+  --surface-hover: var(--c-sand-dark);
+  --text: var(--c-ink);
+  --muted: #6b5f4e;
+  --line: var(--c-taupe);
+  --field-border: #8f8571;
+  --focus: var(--c-brown);
+
+  /* ---- Medidas ---- */
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 12px;
+  --gutter: clamp(1rem, 3vw, 2rem);
+  --gap: clamp(0.75rem, 2vw, 1.25rem);
+  --tap: 48px;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.contenido {
+  flex: 1;
+  min-width: 0; /* evita que tablas/inputs desborden la columna */
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 960px) {
+  .shell {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+    align-items: start; /* permite que la barra lateral sea sticky */
+  }
+
+  .contenido {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}

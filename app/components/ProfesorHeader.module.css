@@ -1,0 +1,308 @@
+/* =========================================================
+   Cabecera / barra lateral del profesor
+   < 960px : barra superior compacta (marca · perfil · salir)
+   ≥ 960px : barra lateral (marca, perfil, navegación, salir abajo)
+   Las variables (--bg, --surface, …) vienen de ProfesorShell.
+   ========================================================= */
+
+.header {
+  background: var(--bg);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top, 0px); /* notch */
+}
+
+.panel {
+  min-height: 64px;
+  padding: 0.625rem max(var(--gutter), env(safe-area-inset-right, 0px)) 0.625rem
+    max(var(--gutter), env(safe-area-inset-left, 0px));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ---------- Marca ---------- */
+.brand {
+  flex: 1;
+  min-width: 0; /* el texto se recorta con "…" en vez de empujar al perfil */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+
+.brandTexto {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.titulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  font-size: 0.8rem;
+  line-height: 1.2;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subEscritorio {
+  display: none;
+}
+
+/* ---------- Perfil ---------- */
+.perfil {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-peach);
+  color: var(--c-brown);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.perfilInfo {
+  display: none;
+  line-height: 1.25;
+}
+
+.perfilNombre {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.perfilRol {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ---------- Navegación (solo escritorio) ---------- */
+.nav {
+  display: none;
+}
+
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.linkIcono {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  transition: background-color 0.2s ease;
+}
+
+.linkActivo {
+  font-weight: 700;
+}
+
+.linkActivo .linkIcono {
+  background: var(--c-coral);
+}
+
+/* ---------- Salir ---------- */
+.logout {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.logoutIcono {
+  display: grid;
+  place-items: center;
+}
+
+.logoutTexto {
+  display: none;
+}
+
+.logout:active {
+  background: var(--c-peach);
+}
+
+/* ---------- Foco visible ---------- */
+.link:focus-visible,
+.logout:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   Tablet ≥ 640px
+   ========================================================= */
+@media (min-width: 640px) {
+  .subMovil {
+    display: none;
+  }
+
+  .subEscritorio {
+    display: block;
+  }
+
+  .perfilInfo {
+    display: block;
+  }
+}
+
+/* =========================================================
+   Escritorio ≥ 960px — barra lateral
+   ========================================================= */
+@media (min-width: 960px) {
+  .header {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    padding-top: 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+
+  .panel {
+    min-height: 100%;
+    padding: 2rem 1.5rem calc(2rem + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .brand {
+    flex: none;
+    margin-bottom: 2rem;
+  }
+
+  .perfil {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 1.5rem;
+  }
+
+  .perfilNombre {
+    font-size: 1rem;
+  }
+
+  .nav {
+    display: block;
+  }
+
+  /* "Salir" al fondo, alineado con los iconos de la navegación */
+  .logout {
+    width: auto;
+    height: auto;
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.25rem;
+    background: transparent;
+  }
+
+  .logoutIcono {
+    width: 40px;
+    height: 40px;
+  }
+
+  .logoutTexto {
+    display: inline;
+  }
+
+  .logout:active {
+    background: transparent;
+  }
+}
+
+/* Hover solo con mouse (en táctil se quedaba "pegado") */
+@media (hover: hover) and (pointer: fine) {
+  .link:not(.linkActivo):hover .linkIcono {
+    background: var(--surface-hover);
+  }
+
+  .logout:hover {
+    background: var(--surface-hover);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 960px) {
+  .logout:hover {
+    background: transparent;
+    color: var(--c-rust);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linkIcono,
+  .logout {
+    transition: none;
+  }
+}
+
+
+
+.logoImagen {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
+}
