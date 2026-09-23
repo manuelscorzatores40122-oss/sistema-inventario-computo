@@ -1,16 +1,21 @@
 {
-  "name": "Sistema Inventario",
+  "name": "Sistema de Inventario",
   "short_name": "Inventario",
-  "description": "Sistema de autenticación e inventarios para colegio",
+  "description": "Sistema de autenticación e inventarios para el colegio",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "/favicon.ico",
+      "src": "/logo.png",
       "sizes": "192x192",
-      "type": "image/x-icon"
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

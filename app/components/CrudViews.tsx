@@ -49,6 +49,47 @@ type Usuario = {
   fecha_creacion?: string | null;
 };
 
+function useConfirmDialog() {
+  const [config, setConfig] = useState<{ isOpen: boolean; message: string; onConfirm: () => void; isDanger?: boolean } | null>(null);
+
+  const confirm = (message: string, onConfirm: () => void, isDanger = true) => {
+    setConfig({ isOpen: true, message, onConfirm, isDanger });
+  };
+
+  const close = () => setConfig(null);
+
+  const ConfirmComponent = () => {
+    if (!config || !config.isOpen) return null;
+    return (
+      <div className="position-fixed w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', zIndex: 9999, backdropFilter: 'blur(2px)' }}>
+        <div className="bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp animate__faster" style={{ maxWidth: '400px', width: '90%' }}>
+          <div className="p-4 border-bottom d-flex align-items-center gap-3">
+            <div className={`p-2 rounded-circle ${config.isDanger ? 'bg-danger bg-opacity-10 text-danger' : 'bg-primary bg-opacity-10 text-primary'}`}>
+              <FiAlertTriangle size={22} />
+            </div>
+            <h3 className="h6 fw-bold text-dark mb-0">Confirmación</h3>
+          </div>
+          <div className="p-4 text-secondary small" style={{ fontSize: '0.9rem' }}>
+            {config.message}
+          </div>
+          <div className="p-3 bg-light border-top d-flex justify-content-end gap-2">
+            <button onClick={close} className="btn btn-light border fw-semibold text-secondary btn-sm px-3">
+              Cancelar
+            </button>
+            <button onClick={() => { config.onConfirm(); close(); }} className={`btn ${config.isDanger ? 'btn-danger' : 'btn-primary'} fw-bold btn-sm px-4`}>
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return { confirmDialog: confirm, ConfirmComponent };
+}
+
+// ... rest of the types
+
 type Item = {
   id: number;
   nombre: string;
@@ -192,6 +233,9 @@ export function AdminInventarioView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
+  const [customCategorias, setCustomCategorias] = useState<string[]>([]);
+
+  const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchItems = async (showLoader = false) => {
     if (showLoader) setLoading(true);
@@ -210,8 +254,8 @@ export function AdminInventarioView() {
 
   const categoriasDisponibles = useMemo(() => {
     const list = items.map((i) => i.categoria).filter(Boolean);
-    return Array.from(new Set(list));
-  }, [items]);
+    return Array.from(new Set([...list, ...customCategorias])).sort();
+  }, [items, customCategorias]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -265,6 +309,7 @@ export function AdminInventarioView() {
 
   const edit = (item: Item) => {
     setEditingId(item.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setForm({
       nombre: item.nombre,
       descripcion: item.descripcion || '',
@@ -277,19 +322,21 @@ export function AdminInventarioView() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar este artículo del inventario?')) return;
-    const response = await fetch(`/api/inventario/${id}`, { method: 'DELETE' });
-    if (!response.ok) {
-      setMessage({ type: 'error', text: await readError(response) });
-      return;
-    }
-    setMessage({ type: 'success', text: 'Artículo eliminado correctamente' });
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    confirmDialog('¿Seguro que deseas eliminar este artículo del inventario?', async () => {
+      const response = await fetch(`/api/inventario/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        setMessage({ type: 'error', text: await readError(response) });
+        return;
+      }
+      setMessage({ type: 'success', text: 'Artículo eliminado correctamente' });
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    });
   };
 
   return (
     <PageShell title="Gestión de Inventario" subtitle="Control de productos, stock en tiempo real, ubicaciones y estado operativo de equipos.">
       <Notice message={message} />
+      <ConfirmComponent />
 
       {/* KPI Stats Overview */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -348,7 +395,38 @@ export function AdminInventarioView() {
         </div>
 
         <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
-        <div><label className={label}>Categoría</label><input className={input} value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} placeholder="Categorial al Que Pertenece" required /></div>
+        <div>
+          <label className={label}>Categoría</label>
+          <div className="d-flex gap-2">
+            <select
+              className={input}
+              value={form.categoria}
+              onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+              required
+            >
+              <option value="" disabled>Seleccione una categoría...</option>
+              {categoriasDisponibles.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-outline-primary d-flex align-items-center justify-content-center"
+              style={{ width: '42px', flexShrink: 0, padding: 0 }}
+              onClick={() => {
+                const nueva = window.prompt('Ingrese el nombre de la nueva categoría:');
+                if (nueva && nueva.trim()) {
+                  const categoria = nueva.trim();
+                  setCustomCategorias((prev) => Array.from(new Set([...prev, categoria])));
+                  setForm({ ...form, categoria });
+                }
+              }}
+              title="Crear nueva categoría"
+            >
+              <FiPlus size={18} />
+            </button>
+          </div>
+        </div>
         <div><label className={label}>Cantidad Total</label><input className={input} type="number" min="0" value={form.cantidad_total} onChange={(e) => setForm({ ...form, cantidad_total: Number(e.target.value) })} required /></div>
         <div><label className={label}>Cantidad Disponible</label><input className={input} type="number" min="0" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: Number(e.target.value) })} required /></div>
         <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ubicación / Almacén" /></div>
@@ -469,6 +547,8 @@ export function AdminProfesoresView() {
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const pageSize = 10;
   const [page, setPage] = useState(1);
+  
+  const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchUsuarios = async () => {
     const response = await fetch('/api/usuarios');
@@ -520,23 +600,26 @@ export function AdminProfesoresView() {
 
   const edit = (usuario: Usuario) => {
     setEditingId(usuario.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setForm({ email: usuario.email, nombre: usuario.nombre, apellido: usuario.apellido, password: '', role: usuario.role, telefono: usuario.telefono || '', correo_personal: usuario.correo_personal || '', activo: usuario.activo });
   };
 
   const deactivate = async (id: number) => {
-    if (!confirm('¿Seguro que deseas desactivar este usuario?')) return;
-    const response = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-    if (!response.ok) {
-      setMessage({ type: 'error', text: await readError(response) });
-      return;
-    }
-    setMessage({ type: 'success', text: 'Usuario desactivado' });
-    fetchUsuarios();
+    confirmDialog('¿Seguro que deseas desactivar o activar este usuario?', async () => {
+      const response = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        setMessage({ type: 'error', text: await readError(response) });
+        return;
+      }
+      setMessage({ type: 'success', text: 'Estado del usuario actualizado' });
+      fetchUsuarios();
+    });
   };
 
   return (
-    <PageShell title="Profesores y Usuarios" subtitle="Gestión de cuentas de docentes y administradores, credenciales y contacto.">
+    <PageShell title="Gestión de Profesores" subtitle="Administra las cuentas y credenciales del personal docente.">
       <Notice message={message} />
+      <ConfirmComponent />
 
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
@@ -843,7 +926,8 @@ export function AdminSolicitudesView() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [comentarios, setComentarios] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<Message>(null);
-  const user = useMemo(getStoredUser, []);
+  const [user, setUser] = useState<Usuario | null>(null);
+  useEffect(() => { setUser(getStoredUser()); }, []);
 
   const fetchSolicitudes = async () => {
     const response = await fetch('/api/solicitudes');
@@ -868,7 +952,16 @@ export function AdminSolicitudesView() {
     }
 
     setMessage({ type: 'success', text: `Solicitud marcada como ${estado}` });
-    fetchSolicitudes();
+    await fetchSolicitudes();
+
+    if (estado === 'aprobada') {
+      const sol = solicitudes.find(s => s.id === id);
+      if (sol && (sol.item_nombre?.includes('Aula de Cómputo') || (sol as any).disponibilidad_id)) {
+        setTimeout(() => {
+          window.location.href = '/admin/horario';
+        }, 1500);
+      }
+    }
   };
 
   return (
@@ -930,7 +1023,8 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
 }
 
 export function ProfesorSolicitudesView() {
-  const user = useMemo(getStoredUser, []);
+  const [user, setUser] = useState<Usuario | null>(null);
+  useEffect(() => { setUser(getStoredUser()); }, []);
   const [items, setItems] = useState<Item[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [form, setForm] = useState({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
@@ -939,21 +1033,26 @@ export function ProfesorSolicitudesView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewForm, setShowNewForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [solicitudType, setSolicitudType] = useState<'equipo' | 'aula'>('equipo');
+  const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
+
+  const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchData = async () => {
-    const [invRes, solRes] = await Promise.all([
-      fetch('/api/inventario?estado=disponible'),
-      fetch(`/api/solicitudes?profesor_id=${user?.id}`),
-    ]);
+    const invRes = await fetch('/api/inventario');
     const invData = await invRes.json();
-    const solData = await solRes.json();
     setItems(invData.items || []);
-    setSolicitudes(solData.solicitudes || []);
+
+    if (user?.id) {
+      const solRes = await fetch(`/api/solicitudes?profesor_id=${user.id}`);
+      const solData = await solRes.json();
+      setSolicitudes(solData.solicitudes || []);
+    }
   };
 
   useEffect(() => {
-    fetchData().catch(() => setMessage({ type: 'error', text: 'Error al cargar solicitudes' }));
-  }, []);
+    if (user?.id) fetchData();
+  }, [user]);
 
   const selectedItemData = useMemo(() => {
     return items.find((i) => i.id === form.inventario_id) || null;
@@ -961,46 +1060,65 @@ export function ProfesorSolicitudesView() {
 
   const maxStock = selectedItemData ? selectedItemData.cantidad_disponible : 1;
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!form.inventario_id) {
-      setMessage({ type: 'error', text: 'Por favor selecciona un artículo de inventario.' });
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (solicitudType === 'equipo' && !form.inventario_id) {
+      setMessage({ type: 'error', text: 'Selecciona un artículo' });
       return;
     }
+
     setSubmitting(true);
+    
+    const bodyPayload: any = {
+      profesor_id: user?.id,
+      motivo: form.motivo.trim() || 'Uso docente en clase',
+    };
+
+    if (solicitudType === 'equipo') {
+      bodyPayload.inventario_id = form.inventario_id;
+      bodyPayload.cantidad_solicitada = form.cantidad_solicitada;
+      bodyPayload.tipo_solicitud = 'equipo';
+    } else {
+      bodyPayload.tipo_solicitud = 'aula';
+      bodyPayload.fecha_reserva = aulaForm.fecha_reserva;
+      bodyPayload.hora_inicio = aulaForm.hora_inicio;
+      bodyPayload.hora_fin = aulaForm.hora_fin;
+    }
+
     const response = await fetch('/api/solicitudes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, profesor_id: user?.id }),
+      body: JSON.stringify(bodyPayload),
     });
-
     setSubmitting(false);
+
     if (!response.ok) {
       setMessage({ type: 'error', text: await readError(response) });
       return;
     }
 
+    setMessage({ type: 'success', text: 'Solicitud enviada con éxito' });
     setForm({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
     setShowNewForm(false);
-    setMessage({ type: 'success', text: 'Solicitud enviada correctamente a administración' });
     fetchData();
   };
 
-  const cancel = async (id: number) => {
-    if (!confirm('¿Estás seguro de que deseas cancelar esta solicitud?')) return;
-    const response = await fetch(`/api/solicitudes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: 'cancelada' }),
+  const handleCancel = async (id: number) => {
+    confirmDialog('¿Estás seguro de que deseas cancelar esta solicitud?', async () => {
+      const response = await fetch(`/api/solicitudes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'cancelada' }),
+      });
+
+      if (!response.ok) {
+        setMessage({ type: 'error', text: await readError(response) });
+        return;
+      }
+
+      setMessage({ type: 'success', text: 'Solicitud cancelada' });
+      fetchData();
     });
-
-    if (!response.ok) {
-      setMessage({ type: 'error', text: await readError(response) });
-      return;
-    }
-
-    setMessage({ type: 'success', text: 'Solicitud cancelada correctamente' });
-    fetchData();
   };
 
   // Filtered requests
@@ -1064,63 +1182,107 @@ export function ProfesorSolicitudesView() {
 
       {/* NEW REQUEST FORM (COLLAPSIBLE / ACCORDION) */}
       {showNewForm && (
-        <form onSubmit={submit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
-          <div className="border-b border-slate-200 pb-2 mb-3">
+        <form onSubmit={handleSubmit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
+          <div className="border-b border-slate-200 pb-2 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-0">
               <span className="rounded-3 d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '32px', height: '32px' }}>
                 <FiSend size={16} />
               </span>
               Registrar Nueva Solicitud
             </h2>
+            <div className="btn-group" role="group">
+              <button type="button" className={`btn btn-sm ${solicitudType === 'equipo' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('equipo')}>
+                Solicitar Equipo
+              </button>
+              <button type="button" className={`btn btn-sm ${solicitudType === 'aula' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('aula')}>
+                Solicitar Aula
+              </button>
+            </div>
           </div>
 
           <div className="row g-3">
-            <div className="col-12 col-md-6">
-              <label className={label}>Artículo de Inventario</label>
-              <select
-                className={`${input} fw-semibold`}
-                value={form.inventario_id}
-                onChange={(e) => {
-                  setForm({ ...form, inventario_id: Number(e.target.value), cantidad_solicitada: 1 });
-                }}
-                required
-              >
-                <option value="0">-- Seleccionar artículo --</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id} disabled={item.cantidad_disponible <= 0}>
-                    {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-12 col-md-6">
-              <label className={label}>Cantidad a solicitar</label>
-              <div className="d-flex align-items-center gap-3">
-                <div className="mobile-stepper">
-                  <button
-                    type="button"
-                    className="mobile-stepper-btn"
-                    onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.max(1, prev.cantidad_solicitada - 1) }))}
-                    disabled={form.cantidad_solicitada <= 1 || !form.inventario_id}
+            {solicitudType === 'equipo' ? (
+              <>
+                <div className="col-12 col-md-6">
+                  <label className={label}>Artículo de Inventario</label>
+                  <select
+                    className={`${input} fw-semibold`}
+                    value={form.inventario_id}
+                    onChange={(e) => {
+                      setForm({ ...form, inventario_id: Number(e.target.value), cantidad_solicitada: 1 });
+                    }}
+                    required
                   >
-                    -
-                  </button>
-                  <span className="mobile-stepper-val">{form.cantidad_solicitada}</span>
-                  <button
-                    type="button"
-                    className="mobile-stepper-btn"
-                    onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.min(maxStock, prev.cantidad_solicitada + 1) }))}
-                    disabled={form.cantidad_solicitada >= maxStock || !form.inventario_id}
-                  >
-                    +
-                  </button>
+                    <option value="0">-- Seleccionar artículo --</option>
+                    {items.map((item) => (
+                      <option key={item.id} value={item.id} disabled={item.cantidad_disponible <= 0}>
+                        {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <span className="text-secondary small">
-                  {selectedItemData ? `(De ${selectedItemData.cantidad_disponible} en stock)` : 'Selecciona un artículo primero'}
-                </span>
-              </div>
-            </div>
+
+                <div className="col-12 col-md-6">
+                  <label className={label}>Cantidad a solicitar</label>
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="mobile-stepper">
+                      <button
+                        type="button"
+                        className="mobile-stepper-btn"
+                        onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.max(1, prev.cantidad_solicitada - 1) }))}
+                        disabled={form.cantidad_solicitada <= 1 || !form.inventario_id}
+                      >
+                        -
+                      </button>
+                      <span className="mobile-stepper-val">{form.cantidad_solicitada}</span>
+                      <button
+                        type="button"
+                        className="mobile-stepper-btn"
+                        onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.min(maxStock, prev.cantidad_solicitada + 1) }))}
+                        disabled={form.cantidad_solicitada >= maxStock || !form.inventario_id}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-secondary small">
+                      {selectedItemData ? `(De ${selectedItemData.cantidad_disponible} en stock)` : 'Selecciona un artículo primero'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="col-12 col-md-4">
+                  <label className={label}>Fecha de reserva</label>
+                  <input
+                    type="date"
+                    className={input}
+                    value={aulaForm.fecha_reserva}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setAulaForm({ ...aulaForm, fecha_reserva: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-6 col-md-4">
+                  <label className={label}>Hora inicio</label>
+                  <input
+                    type="time"
+                    className={input}
+                    value={aulaForm.hora_inicio}
+                    onChange={(e) => setAulaForm({ ...aulaForm, hora_inicio: e.target.value })}
+                  />
+                </div>
+                <div className="col-6 col-md-4">
+                  <label className={label}>Hora fin</label>
+                  <input
+                    type="time"
+                    className={input}
+                    value={aulaForm.hora_fin}
+                    onChange={(e) => setAulaForm({ ...aulaForm, hora_fin: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="col-12">
               <label className={label}>Motivo o justificación de la clase</label>
@@ -1149,7 +1311,7 @@ export function ProfesorSolicitudesView() {
               <button
                 className={`${primaryButton} d-inline-flex align-items-center gap-2`}
                 type="submit"
-                disabled={submitting || !form.inventario_id}
+                disabled={submitting || (solicitudType === 'equipo' && !form.inventario_id)}
               >
                 <FiSend size={15} />
                 {submitting ? 'Enviando...' : 'Enviar Solicitud'}
@@ -1256,7 +1418,7 @@ export function ProfesorSolicitudesView() {
                   <div className="d-flex justify-content-end pt-1">
                     <button
                       type="button"
-                      onClick={() => cancel(sol.id)}
+                      onClick={() => handleCancel(sol.id)}
                       className="btn btn-outline-danger btn-sm py-1 px-3 fw-semibold d-inline-flex align-items-center gap-1"
                       style={{ fontSize: '0.78rem' }}
                     >
@@ -1273,7 +1435,7 @@ export function ProfesorSolicitudesView() {
 
       {/* DESKTOP VIEW: TABLE (VISIBLE ON TABLETS & DESKTOPS) */}
       <div className="d-none d-md-block">
-        <SolicitudesTable solicitudes={filteredSolicitudes} onCancel={cancel} />
+        <SolicitudesTable solicitudes={filteredSolicitudes} onCancel={handleCancel} />
       </div>
     </PageShell>
   );
@@ -1288,6 +1450,8 @@ export function AdminPrestamosView() {
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
   const [procesando, setProcesando] = useState<number | null>(null);
+
+  const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchData = async () => {
     const [preRes, invRes, profRes] = await Promise.all([
@@ -1363,51 +1527,53 @@ export function AdminPrestamosView() {
   };
 
   const entregar = async (id: number) => {
-    if (!confirm('¿Confirmas que el/la profesor(a) devolvió el equipo?')) return;
-    setProcesando(id);
-    try {
-      const response = await fetch(`/api/prestamos/${id}`, { method: 'PUT' });
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Equipo entregado, vuelve a estar disponible en el inventario' });
-        const prestamo = prestamos.find((p) => p.id === id);
-        setPrestamos((prev) =>
-          prev.map((p) =>
-            p.id === id
-              ? { ...p, estado: 'devuelto', fecha_devolucion: new Date().toISOString() }
-              : p
-          )
-        );
-        if (prestamo) {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === prestamo.inventario_id
-                ? { ...i, cantidad_disponible: i.cantidad_disponible + prestamo.cantidad }
-                : i
+    confirmDialog('¿Confirmas que el/la profesor(a) devolvió el equipo?', async () => {
+      setProcesando(id);
+      try {
+        const response = await fetch(`/api/prestamos/${id}`, { method: 'PUT' });
+        if (response.ok) {
+          setMessage({ type: 'success', text: 'Equipo entregado, vuelve a estar disponible en el inventario' });
+          const prestamo = prestamos.find((p) => p.id === id);
+          setPrestamos((prev) =>
+            prev.map((p) =>
+              p.id === id
+                ? { ...p, estado: 'devuelto', fecha_devolucion: new Date().toISOString() }
+                : p
             )
           );
+          if (prestamo) {
+            setItems((prev) =>
+              prev.map((i) =>
+                i.id === prestamo.inventario_id
+                  ? { ...i, cantidad_disponible: i.cantidad_disponible + prestamo.cantidad }
+                  : i
+              )
+            );
+          }
+        } else {
+          const data = await response.json().catch(() => null);
+          setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como entregado' });
         }
-      } else {
-        const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como entregado' });
+      } catch (error) {
+        console.error('Error al marcar prestamo como entregado:', error);
+        setMessage({ type: 'error', text: 'Error al marcar como entregado' });
+      } finally {
+        setProcesando(null);
       }
-    } catch (error) {
-      console.error('Error al marcar prestamo como entregado:', error);
-      setMessage({ type: 'error', text: 'Error al marcar como entregado' });
-    } finally {
-      setProcesando(null);
-    }
+    });
   };
 
   const eliminar = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar este registro de devolución?')) return;
-    const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
-    if (response.ok) {
-      setMessage({ type: 'success', text: 'Registro eliminado' });
-      setPrestamos((prev) => prev.filter((p) => p.id !== id));
-    } else {
-      const data = await response.json().catch(() => null);
-      setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar el registro' });
-    }
+    confirmDialog('¿Seguro que deseas eliminar este registro de devolución?', async () => {
+      const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Registro eliminado' });
+        setPrestamos((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        const data = await response.json().catch(() => null);
+        setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar el registro' });
+      }
+    }, true);
   };
 
   const activos = prestamos.filter((p) => p.estado === 'prestado');
@@ -1418,6 +1584,7 @@ export function AdminPrestamosView() {
   return (
     <PageShell title="Préstamos de Equipos" subtitle="Registra qué equipo se presta a cada profesor; al devolverlo queda Entregado y vuelve al inventario.">
       <Notice message={message} />
+      <ConfirmComponent />
 
       <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
         <div className="md:col-span-4 border-b border-slate-200 pb-2">

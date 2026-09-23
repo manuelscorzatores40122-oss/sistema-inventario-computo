@@ -26,8 +26,8 @@ export default function MobileTopBar() {
   return (
     <header className="mobile-top-bar">
       <div className="mobile-top-bar-brand">
-        <div className="mobile-top-bar-logo">
-          <FiShield size={19} />
+        <div className="mobile-top-bar-logo" style={{ background: 'transparent' }}>
+          <img src="/logo.png" alt="Logo" width={28} height={28} style={{ objectFit: 'contain' }} />
         </div>
         <div>
           <div className="mobile-top-bar-title">Sistema de Inventario</div>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,7 +12,6 @@ import {
   FiInbox,
   FiUser,
   FiLogOut,
-  FiShield,
 } from 'react-icons/fi';
 
 const menuItems = [
@@ -55,10 +55,10 @@ export default function AdminSidebar() {
       <div className="sidebar-header">
         <div className="d-flex align-items-center mb-2">
           <div
-            className="rounded-3 d-flex align-items-center justify-content-center me-3 sidebar-brand-icon"
+            className="d-flex align-items-center justify-content-center me-3"
             style={{ width: '38px', height: '38px', flexShrink: 0 }}
           >
-            <FiShield size={20} />
+            <Image src="/logo.png" alt="Logo" width={38} height={38} style={{ objectFit: 'contain' }} />
           </div>
           <h2 className="h6 fw-bold mb-0">Sistema de Inventario</h2>
         </div>

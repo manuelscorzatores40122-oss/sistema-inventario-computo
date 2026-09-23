@@ -5,6 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Colegio - Sistema de Inventarios',
   description: 'Sistema de gestión de inventarios y disponibilidad para colegio',
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {

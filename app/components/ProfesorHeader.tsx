@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
@@ -8,7 +9,6 @@ import {
   FiFileText,
   FiUser,
   FiLogOut,
-  FiShield,
 } from 'react-icons/fi';
 
 const menuItems = [
@@ -43,10 +43,10 @@ export default function ProfesorHeader() {
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
           <div className="d-flex align-items-center">
             <div
-              className="sidebar-brand-icon rounded-3 d-flex align-items-center justify-content-center me-3"
+              className="d-flex align-items-center justify-content-center me-3"
               style={{ width: '40px', height: '40px' }}
             >
-              <FiShield size={22} />
+              <Image src="/logo.png" alt="Logo" width={40} height={40} style={{ objectFit: 'contain' }} />
             </div>
             <div>
               <div className="text-uppercase small fw-bold mb-1" style={{ color: 'var(--color-slate-400)' }}>

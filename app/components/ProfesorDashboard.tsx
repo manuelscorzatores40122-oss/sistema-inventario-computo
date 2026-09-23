@@ -50,6 +50,8 @@ export default function ProfesorDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [cantidad, setCantidad] = useState(1);
   const [motivo, setMotivo] = useState('');
+  const [solicitudType, setSolicitudType] = useState<'equipo' | 'aula'>('equipo');
+  const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
   const [alertNotice, setAlertNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -122,12 +124,11 @@ export default function ProfesorDashboard() {
   const aprobadasCount = misSolicitudes.filter((s) => s.estado === 'aprobada').length;
 
   const handleSolicitar = async () => {
-    if (!selectedItem || !user) {
+    if (solicitudType === 'equipo' && !selectedItem) {
       setAlertNotice({ type: 'error', text: 'Selecciona un artículo antes de continuar.' });
       return;
     }
-
-    if (cantidad < 1) {
+    if (solicitudType === 'equipo' && cantidad < 1) {
       setAlertNotice({ type: 'error', text: 'La cantidad debe ser al menos 1.' });
       return;
     }
@@ -144,17 +145,28 @@ export default function ProfesorDashboard() {
     setAlertNotice(null);
 
     try {
+      const bodyPayload: any = {
+        profesor_id: user.id,
+        motivo: motivo.trim() || 'Uso docente en clase',
+      };
+
+      if (solicitudType === 'equipo') {
+        bodyPayload.inventario_id = selectedItem;
+        bodyPayload.cantidad_solicitada = cantidad;
+        bodyPayload.tipo_solicitud = 'equipo';
+      } else {
+        bodyPayload.tipo_solicitud = 'aula';
+        bodyPayload.fecha_reserva = aulaForm.fecha_reserva;
+        bodyPayload.hora_inicio = aulaForm.hora_inicio;
+        bodyPayload.hora_fin = aulaForm.hora_fin;
+      }
+
       const response = await fetch('/api/solicitudes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          profesor_id: user.id,
-          inventario_id: selectedItem,
-          cantidad_solicitada: cantidad,
-          motivo: motivo.trim() || 'Uso docente en clase',
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (response.ok) {
@@ -166,6 +178,7 @@ export default function ProfesorDashboard() {
         setSelectedItem(null);
         setCantidad(1);
         setMotivo('');
+        setAulaForm({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
 
         // Refresh requests
         if (user?.id) {
@@ -347,31 +360,32 @@ export default function ProfesorDashboard() {
           </div>
         )}
 
-        {/* SOLICITUD RÁPIDA DE ARTÍCULOS */}
-        <section className="card border-0 shadow-sm rounded-4 mb-4">
-          <div className="card-header bg-white border-bottom p-3 p-md-4">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <h2 className="h6 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                  <span className="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '32px', height: '32px' }}>
-                    <FiSend size={16} />
-                  </span>
-                  Solicitar Artículo de Inventario
-                </h2>
-                <p className="small text-secondary mb-0">
-                  Selecciona el material necesario para tus clases.
-                </p>
-              </div>
-            </div>
+        {/* SOLICITUD RÁPIDA DE ARTÍCULOS O AULAS */}
+        <section className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+          <div className="d-flex w-100">
+            <button
+              className={`flex-fill py-3 fw-bold border-0 ${solicitudType === 'equipo' ? 'bg-white text-primary border-bottom border-primary border-3' : 'bg-light text-secondary'}`}
+              onClick={() => setSolicitudType('equipo')}
+            >
+              <FiPackage className="me-2" /> Solicitar Equipo
+            </button>
+            <button
+              className={`flex-fill py-3 fw-bold border-0 ${solicitudType === 'aula' ? 'bg-white text-primary border-bottom border-primary border-3' : 'bg-light text-secondary'}`}
+              onClick={() => setSolicitudType('aula')}
+            >
+              <FiClock className="me-2" /> Solicitar Aula
+            </button>
           </div>
 
-          <div className="card-body p-3 p-md-4">
-            {/* Categorías pill horizontal scroll */}
-            <div className="mb-3">
-              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
-                <FiFilter size={12} />
-                Filtrar por categoría
-              </label>
+          <div className="card-body p-3 p-md-4 bg-white">
+            {solicitudType === 'equipo' ? (
+              <>
+                {/* Categorías pill horizontal scroll */}
+                <div className="mb-3">
+                  <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
+                    <FiFilter size={12} />
+                    Filtrar por categoría
+                  </label>
               <div className="mobile-pill-scroll">
                 {categories.map((cat) => (
                   <button
@@ -468,6 +482,40 @@ export default function ProfesorDashboard() {
                 </div>
               </div>
             )}
+            </>
+            ) : (
+              <div className="row g-3 mb-3 animate__animated animate__fadeIn">
+                <div className="col-12 col-md-4">
+                  <label className="inventory-form-label">Fecha de reserva</label>
+                  <input
+                    type="date"
+                    className="form-control border-slate-300"
+                    value={aulaForm.fecha_reserva}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setAulaForm({ ...aulaForm, fecha_reserva: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-6 col-md-4">
+                  <label className="inventory-form-label">Hora inicio</label>
+                  <input
+                    type="time"
+                    className="form-control border-slate-300"
+                    value={aulaForm.hora_inicio}
+                    onChange={(e) => setAulaForm({ ...aulaForm, hora_inicio: e.target.value })}
+                  />
+                </div>
+                <div className="col-6 col-md-4">
+                  <label className="inventory-form-label">Hora fin</label>
+                  <input
+                    type="time"
+                    className="form-control border-slate-300"
+                    value={aulaForm.hora_fin}
+                    onChange={(e) => setAulaForm({ ...aulaForm, hora_fin: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* MOTIVO DE SOLICITUD */}
             <div className="mb-3">
@@ -503,8 +551,8 @@ export default function ProfesorDashboard() {
             {/* BOTÓN ENVIAR */}
             <button
               onClick={handleSolicitar}
-              disabled={!selectedItem || loading || enviando}
-              className="btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+              disabled={loading || enviando || (solicitudType === 'equipo' && !selectedItem)}
+              className="btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm mt-4"
               style={{ fontSize: '0.95rem' }}
             >
               <FiSend size={18} />

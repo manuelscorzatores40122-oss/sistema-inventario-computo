@@ -42,7 +42,22 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { estado, admin_id, comentarios, cantidad_solicitada, motivo } = await request.json();
+    const { estado, admin_id: bodyAdminId, comentarios, cantidad_solicitada, motivo } = await request.json();
+    
+    // Extraer admin_id del token por seguridad si no viene en el body
+    let admin_id = bodyAdminId;
+    const authToken = request.cookies.get('auth-token')?.value;
+    if (authToken && !admin_id) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(authToken, process.env.JWT_SECRET || 'tu_secreto_jwt_cambiar') as any;
+        if (decoded && decoded.userId) {
+          admin_id = decoded.userId;
+        }
+      } catch (e) {
+        console.error("Error validando token en solicitudes:", e);
+      }
+    }
     const cantidad = cantidad_solicitada === undefined || cantidad_solicitada === ''
       ? undefined
       : Number(cantidad_solicitada);
@@ -108,23 +123,37 @@ export async function PUT(
           );
         }
 
-        if (sol.inventario_id && sol.cantidad_disponible < nextCantidad) {
-          await client.query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'No hay suficiente stock disponible' },
-            { status: 400 }
-          );
-        }
-
         if (sol.inventario_id) {
+          if (sol.cantidad_disponible < nextCantidad) {
+            await client.query('ROLLBACK');
+            return NextResponse.json(
+              { error: 'No hay suficiente stock para aprobar la solicitud' },
+              { status: 400 }
+            );
+          }
+
           await client.query(
-            'UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            'UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1 WHERE id = $2',
             [nextCantidad, sol.inventario_id]
           );
 
           await client.query(
             'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
-            [sol.inventario_id, 'salida', nextCantidad, sol.profesor_id, `Solicitud #${sol.id} aprobada`]
+            [sol.inventario_id, 'salida', nextCantidad, admin_id, `Aprobación de solicitud #${params.id}`]
+          );
+        } else if (sol.disponibilidad_id) {
+          // Aula request approved
+          await client.query(
+            "UPDATE disponibilidad SET estado = 'separado' WHERE id = $1",
+            [sol.disponibilidad_id]
+          );
+        }
+      } else if (nextEstado === 'rechazada' || nextEstado === 'cancelada') {
+        // If it was an aula request, and it's rejected/canceled, remove the pending availability
+        if (sol.disponibilidad_id) {
+          await client.query(
+            "DELETE FROM disponibilidad WHERE id = $1 AND estado = 'pendiente'",
+            [sol.disponibilidad_id]
           );
         }
       }
