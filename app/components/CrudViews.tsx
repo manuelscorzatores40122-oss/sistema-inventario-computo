@@ -166,7 +166,7 @@ function Notice({ message }: { message: Message }) {
   );
 }
 
-function StatusBadge({ value }: { value: string }) {
+export function StatusBadge({ value }: { value: string }) {
   const Icon =
     value === 'disponible' || value === 'aprobada' || value === 'devuelto'
       ? FiCheckCircle

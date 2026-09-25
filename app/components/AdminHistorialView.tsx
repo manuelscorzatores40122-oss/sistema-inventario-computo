@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUser, FiSearch, FiPackage, FiBookOpen, FiArrowLeft } from 'react-icons/fi';
+import { FiUser, FiSearch, FiPackage, FiBookOpen, FiArrowLeft, FiX } from 'react-icons/fi';
 import Link from 'next/link';
 import { StatusBadge } from './CrudViews';
 
@@ -90,40 +90,108 @@ export default function AdminHistorialView() {
         </div>
       </div>
 
-      <div className="inventory-panel p-4 mb-4">
-        <label className="inventory-form-label d-flex align-items-center gap-2">
-          <FiSearch className="text-slate-500" /> Buscar Profesor por nombre o apellido
+      <div className="inventory-panel p-4 md:p-5 mb-4 border-0 shadow-sm rounded-4" style={{ backgroundColor: '#ffffff' }}>
+        <label className="fw-bold text-slate-800 mb-3" style={{ fontSize: '1.1rem' }}>
+          Buscar Profesor
         </label>
         <div className="position-relative">
+          <div className="position-absolute d-flex align-items-center justify-content-center h-100" style={{ width: '50px', left: 0, top: 0 }}>
+            <FiSearch className="text-slate-400" size={20} />
+          </div>
           <input
             type="text"
-            className="inventory-form-input"
-            placeholder="Ej. Juan Pérez..."
+            className="form-control shadow-none"
+            style={{ 
+              paddingLeft: '50px', 
+              paddingRight: selectedProfesor ? '50px' : '16px',
+              height: '56px', 
+              fontSize: '1.05rem', 
+              borderRadius: '12px',
+              border: '2px solid var(--color-slate-200)',
+              backgroundColor: 'var(--color-slate-50)',
+              transition: 'all 0.2s ease',
+              outline: 'none',
+              boxShadow: 'none'
+            }}
+            placeholder="Escribe el nombre o apellido del profesor..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setSelectedProfesor(null);
             }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)';
+              e.target.style.backgroundColor = '#ffffff';
+              e.target.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--color-slate-200)';
+              e.target.style.backgroundColor = 'var(--color-slate-50)';
+              e.target.style.boxShadow = 'none';
+            }}
             disabled={loading}
           />
+          {selectedProfesor && (
+            <button
+              className="position-absolute d-flex align-items-center justify-content-center h-100 bg-transparent border-0"
+              style={{ width: '50px', right: 0, top: 0, cursor: 'pointer', transition: 'color 0.2s' }}
+              onClick={() => {
+                setSelectedProfesor(null);
+                setSearchTerm('');
+              }}
+              title="Limpiar búsqueda"
+            >
+              <FiX className="text-slate-400" size={22} onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'} onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'} />
+            </button>
+          )}
+
           {searchTerm && !selectedProfesor && (
-            <div className="list-group position-absolute w-100 shadow-lg mt-1" style={{ zIndex: 1000, maxHeight: '250px', overflowY: 'auto' }}>
+            <div 
+              className="position-absolute w-100 mt-2 bg-white rounded-4 overflow-hidden animate__animated animate__fadeIn animate__faster" 
+              style={{ zIndex: 1000, maxHeight: '350px', border: '1px solid var(--color-slate-200)', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+            >
               {profesores
                 .filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()))
                 .map(p => (
                   <button
                     key={p.id}
-                    className="list-group-item list-group-item-action text-start border-0 border-bottom"
+                    className="w-100 text-start d-flex align-items-center gap-3"
+                    style={{
+                      padding: '14px 20px',
+                      border: 'none',
+                      borderBottom: '1px solid var(--color-slate-100)',
+                      backgroundColor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-slate-50)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     onClick={() => {
                       setSelectedProfesor(p.id);
                       setSearchTerm(`${p.apellido}, ${p.nombre}`);
                     }}
                   >
-                    <strong>{p.apellido}, {p.nombre}</strong> {p.area ? <span className="text-muted small">({p.area})</span> : ''}
+                    <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary flex-shrink-0" style={{ width: '42px', height: '42px' }}>
+                      <FiUser size={18} />
+                    </div>
+                    <div>
+                      <div className="fw-bold text-slate-800" style={{ fontSize: '1.05rem', marginBottom: '2px' }}>
+                        {p.apellido}, {p.nombre}
+                      </div>
+                      {p.area && (
+                        <div className="text-slate-500 fw-semibold" style={{ fontSize: '0.8rem' }}>
+                          Área / Curso: {p.area}
+                        </div>
+                      )}
+                    </div>
                   </button>
                 ))}
               {profesores.filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                <div className="list-group-item text-slate-500 text-sm border-0">No se encontraron profesores</div>
+                <div className="p-5 text-center text-slate-500 d-flex flex-column align-items-center gap-2">
+                  <FiSearch size={28} className="text-slate-300 mb-2" />
+                  <div className="fw-semibold text-slate-700">No se encontraron profesores</div>
+                  <div className="text-sm">Prueba con otro nombre o apellido.</div>
+                </div>
               )}
             </div>
           )}
