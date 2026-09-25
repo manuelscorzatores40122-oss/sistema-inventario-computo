@@ -1472,6 +1472,7 @@ export function AdminPrestamosView() {
   const [items, setItems] = useState<Item[]>([]);
   const [profesores, setProfesores] = useState<{ id: number; nombre: string; apellido: string }[]>([]);
   const [tab, setTab] = useState<'pendiente' | 'prestado' | 'devuelto'>('pendiente');
+  const [filtroProfesorId, setFiltroProfesorId] = useState<number | null>(null);
   const [form, setForm] = useState({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
@@ -1631,6 +1632,7 @@ export function AdminPrestamosView() {
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
   const list = tab === 'pendiente' ? pendientes : tab === 'prestado' ? activos : devueltos;
+  const listToRender = filtroProfesorId ? prestamos.filter(p => p.profesor_id === filtroProfesorId) : list;
   const itemsDisponibles = items.filter((i) => i.cantidad_disponible > 0);
 
   return (
@@ -1681,26 +1683,39 @@ export function AdminPrestamosView() {
         </div>
       </form>
 
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
         <div className="d-flex gap-2">
           <button
-            className={tab === 'pendiente' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('pendiente')}
+            className={tab === 'pendiente' && !filtroProfesorId ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => { setTab('pendiente'); setFiltroProfesorId(null); }}
           >
             Por Recoger ({pendientes.length})
           </button>
           <button
-            className={tab === 'prestado' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('prestado')}
+            className={tab === 'prestado' && !filtroProfesorId ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => { setTab('prestado'); setFiltroProfesorId(null); }}
           >
             Prestados ({activos.length})
           </button>
           <button
-            className={tab === 'devuelto' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('devuelto')}
+            className={tab === 'devuelto' && !filtroProfesorId ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => { setTab('devuelto'); setFiltroProfesorId(null); }}
           >
             Devueltos ({devueltos.length})
           </button>
+        </div>
+        <div>
+          <select 
+             className="inventory-form-select text-sm py-1" 
+             style={{ width: '250px', backgroundColor: filtroProfesorId ? '#eff6ff' : 'white' }}
+             value={filtroProfesorId || ''}
+             onChange={(e) => setFiltroProfesorId(e.target.value ? Number(e.target.value) : null)}
+          >
+             <option value="">Filtrar historial por profesor...</option>
+             {profesores.map((profesor) => (
+               <option key={profesor.id} value={profesor.id}>Historial: {profesor.apellido}, {profesor.nombre}</option>
+             ))}
+          </select>
         </div>
       </div>
 
@@ -1713,13 +1728,13 @@ export function AdminPrestamosView() {
               <th>Cant.</th>
               <th>Detalle</th>
               <th>Fecha de Préstamo</th>
-              {tab === 'devuelto' && <th>Fecha de Entrega</th>}
+              {(tab === 'devuelto' || filtroProfesorId) && <th>Fecha de Entrega</th>}
               <th>Estado</th>
               <th className="text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {list.map((prestamo) => (
+            {listToRender.map((prestamo) => (
               <tr key={prestamo.id}>
                 <td className="font-bold text-slate-900 d-flex align-items-center gap-2">
                   <span className="rounded d-inline-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '26px', height: '26px' }}>
@@ -1735,8 +1750,8 @@ export function AdminPrestamosView() {
                 </td>
                 <td className="font-semibold">{prestamo.cantidad}</td>
                 <td className="text-xs text-slate-600">{prestamo.detalle || '-'}</td>
-                <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleDateString('es-ES')}</td>
-                {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleDateString('es-ES') : '-'}</td>}
+                <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                {(tab === 'devuelto' || filtroProfesorId) && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>}
                 <td><StatusBadge value={prestamo.estado} /></td>
                 <td className="text-right">
                   {prestamo.estado === 'pendiente' ? (
@@ -1758,10 +1773,10 @@ export function AdminPrestamosView() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && (
+            {listToRender.length === 0 && (
               <tr>
-                <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                  {tab === 'pendiente' ? 'No hay equipos por recoger' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
+                <td className="text-center py-6 text-slate-500" colSpan={(tab === 'devuelto' || filtroProfesorId) ? 8 : 7}>
+                  {filtroProfesorId ? 'No hay historial de préstamos para este profesor' : tab === 'pendiente' ? 'No hay equipos por recoger' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
                 </td>
               </tr>
             )}

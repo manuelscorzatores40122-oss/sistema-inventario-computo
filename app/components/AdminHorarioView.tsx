@@ -87,6 +87,7 @@ export default function AdminHorarioView() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<Message>(null);
+  const [filtroProfesorId, setFiltroProfesorId] = useState<number | null>(null);
 
   const [template, setTemplate] = useState<Bloque[]>(FORMATO_DEFECTO);
   const [showTemplate, setShowTemplate] = useState(false);
@@ -360,6 +361,17 @@ export default function AdminHorarioView() {
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          <select 
+             className="inventory-form-select text-sm py-1" 
+             style={{ width: '250px', backgroundColor: filtroProfesorId ? '#eff6ff' : 'white' }}
+             value={filtroProfesorId || ''}
+             onChange={(e) => setFiltroProfesorId(e.target.value ? Number(e.target.value) : null)}
+          >
+             <option value="">Vista Calendario (Todos)</option>
+             {profesores.map((profesor) => (
+               <option key={profesor.id} value={profesor.id}>Historial: {profesor.apellido}, {profesor.nombre}</option>
+             ))}
+          </select>
           <button className="btn-primary-custom text-decoration-none d-inline-flex align-items-center gap-1" onClick={() => setShowTemplate(true)}>
             <FiSettings size={15} />
             Agregar / Editar Horario
@@ -402,6 +414,47 @@ export default function AdminHorarioView() {
       {loading ? (
         <div className="inventory-panel p-8 text-center text-slate-500 font-semibold">
           Cargando horario semanal...
+        </div>
+      ) : filtroProfesorId ? (
+        <div className="inventory-panel p-4 overflow-x-auto">
+          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-3">
+             <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
+               <FiBookOpen size={15} />
+             </span>
+             Historial de Reservas del Profesor
+          </h2>
+          <table className="inventory-table">
+             <thead>
+               <tr>
+                 <th>Día de la semana</th>
+                 <th>Horario</th>
+                 <th>Fecha de Reserva</th>
+                 <th>Motivo / Materia</th>
+                 <th>Estado</th>
+               </tr>
+             </thead>
+             <tbody>
+               {clases
+                 .filter(c => c.reservado_por === filtroProfesorId)
+                 .sort((a,b) => (b.fecha_reserva || '').localeCompare(a.fecha_reserva || ''))
+                 .map(c => (
+                 <tr key={c.id}>
+                   <td className="font-semibold">{c.dia_semana}</td>
+                   <td className="font-mono">{c.hora_inicio} - {c.hora_fin}</td>
+                   <td className="text-xs text-slate-600">{c.fecha_reserva ? new Date(c.fecha_reserva).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Horario Base (Semestral)'}</td>
+                   <td className="text-sm">{c.motivo_reserva || '-'}</td>
+                   <td>
+                      <span className={`badge rounded-pill ${c.estado === 'separado' ? 'bg-primary' : c.estado === 'disponible' ? 'bg-success' : 'bg-secondary'}`}>
+                        {c.estado}
+                      </span>
+                   </td>
+                 </tr>
+               ))}
+               {clases.filter(c => c.reservado_por === filtroProfesorId).length === 0 && (
+                 <tr><td colSpan={5} className="text-center py-6 text-slate-500">No hay historial de reservas para este profesor.</td></tr>
+               )}
+             </tbody>
+          </table>
         </div>
       ) : (
         <div className="inventory-panel p-3">
