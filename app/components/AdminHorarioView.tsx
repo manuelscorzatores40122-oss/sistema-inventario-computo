@@ -163,13 +163,25 @@ export default function AdminHorarioView() {
           return localISOTime === dateStr;
         });
         if (isInWeek) {
-          // Find the exact block or if it overlaps, just place it on the exact match
           map.set(`${c.dia_semana}|${c.hora_inicio}`, c);
         }
       }
     });
     return map;
   }, [clases, weekDates]);
+
+  const displayBlocks = useMemo(() => {
+    const blocksMap = new Map<string, Bloque>();
+    template.forEach((b) => blocksMap.set(b.hora_inicio, b));
+
+    claseMap.forEach((c) => {
+      if (!blocksMap.has(c.hora_inicio)) {
+        blocksMap.set(c.hora_inicio, { hora_inicio: c.hora_inicio, hora_fin: c.hora_fin });
+      }
+    });
+
+    return Array.from(blocksMap.values()).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  }, [template, claseMap]);
 
 
   const prevWeek = () => {
@@ -191,7 +203,7 @@ export default function AdminHorarioView() {
   const weekTitle = `Semana del ${startPart} al ${endD.getDate()} de ${MESES[endD.getMonth()]} del ${endD.getFullYear()}`;
 
   const total = claseMap.size;
-  const libres = DIAS.length * template.length - total;
+  const libres = DIAS.length * displayBlocks.length - total;
   const profesoresConClase = new Set(Array.from(claseMap.values()).map((c) => c.reservado_por)).size;
 
   const addBloque = () => {
@@ -231,7 +243,7 @@ export default function AdminHorarioView() {
       materia: clase?.motivo_reserva || '',
       profesor_id: clase?.reservado_por || 0,
       hora_inicio,
-      hora_fin: template.find((b) => b.hora_inicio === hora_inicio)?.hora_fin || '',
+      hora_fin: displayBlocks.find((b) => b.hora_inicio === hora_inicio)?.hora_fin || '',
     });
     setAssign({ diaNombre, label, clase });
   };
@@ -248,7 +260,7 @@ export default function AdminHorarioView() {
   const save = async () => {
     if (!assign) return;
 
-    const bloque = template.find((b) => b.hora_inicio === form.hora_inicio);
+    const bloque = displayBlocks.find((b) => b.hora_inicio === form.hora_inicio);
     if (!bloque) {
       setMessage({ type: 'error', text: 'Horario no válido' });
       return;
@@ -363,7 +375,7 @@ export default function AdminHorarioView() {
             </div>
             <p className="text-xs font-bold uppercase text-slate-500 mb-0">Turnos de Clase Definidos</p>
           </div>
-          <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : template.length}</h3>
+          <h3 className="text-2xl font-black text-slate-900 mt-1">{loading ? '...' : displayBlocks.length}</h3>
         </div>
 
         <div className="inventory-panel p-4 border-l-4 border-l-green-600">
@@ -446,7 +458,7 @@ export default function AdminHorarioView() {
               );
             })}
 
-            {template.map((bloque, idx) => (
+            {displayBlocks.map((bloque, idx) => (
               <FragmentDias key={idx} bloque={bloque} idx={idx} weekDates={weekDates} claseMap={claseMap} openAssign={openAssign} />
             ))}
           </div>
