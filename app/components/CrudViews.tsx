@@ -981,7 +981,7 @@ export function AdminSolicitudesView() {
       if (sol && (sol.item_nombre?.includes('Aula de Cómputo') || (sol as any).disponibilidad_id)) {
         setTimeout(() => {
           window.location.href = '/admin/horario';
-        }, 1500);
+        }, 500);
       } else if (sol && sol.inventario_id) {
         setTimeout(() => {
           window.location.href = '/admin/prestamos';
