@@ -427,8 +427,30 @@ export function AdminInventarioView() {
             </button>
           </div>
         </div>
-        <div><label className={label}>Cantidad Total</label><input className={input} type="number" min="0" value={form.cantidad_total} onChange={(e) => setForm({ ...form, cantidad_total: Number(e.target.value) })} required /></div>
-        <div><label className={label}>Cantidad Disponible</label><input className={input} type="number" min="0" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: Number(e.target.value) })} required /></div>
+        <div>
+          <label className={label}>Cantidad Total</label>
+          <input className={input} type="number" min="0" value={form.cantidad_total} 
+            onChange={(e) => {
+              const newTotal = Number(e.target.value);
+              const diff = newTotal - form.cantidad_total;
+              setForm({ 
+                ...form, 
+                cantidad_total: newTotal,
+                cantidad_disponible: Math.max(0, form.cantidad_disponible + diff)
+              });
+            }} required />
+        </div>
+        <div>
+          <label className={label}>Cantidad Disponible</label>
+          <input className={input} type="number" min="0" value={form.cantidad_disponible} 
+            onChange={(e) => {
+              const newDisp = Number(e.target.value);
+              setForm({
+                ...form,
+                cantidad_disponible: Math.min(newDisp, form.cantidad_total)
+              });
+            }} required />
+        </div>
         <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ubicación / Almacén" /></div>
         <div>
           <label className={label}>Estado</label>
