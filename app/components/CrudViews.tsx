@@ -982,6 +982,10 @@ export function AdminSolicitudesView() {
         setTimeout(() => {
           window.location.href = '/admin/horario';
         }, 1500);
+      } else if (sol && sol.inventario_id) {
+        setTimeout(() => {
+          window.location.href = '/admin/prestamos';
+        }, 500);
       }
     }
   };
@@ -1683,7 +1687,7 @@ export function AdminPrestamosView() {
             className={tab === 'pendiente' ? `${primaryButton}` : `${secondaryButton}`}
             onClick={() => setTab('pendiente')}
           >
-            Por Entregar ({pendientes.length})
+            Por Recoger ({pendientes.length})
           </button>
           <button
             className={tab === 'prestado' ? `${primaryButton}` : `${secondaryButton}`}
@@ -1738,7 +1742,7 @@ export function AdminPrestamosView() {
                   {prestamo.estado === 'pendiente' ? (
                     <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarPrestado(prestamo.id)}>
                       <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? '...' : 'Entregar al Profe'}
+                      {procesando === prestamo.id ? '...' : 'Entregado'}
                     </button>
                   ) : prestamo.estado === 'prestado' ? (
                     <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarDevuelto(prestamo.id)}>
@@ -1757,7 +1761,7 @@ export function AdminPrestamosView() {
             {list.length === 0 && (
               <tr>
                 <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                  {tab === 'pendiente' ? 'No hay equipos por entregar' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
+                  {tab === 'pendiente' ? 'No hay equipos por recoger' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
                 </td>
               </tr>
             )}
