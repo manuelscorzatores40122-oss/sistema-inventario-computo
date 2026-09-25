@@ -90,7 +90,7 @@ export async function PUT(
          JOIN usuarios u ON s.profesor_id = u.id
          LEFT JOIN inventario i ON s.inventario_id = i.id
          WHERE s.id = $1
-         FOR UPDATE`,
+         FOR UPDATE OF s`,
         [params.id]
       );
 
@@ -165,11 +165,11 @@ export async function PUT(
              estado = $3,
              admin_aprueba_id = COALESCE($4, admin_aprueba_id),
              comentarios = COALESCE($5, comentarios),
-             fecha_aprobacion = CASE WHEN $3 IN ('aprobada', 'rechazada') THEN CURRENT_TIMESTAMP ELSE fecha_aprobacion END,
+             fecha_aprobacion = CASE WHEN $7::boolean THEN CURRENT_TIMESTAMP ELSE fecha_aprobacion END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $6
          RETURNING *`,
-        [nextCantidad, motivo, nextEstado, admin_id, comentarios, params.id]
+        [nextCantidad, motivo, nextEstado, admin_id, comentarios, params.id, ['aprobada', 'rechazada'].includes(nextEstado)]
       );
 
       if (['aprobada', 'rechazada', 'cancelada'].includes(nextEstado) && sol.telefono) {
@@ -198,10 +198,10 @@ export async function PUT(
     } finally {
       client.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al actualizar solicitud:', error);
     return NextResponse.json(
-      { error: 'Error al actualizar solicitud' },
+      { error: error.message, stack: error.stack },
       { status: 500 }
     );
   }

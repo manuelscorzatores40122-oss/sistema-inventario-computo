@@ -77,6 +77,25 @@ export async function POST(request: NextRequest) {
         const dateObj = new Date(fecha_reserva + 'T12:00:00');
         const dia_semana = dias[dateObj.getDay()];
 
+        // Verificar si el aula ya está ocupada en ese horario
+        const overlapCheck = await client.query(
+          `SELECT id FROM disponibilidad 
+           WHERE (
+             (sala_nombre = 'Horario de Clases' AND dia_semana = $1)
+             OR (fecha_reserva::date = $2::date)
+           )
+           AND estado IN ('separado', 'pendiente')
+           AND hora_inicio < $4
+           AND hora_fin > $3
+           LIMIT 1`,
+          [dia_semana, fecha_reserva, hora_inicio, hora_fin]
+        );
+
+        if (overlapCheck.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'No se puede solicitar: el aula ya estará ocupada en ese horario.' }, { status: 400 });
+        }
+
         const resultDisp = await client.query(
           `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

@@ -30,6 +30,7 @@ type Clase = {
   reservado_por_nombre: string | null;
   reservado_por_apellido: string | null;
   motivo_reserva: string | null;
+  fecha_reserva?: string | null;
 };
 
 type Profesor = {
@@ -101,7 +102,7 @@ export default function AdminHorarioView() {
 
   const fetchData = async () => {
     const [claseRes, profRes] = await Promise.all([
-      fetch(`/api/disponibilidad?sala_nombre=${encodeURIComponent(SALA_HORARIO)}`),
+      fetch(`/api/disponibilidad`),
       fetch('/api/usuarios?role=profesor&activo=true'),
     ]);
 
@@ -139,17 +140,37 @@ export default function AdminHorarioView() {
     }, 30000);
     return () => clearInterval(timer);
   }, [autoFollow]);
-
-  const claseMap = useMemo(() => {
-    const map = new Map<string, Clase>();
-    clases.forEach((c) => map.set(`${c.dia_semana}|${c.hora_inicio}`, c));
-    return map;
-  }, [clases]);
-
   const year = weekStart.getFullYear();
   const month = weekStart.getMonth();
   const today = now;
-  const weekDates = Array.from({ length: 6 }, (_, i) => new Date(year, month, weekStart.getDate() + i));
+  const weekDates = useMemo(() => Array.from({ length: 6 }, (_, i) => new Date(year, month, weekStart.getDate() + i)), [year, month, weekStart]);
+
+  const claseMap = useMemo(() => {
+    const map = new Map<string, Clase>();
+    // Primero, cargar el horario base
+    clases.forEach((c) => {
+      if (!c.fecha_reserva && c.sala_nombre === SALA_HORARIO) {
+        map.set(`${c.dia_semana}|${c.hora_inicio}`, c);
+      }
+    });
+    // Luego, superponer las reservas específicas si caen en la semana actual y están aprobadas
+    clases.forEach((c) => {
+      if (c.fecha_reserva && c.estado === 'separado') {
+        const dateStr = c.fecha_reserva.split('T')[0];
+        const isInWeek = weekDates.some((d) => {
+          const tzoffset = d.getTimezoneOffset() * 60000;
+          const localISOTime = new Date(d.getTime() - tzoffset).toISOString().split('T')[0];
+          return localISOTime === dateStr;
+        });
+        if (isInWeek) {
+          // Find the exact block or if it overlaps, just place it on the exact match
+          map.set(`${c.dia_semana}|${c.hora_inicio}`, c);
+        }
+      }
+    });
+    return map;
+  }, [clases, weekDates]);
+
 
   const prevWeek = () => {
     setAutoFollow(false);
@@ -169,9 +190,9 @@ export default function AdminHorarioView() {
   const startPart = `${startD.getDate()}${startD.getMonth() !== endD.getMonth() ? ' de ' + MESES[startD.getMonth()] : ''}`;
   const weekTitle = `Semana del ${startPart} al ${endD.getDate()} de ${MESES[endD.getMonth()]} del ${endD.getFullYear()}`;
 
-  const total = clases.length;
+  const total = claseMap.size;
   const libres = DIAS.length * template.length - total;
-  const profesoresConClase = new Set(clases.map((c) => c.reservado_por)).size;
+  const profesoresConClase = new Set(Array.from(claseMap.values()).map((c) => c.reservado_por)).size;
 
   const addBloque = () => {
     setTemplate((prev) => {
