@@ -37,6 +37,7 @@ export default function AdminHistorialView() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProfesor, setSelectedProfesor] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
@@ -91,21 +92,42 @@ export default function AdminHistorialView() {
 
       <div className="inventory-panel p-4 mb-4">
         <label className="inventory-form-label d-flex align-items-center gap-2">
-          <FiSearch className="text-slate-500" /> Buscar Profesor
+          <FiSearch className="text-slate-500" /> Buscar Profesor por nombre o apellido
         </label>
-        <select
-          className="inventory-form-select"
-          value={selectedProfesor || ''}
-          onChange={(e) => setSelectedProfesor(e.target.value ? Number(e.target.value) : null)}
-          disabled={loading}
-        >
-          <option value="">-- Seleccionar un profesor --</option>
-          {profesores.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.apellido}, {p.nombre} {p.area ? `(${p.area})` : ''}
-            </option>
-          ))}
-        </select>
+        <div className="position-relative">
+          <input
+            type="text"
+            className="inventory-form-input"
+            placeholder="Ej. Juan Pérez..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setSelectedProfesor(null);
+            }}
+            disabled={loading}
+          />
+          {searchTerm && !selectedProfesor && (
+            <div className="list-group position-absolute w-100 shadow-lg mt-1" style={{ zIndex: 1000, maxHeight: '250px', overflowY: 'auto' }}>
+              {profesores
+                .filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map(p => (
+                  <button
+                    key={p.id}
+                    className="list-group-item list-group-item-action text-start border-0 border-bottom"
+                    onClick={() => {
+                      setSelectedProfesor(p.id);
+                      setSearchTerm(`${p.apellido}, ${p.nombre}`);
+                    }}
+                  >
+                    <strong>{p.apellido}, {p.nombre}</strong> {p.area ? <span className="text-muted small">({p.area})</span> : ''}
+                  </button>
+                ))}
+              {profesores.filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                <div className="list-group-item text-slate-500 text-sm border-0">No se encontraron profesores</div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {selectedProfesor && (
