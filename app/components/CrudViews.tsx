@@ -1467,7 +1467,7 @@ export function AdminPrestamosView() {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [profesores, setProfesores] = useState<{ id: number; nombre: string; apellido: string }[]>([]);
-  const [tab, setTab] = useState<'prestado' | 'devuelto'>('prestado');
+  const [tab, setTab] = useState<'pendiente' | 'prestado' | 'devuelto'>('pendiente');
   const [form, setForm] = useState({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
@@ -1548,13 +1548,39 @@ export function AdminPrestamosView() {
     }
   };
 
-  const entregar = async (id: number) => {
+  const marcarPrestado = async (id: number) => {
+    setProcesando(id);
+    try {
+      const response = await fetch(`/api/prestamos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'prestado' }),
+      });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Equipo entregado al profesor' });
+        setPrestamos((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, estado: 'prestado' } : p))
+        );
+      } else {
+        const data = await response.json().catch(() => null);
+        setMessage({ type: 'error', text: data?.error || 'Error' });
+      }
+    } finally {
+      setProcesando(null);
+    }
+  };
+
+  const marcarDevuelto = async (id: number) => {
     confirmDialog('¿Confirmas que el/la profesor(a) devolvió el equipo?', async () => {
       setProcesando(id);
       try {
-        const response = await fetch(`/api/prestamos/${id}`, { method: 'PUT' });
+        const response = await fetch(`/api/prestamos/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: 'devuelto' }),
+        });
         if (response.ok) {
-          setMessage({ type: 'success', text: 'Equipo entregado, vuelve a estar disponible en el inventario' });
+          setMessage({ type: 'success', text: 'Equipo devuelto al inventario' });
           const prestamo = prestamos.find((p) => p.id === id);
           setPrestamos((prev) =>
             prev.map((p) =>
@@ -1574,11 +1600,10 @@ export function AdminPrestamosView() {
           }
         } else {
           const data = await response.json().catch(() => null);
-          setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como entregado' });
+          setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como devuelto' });
         }
       } catch (error) {
-        console.error('Error al marcar prestamo como entregado:', error);
-        setMessage({ type: 'error', text: 'Error al marcar como entregado' });
+        setMessage({ type: 'error', text: 'Error al marcar como devuelto' });
       } finally {
         setProcesando(null);
       }
@@ -1598,9 +1623,10 @@ export function AdminPrestamosView() {
     }, true);
   };
 
+  const pendientes = prestamos.filter((p) => p.estado === 'pendiente');
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
-  const list = tab === 'prestado' ? activos : devueltos;
+  const list = tab === 'pendiente' ? pendientes : tab === 'prestado' ? activos : devueltos;
   const itemsDisponibles = items.filter((i) => i.cantidad_disponible > 0);
 
   return (
@@ -1654,6 +1680,12 @@ export function AdminPrestamosView() {
       <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
         <div className="d-flex gap-2">
           <button
+            className={tab === 'pendiente' ? `${primaryButton}` : `${secondaryButton}`}
+            onClick={() => setTab('pendiente')}
+          >
+            Por Entregar ({pendientes.length})
+          </button>
+          <button
             className={tab === 'prestado' ? `${primaryButton}` : `${secondaryButton}`}
             onClick={() => setTab('prestado')}
           >
@@ -1663,7 +1695,7 @@ export function AdminPrestamosView() {
             className={tab === 'devuelto' ? `${primaryButton}` : `${secondaryButton}`}
             onClick={() => setTab('devuelto')}
           >
-            Entregados ({devueltos.length})
+            Devueltos ({devueltos.length})
           </button>
         </div>
       </div>
@@ -1703,10 +1735,15 @@ export function AdminPrestamosView() {
                 {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleDateString('es-ES') : '-'}</td>}
                 <td><StatusBadge value={prestamo.estado} /></td>
                 <td className="text-right">
-                  {prestamo.estado === 'prestado' ? (
-                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => entregar(prestamo.id)}>
+                  {prestamo.estado === 'pendiente' ? (
+                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarPrestado(prestamo.id)}>
                       <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? 'Procesando...' : 'Entregado'}
+                      {procesando === prestamo.id ? '...' : 'Entregar al Profe'}
+                    </button>
+                  ) : prestamo.estado === 'prestado' ? (
+                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarDevuelto(prestamo.id)}>
+                      <FiCheckCircle size={13} />
+                      {procesando === prestamo.id ? '...' : 'Devuelto'}
                     </button>
                   ) : (
                     <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => eliminar(prestamo.id)}>
@@ -1720,7 +1757,7 @@ export function AdminPrestamosView() {
             {list.length === 0 && (
               <tr>
                 <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                  {tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos entregados aún'}
+                  {tab === 'pendiente' ? 'No hay equipos por entregar' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
                 </td>
               </tr>
             )}

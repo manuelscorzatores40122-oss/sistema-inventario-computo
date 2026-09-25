@@ -31,14 +31,39 @@ export async function PUT(
 
       const prestamo = result.rows[0];
 
+      const body = await request.json().catch(() => ({}));
+      const nuevoEstado = body.estado || 'devuelto';
+
       if (prestamo.estado === 'devuelto') {
         await client.query('ROLLBACK');
         return NextResponse.json(
-          { error: 'Este préstamo ya fue entregado' },
+          { error: 'Este préstamo ya fue devuelto' },
           { status: 400 }
         );
       }
 
+      if (nuevoEstado === 'prestado') {
+        if (prestamo.estado === 'prestado') {
+          await client.query('ROLLBACK');
+          return NextResponse.json(
+            { error: 'El equipo ya fue entregado al profesor' },
+            { status: 400 }
+          );
+        }
+        await client.query(
+          `UPDATE prestamos
+           SET estado = 'prestado',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [params.id]
+        );
+        await client.query('COMMIT');
+        return NextResponse.json({
+          message: 'Equipo entregado al profesor exitosamente',
+        });
+      }
+
+      // nuevoEstado === 'devuelto'
       await client.query(
         `UPDATE prestamos
          SET estado = 'devuelto',

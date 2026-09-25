@@ -141,6 +141,12 @@ export async function PUT(
             'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
             [sol.inventario_id, 'salida', nextCantidad, admin_id, `Aprobación de solicitud #${params.id}`]
           );
+
+          await client.query(
+            `INSERT INTO prestamos (inventario_id, profesor_id, cantidad, detalle, estado)
+             VALUES ($1, $2, $3, $4, 'pendiente')`,
+            [sol.inventario_id, sol.profesor_id, nextCantidad, `Generado desde solicitud #${params.id}`]
+          );
         } else if (sol.disponibilidad_id) {
           // Aula request approved
           await client.query(
