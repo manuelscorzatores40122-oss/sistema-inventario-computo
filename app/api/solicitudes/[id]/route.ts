@@ -178,13 +178,24 @@ export async function PUT(
         [nextCantidad, motivo, nextEstado, admin_id, comentarios, params.id, ['aprobada', 'rechazada'].includes(nextEstado)]
       );
 
-      if (['aprobada', 'rechazada', 'cancelada'].includes(nextEstado) && sol.telefono) {
+      if (['aprobada', 'rechazada', 'cancelada'].includes(nextEstado)) {
+        const itemType = sol.item_nombre ? 'equipo' : 'salon';
+        const itemName = sol.item_nombre || 'Aula de Cómputo';
+        const msgEstado = nextEstado === 'aprobada' ? 'aprobado' : (nextEstado === 'rechazada' ? 'desaprobado' : 'cancelado');
+        
+        let mensaje = `Solicitud del ${itemType} (${itemName}) ${msgEstado}`;
+        if (comentarios && comentarios.trim() !== '') {
+          mensaje += ` - Motivo/Nota: ${comentarios}`;
+        }
+
+        const telefonoParaNotif = sol.telefono || '-';
+
         await client.query(
           'INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado) VALUES ($1, $2, $3, $4, $5, $6)',
           [
             sol.profesor_id,
-            sol.telefono,
-            `Tu solicitud #${sol.id} ${sol.item_nombre ? `de ${nextCantidad} ${sol.item_nombre}` : ''} fue ${nextEstado}.`,
+            telefonoParaNotif,
+            mensaje,
             `solicitud_${nextEstado}`,
             sol.id,
             'pendiente',

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import NotificacionesBell from './NotificacionesBell';
 import {
   FiHome,
   FiFileText,
@@ -77,6 +78,8 @@ export default function ProfesorHeader() {
             })}
 
             <div className="d-flex align-items-center gap-2 ms-2 border-start ps-3" style={{ borderColor: 'var(--color-slate-800)' }}>
+              <NotificacionesBell />
+
               <div className="text-end d-none d-sm-block">
                 <div className="fw-semibold small">
                   {user?.nombre || 'Profesor'}

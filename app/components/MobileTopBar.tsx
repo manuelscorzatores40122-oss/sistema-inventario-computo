@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FiLogOut, FiShield } from 'react-icons/fi';
+import NotificacionesBell from './NotificacionesBell';
 
 export default function MobileTopBar() {
   const [user, setUser] = useState<any>(null);
@@ -38,6 +39,7 @@ export default function MobileTopBar() {
       </div>
 
       <div className="d-flex align-items-center gap-2 pe-3">
+        <NotificacionesBell />
         <div className="mobile-top-bar-avatar">
           {user?.nombre ? user.nombre.charAt(0).toUpperCase() : 'U'}
         </div>
