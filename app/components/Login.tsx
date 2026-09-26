@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiAlertTriangle, FiMessageSquare } from 'react-icons/fi';
 import './Login.css';
 
 export default function Login() {
@@ -77,9 +77,11 @@ export default function Login() {
       <div className="login-form-section">
         <div className="login-form-wrapper">
           <div className="login-header">
+            <div className="login-mark" aria-hidden="true"><FiMessageSquare /></div>
             <img src="/logo.png" alt="Insignia del colegio" className="login-logo" />
+            <p className="login-school">I.E. Manuel Scorza</p>
             <h1 className="login-title">Bienvenido</h1>
-            <p className="login-subtitle">Ingresa tus credenciales para continuar</p>
+            <p className="login-subtitle">Accede al sistema de inventario</p>
           </div>
 
           {error && (
@@ -139,4 +141,3 @@ export default function Login() {
     </main>
   );
 }
-

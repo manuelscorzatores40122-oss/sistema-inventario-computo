@@ -13,7 +13,7 @@ import {
 } from 'react-icons/fi';
 
 const menuItems = [
-  { href: '/profesor/dashboard', title: 'Dashboard', icon: FiHome },
+  { href: '/profesor/dashboard', title: 'Inicio', icon: FiHome },
   { href: '/profesor/solicitudes', title: 'Mis Solicitudes', icon: FiFileText },
   { href: '/profesor/perfil', title: 'Mi Perfil', icon: FiUser },
 ];
@@ -39,85 +39,55 @@ export default function ProfesorHeader() {
       : pathname.startsWith(href);
 
   return (
-    <header className="profesor-header shadow-sm">
-      <div className="container-xl py-3">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-          <div className="d-flex align-items-center">
-            <div
-              className="d-flex align-items-center justify-content-center me-3"
-              style={{ width: '40px', height: '40px' }}
-            >
-              <Image src="/logo.png" alt="Logo" width={40} height={40} style={{ objectFit: 'contain' }} />
-            </div>
-            <div>
-              <div className="text-uppercase small fw-bold mb-1" style={{ color: 'var(--color-slate-400)' }}>
-                Sistema de Inventario
-              </div>
-
-              <h1 className="h4 fw-bold mb-0">
-                Panel del Profesor
-              </h1>
-            </div>
-          </div>
-
-          <nav className="d-flex flex-wrap align-items-center gap-1">
-            {menuItems.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`header-nav-item ${active ? 'active' : ''}`}
-                >
-                  <Icon size={16} />
-                  {item.title}
-                </Link>
-              );
-            })}
-
-            <div className="d-flex align-items-center gap-2 ms-2 border-start ps-3" style={{ borderColor: 'var(--color-slate-800)' }}>
-              <NotificacionesBell />
-
-              <div className="text-end d-none d-sm-block">
-                <div className="fw-semibold small">
-                  {user?.nombre || 'Profesor'}
-                </div>
-
-                <div className="small" style={{ color: 'var(--color-slate-400)' }}>
-                  Profesor
-                </div>
-              </div>
-
-              <div
-                className="rounded-circle sidebar-brand-icon d-flex align-items-center justify-content-center fw-bold"
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  fontSize: '16px',
-                }}
-              >
-                {user?.nombre
-                  ? user.nombre.charAt(0).toUpperCase()
-                  : 'P'}
-              </div>
-
-              <button
-                className="header-btn"
-                title="Cerrar sesión"
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/auth/login';
-                }}
-              >
-                <FiLogOut size={18} />
-              </button>
-            </div>
-          </nav>
+    <aside className="profesor-header">
+      <div className="profesor-sidebar-brand">
+        <Image src="/logo.png" alt="Logo" width={48} height={48} style={{ objectFit: 'contain' }} />
+        <div>
+          <div className="profesor-sidebar-kicker">I.E. Manuel Scorza</div>
+          <div className="profesor-sidebar-title">Panel docente</div>
         </div>
       </div>
-    </header>
+
+      <nav className="profesor-sidebar-nav" aria-label="Navegación del profesor">
+        {menuItems.map((item) => {
+          const active = isActive(item.href);
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`header-nav-item ${active ? 'active' : ''}`}
+            >
+              <Icon size={19} />
+              <span>{item.title}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="profesor-sidebar-user">
+        <div className="profesor-sidebar-user-row">
+          <div className="profesor-sidebar-avatar">{user?.nombre ? user.nombre.charAt(0).toUpperCase() : 'P'}</div>
+          <div className="profesor-sidebar-user-copy">
+            <strong>{user?.nombre || 'Profesor'}</strong>
+            <span>Docente</span>
+          </div>
+          <NotificacionesBell />
+        </div>
+
+        <button
+          className="profesor-sidebar-logout"
+          onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/auth/login';
+          }}
+        >
+          <FiLogOut size={18} />
+          <span>Cerrar sesión</span>
+        </button>
+      </div>
+    </aside>
   );
 }
