@@ -178,7 +178,6 @@ export default function Login({ register = false }: { register?: boolean }) {
             </div>
 
             <button type="submit" disabled={loading} className="login-submit-btn">
-              <FiLogIn className="btn-icon" />
               {loading ? (isRegister ? 'Creando cuenta...' : 'Verificando...') : (isRegister ? 'Registrarse' : 'Iniciar sesión')}
             </button>
           </form>

@@ -34,7 +34,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(4, 19, 42, .67);
+  background: rgba(4, 19, 42, .48);
 }
 
 .login-image-overlay {
@@ -87,10 +87,6 @@
 .login-form-wrapper {
   width: 100%;
   max-width: 450px;
-  border: 1px solid rgba(145, 187, 237, .2);
-  border-radius: 20px;
-  background: rgba(6, 23, 47, .85);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, .25);
   padding: 28px 24px;
 }
 
@@ -172,7 +168,7 @@
 }
 
 @media (max-width: 767.98px) {
-  .login-image-section::after { background: rgba(4, 19, 42, .76); }
+  .login-image-section::after { background: rgba(4, 19, 42, .52); }
   .login-form-wrapper { max-width: 390px; padding: 24px 18px; }
   .login-header { text-align: center; }
   .login-mark { margin: 0 auto 16px; }
