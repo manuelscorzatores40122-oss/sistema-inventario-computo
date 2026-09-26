@@ -2,10 +2,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
 import './Login.css';
 
-export default function Login() {
+export default function Login({ register = false }: { register?: boolean }) {
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [greeting, setGreeting] = useState('Te damos la bienvenida');
+  const [welcomeMessage, setWelcomeMessage] = useState('Tu espacio para organizar los recursos y reservar el aula de cómputo.');
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      const hour = Number(new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+      setGreeting(hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches');
+      setWelcomeMessage(hour < 12
+        ? 'Comienza el día preparando tus clases. Consulta los recursos y reserva el aula de cómputo.'
+        : hour < 18
+          ? 'Seguimos aprendiendo juntos. Gestiona tus materiales y encuentra un espacio para tu próxima clase.'
+          : 'Prepara lo que viene mañana. Organiza tus materiales y deja lista tu próxima reserva.');
+    };
+    updateGreeting();
+    const timer = setInterval(updateGreeting, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isRegister = register && !registered;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,16 +56,23 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(isRegister ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password, nombre: nombre.trim(), apellido: apellido.trim() }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al iniciar sesión');
+        setError(data.error || (isRegister ? 'No se pudo crear la cuenta' : 'Error al iniciar sesión'));
+        setLoading(false);
+        return;
+      }
+
+      if (isRegister) {
+        setRegistered(true);
+        setPassword('');
         setLoading(false);
         return;
       }
@@ -70,8 +100,9 @@ export default function Login() {
         />
         <div className="login-image-overlay">
           <span className="login-image-kicker">I.E. Manuel Scorza</span>
-          <h2>Bienvenido<br />de nuevo</h2>
-          <p>Sistema centralizado para la gestión del inventario y reservas del aula de cómputo.</p>
+          <h2>{greeting}</h2>
+          <p>{welcomeMessage}</p>
+          <span className="login-community">Juntos, al servicio de nuestra comunidad educativa.</span>
         </div>
       </div>
 
@@ -82,9 +113,12 @@ export default function Login() {
               <img src="/logo.png" alt="Insignia de la I.E. Manuel Scorza" className="login-logo" />
             </div>
             <p className="login-school">I.E. Manuel Scorza</p>
-            <h1 className="login-title">Iniciar sesión</h1>
-            <p className="login-subtitle">Ingresa tus credenciales para continuar</p>
+            <p className="login-mobile-greeting">{greeting}</p>
+            <h1 className="login-title">{isRegister ? 'Crea tu cuenta' : 'Iniciar sesión'}</h1>
+            <p className="login-subtitle">{isRegister ? 'Regístrate como docente de nuestra comunidad' : 'Ingresa tus credenciales para continuar'}</p>
           </div>
+
+          {registered && <p className="login-success" role="status">Tu cuenta está lista. Inicia sesión con tu DNI y contraseña.</p>}
 
           {error && (
             <div className="login-alert" role="alert">
@@ -94,8 +128,24 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="login-form">
+            {isRegister && <>
+              <div className="form-group">
+                <label htmlFor="nombre">Nombres</label>
+                <div className="input-with-icon">
+                  <FiUser className="input-icon" />
+                  <input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" placeholder="Tus nombres" required maxLength={100} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="apellido">Apellidos</label>
+                <div className="input-with-icon">
+                  <FiUser className="input-icon" />
+                  <input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" placeholder="Tus apellidos" required maxLength={100} />
+                </div>
+              </div>
+            </>}
             <div className="form-group">
-              <label htmlFor="email">Usuario</label>
+              <label htmlFor="email">DNI</label>
               <div className="input-with-icon">
                 <FiUser className="input-icon" />
                 <input
@@ -120,7 +170,8 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete={isRegister ? "new-password" : "current-password"}
+                  minLength={isRegister ? 6 : undefined}
                   required
                 />
               </div>
@@ -128,9 +179,14 @@ export default function Login() {
 
             <button type="submit" disabled={loading} className="login-submit-btn">
               <FiLogIn className="btn-icon" />
-              {loading ? 'Verificando...' : 'Iniciar Sesión'}
+              {loading ? (isRegister ? 'Creando cuenta...' : 'Verificando...') : (isRegister ? 'Registrarse' : 'Iniciar sesión')}
             </button>
           </form>
+
+          <p className="login-register-link">
+            {isRegister ? '¿Ya tienes una cuenta? ' : '¿No tienes una cuenta? '}
+            <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Regístrate'}</Link>
+          </p>
 
           <div className="login-footer">
             <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">
