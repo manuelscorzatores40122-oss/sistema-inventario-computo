@@ -14,6 +14,7 @@ import {
   FiArrowLeft,
   FiBriefcase,
   FiHash,
+  FiRefreshCw,
 } from 'react-icons/fi';
 
 type UsuarioInfo = {
@@ -34,6 +35,7 @@ export default function PerfilView() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Credenciales
   const [email, setEmail] = useState('');
@@ -49,19 +51,45 @@ export default function PerfilView() {
       router.push('/auth/login');
       return;
     }
-    const parsed = JSON.parse(stored);
 
-    fetch(`/api/usuarios/${parsed.id}`)
-      .then(res => res.json())
-      .then(data => {
-        const u = data.usuario;
+    const controller = new AbortController();
+
+    const loadProfile = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const parsed = JSON.parse(stored);
+        if (!parsed?.id) {
+          router.push('/auth/login');
+          return;
+        }
+
+        const response = await fetch(`/api/usuarios/${parsed.id}`, { signal: controller.signal });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.usuario) {
+          throw new Error(data?.error || 'No se pudo obtener la información del perfil');
+        }
+
+        const u: UsuarioInfo = data.usuario;
         setUser(u);
-        setEmail(u.email);
+        setEmail(u.email || '');
         setTelefono(u.telefono || '');
         setCorreoPersonal(u.correo_personal || '');
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+      } catch (loadError) {
+        if ((loadError as Error).name === 'AbortError') return;
+        console.error('Error al cargar perfil:', loadError);
+        setUser(null);
+        setError((loadError as Error).message || 'No se pudo cargar el perfil');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    loadProfile();
+    return () => controller.abort();
+  }, [router, reloadKey]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +150,15 @@ export default function PerfilView() {
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 d-flex align-items-center justify-content-center">
-        <div className="text-center text-secondary">No se pudo cargar el perfil</div>
+        <div className="text-center p-4">
+          <FiAlertCircle className="text-danger mb-2" size={32} />
+          <div className="fw-bold text-dark mb-1">No se pudo cargar el perfil</div>
+          <p className="text-secondary small mb-3">{error || 'Comprueba la conexión e inténtalo nuevamente.'}</p>
+          <button type="button" className="btn btn-primary d-inline-flex align-items-center gap-2" onClick={() => setReloadKey((key) => key + 1)}>
+            <FiRefreshCw size={15} />
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }

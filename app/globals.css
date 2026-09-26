@@ -582,6 +582,114 @@ body {
   }
 }
 
+.profesor-dashboard-main .mobile-action-card {
+  box-shadow: 0 6px 16px rgba(19, 66, 73, .12) !important;
+}
+
+@media (hover: hover) {
+  .profesor-dashboard-main .mobile-action-card:hover {
+    box-shadow: 0 10px 24px rgba(19, 66, 73, .16) !important;
+  }
+}
+
+/* Recent requests activity */
+.recent-requests-panel {
+  overflow: hidden;
+  border: 1px solid #e0e9eb !important;
+  border-radius: 8px !important;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(19, 66, 73, .09) !important;
+}
+
+.recent-requests-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e7eef0;
+}
+
+.recent-requests-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: #0b7d85;
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.recent-requests-header h2 { margin: 0; color: #183e45; font-size: 1rem; font-weight: 800; }
+.recent-requests-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0b7d85;
+  font-size: .75rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.recent-requests-link:hover { color: #075e65; }
+.recent-requests-body { padding: 14px; }
+.recent-requests-list { display: grid; gap: 9px; }
+.recent-request-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 76px;
+  padding: 12px 14px;
+  overflow: hidden;
+  border: 1px solid #e2eaec;
+  border-radius: 7px;
+  background: #fbfcfc;
+  box-shadow: 0 2px 8px rgba(19, 66, 73, .045);
+}
+
+.recent-request-item::before {
+  display: none;
+}
+.recent-request-icon {
+  display: grid;
+  flex: 0 0 42px;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.recent-request-icon.classroom { color: #0b7d85; background: #e5f5f5; }
+.recent-request-icon.equipment { color: #7657a6; background: #f1ecf8; }
+.recent-request-copy { min-width: 0; flex: 1; }
+.recent-request-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.recent-request-title-row h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #202f33;
+  font-size: .86rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-request-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px; margin-top: 6px; color: #6f8185; font-size: .68rem; }
+.recent-request-meta span,
+.recent-request-meta time { display: inline-flex; align-items: center; gap: 5px; }
+.recent-request-meta svg { color: #8da0a4; }
+
+@media (max-width: 575.98px) {
+  .recent-requests-header { padding: 15px 14px; }
+  .recent-requests-body { padding: 10px; }
+  .recent-request-item { align-items: flex-start; gap: 10px; padding: 11px 10px 11px 12px; }
+  .recent-request-icon { flex-basis: 36px; width: 36px; height: 36px; }
+  .recent-request-title-row { align-items: flex-start; }
+  .recent-request-title-row h3 { white-space: normal; }
+  .recent-request-meta { gap: 5px 10px; }
+  .recent-request-meta span:first-child { width: 100%; }
+}
+
 /* Mobile bottom navigation bar: visible only on phones/tablet portrait.
    NOTE: no backdrop-filter / blur here — it can make the fixed bar
    fail to render or stick on iOS Safari. */
@@ -1591,5 +1699,694 @@ body {
   }
   to {
     transform: translateY(0);
+  }
+}
+
+/* Refined professor mobile dashboard */
+.mobile-top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 14px;
+}
+
+.mobile-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mobile-hero-copy { min-width: 0; }
+.mobile-hero-badge,
+.mobile-hero-area {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, .12);
+  font-size: .66rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mobile-hero-area {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, .82);
+}
+
+.mobile-hero-avatar {
+  display: grid;
+  flex: 0 0 52px;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 50%;
+  color: #086f7a;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 4px 12px rgba(4, 68, 74, .16);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.mobile-action-description {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: .76rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 991.98px) {
+  .profesor-shell .mobile-top-bar {
+    height: 54px;
+    border-bottom: 0;
+    background: #fff;
+    box-shadow: 0 1px 8px rgba(15, 74, 80, .07);
+  }
+
+  .profesor-shell .mobile-top-bar-title { color: #16434a; font-size: .86rem; }
+  .profesor-shell .mobile-top-bar-logo { width: 32px; height: 32px; }
+  .profesor-shell .mobile-top-bar-logout {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #dbe7e9;
+    border-radius: 50%;
+    color: #315e64;
+    background: #f3f8f8;
+  }
+
+  .profesor-shell .mobile-top-bar-actions .header-btn {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    border: 1px solid #dbe7e9 !important;
+    border-radius: 50%;
+    color: #315e64;
+    background: #f3f8f8 !important;
+  }
+
+  .profesor-shell .mobile-hero-banner {
+    min-height: 112px;
+    padding: 16px;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0f8f9d 0%, #086f7a 100%);
+    box-shadow: 0 6px 16px rgba(8, 111, 122, .15);
+  }
+
+  .profesor-shell .mobile-hero-banner::before,
+  .profesor-shell .mobile-hero-banner::after { display: none; }
+  .profesor-shell .mobile-hero-banner h1 { font-size: 1.12rem; line-height: 1.25; }
+
+  .profesor-shell .mobile-stat-tile {
+    min-height: 96px;
+    padding: 12px 8px;
+    border: 1px solid #e7eef0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(18, 70, 76, .04);
+  }
+
+  .profesor-shell .mobile-stat-icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 5px;
+    border-radius: 50%;
+  }
+
+  .profesor-shell .mobile-stat-value { font-size: 1.45rem; }
+  .profesor-shell .mobile-stat-label { font-size: .62rem; letter-spacing: 0; text-transform: none; }
+  .profesor-shell .mobile-action-card {
+    min-height: 76px;
+    padding: 12px;
+    gap: 12px;
+    border: 1px solid #e7eef0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(18, 70, 76, .04);
+  }
+
+  .profesor-shell .mobile-action-card .action-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+  }
+
+  .profesor-shell .mobile-bottom-nav {
+    min-height: 66px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+    border-top-color: #e7eef0;
+    box-shadow: 0 -3px 12px rgba(18, 70, 76, .06);
+  }
+
+  .profesor-shell .mobile-bottom-nav .mb-nav-item {
+    min-height: 48px;
+    padding: 6px 4px;
+    border-radius: 8px;
+  }
+
+  .profesor-shell .mobile-bottom-nav .mb-nav-item.active {
+    color: #086f7a;
+    background: #e7f6f6;
+  }
+
+  .profesor-shell .mobile-bottom-nav .mb-nav-item.active .mb-nav-icon { background: transparent; }
+  .profesor-shell .card,
+  .profesor-shell .inventory-panel,
+  .profesor-shell .mobile-solicitud-card { box-shadow: 0 2px 10px rgba(18, 70, 76, .05) !important; }
+}
+
+.calendar-action-icon {
+  color: #086f7a;
+  background: #e7f6f6;
+}
+
+.request-action-icon {
+  color: #8a4d19;
+  background: #fff3e6;
+}
+
+.request-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 31, 35, .55);
+  backdrop-filter: blur(3px);
+}
+
+.request-modal-card {
+  width: min(720px, 100%);
+  max-height: calc(100svh - 40px);
+  overflow-y: auto !important;
+  border-radius: 8px !important;
+  box-shadow: 0 24px 60px rgba(6, 48, 53, .24) !important;
+}
+
+.request-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5edef;
+  background: #fff;
+}
+
+.request-modal-header span { color: #0f8f9d; font-size: .66rem; font-weight: 800; text-transform: uppercase; }
+.request-modal-header h2 { margin: 2px 0 0; color: #173f46; font-size: 1.1rem; font-weight: 800; }
+.request-modal-header button {
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #dce8ea;
+  border-radius: 50%;
+  color: #42646a;
+  background: #f4f8f9;
+}
+
+.classroom-calendar-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 31, 35, .55);
+  backdrop-filter: blur(3px);
+}
+
+.classroom-calendar-card {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(760px, calc(100svh - 40px));
+  overflow: hidden;
+  border: 1px solid #dce9eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(6, 48, 53, .24);
+}
+
+.classroom-calendar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #e5edef;
+}
+
+.classroom-calendar-eyebrow {
+  color: #0f8f9d;
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.classroom-calendar-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 4px;
+  color: #143f46;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.classroom-calendar-header p { margin: 0; color: #688187; font-size: .78rem; }
+.classroom-calendar-close,
+.classroom-calendar-toolbar button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #dce8ea;
+  border-radius: 50%;
+  color: #42646a;
+  background: #f4f8f9;
+}
+
+.classroom-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 22px;
+}
+
+.classroom-calendar-toolbar strong { color: #294f56; font-size: .82rem; text-transform: capitalize; }
+.classroom-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  gap: 6px;
+  padding: 0 22px 14px;
+  overflow-x: auto;
+}
+
+.classroom-calendar-days button {
+  position: relative;
+  display: flex;
+  min-height: 68px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: 1px solid #e2ebed;
+  border-radius: 7px;
+  color: #58747a;
+  background: #f7fafb;
+}
+
+.classroom-calendar-days button span { font-size: .62rem; font-weight: 800; text-transform: uppercase; }
+.classroom-calendar-days button strong { color: #294f56; font-size: 1.05rem; }
+.classroom-calendar-days button small { color: #0f8f9d; font-size: .58rem; font-weight: 800; }
+.classroom-calendar-days button.active { border-color: #0f8f9d; color: #fff; background: #0f8f9d; }
+.classroom-calendar-days button.active strong,
+.classroom-calendar-days button.active small { color: #fff; }
+
+.classroom-calendar-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px;
+  border-top: 1px solid #edf2f3;
+  border-bottom: 1px solid #edf2f3;
+  color: #688187;
+  background: #fafcfc;
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.classroom-calendar-status span { display: inline-flex; align-items: center; gap: 5px; }
+.classroom-calendar-status i { width: 8px; height: 8px; border-radius: 50%; }
+.classroom-calendar-status i.available { background: #16a085; }
+.classroom-calendar-status i.occupied { background: #e08c3a; }
+.classroom-calendar-status button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  color: #0a7a84;
+  background: transparent;
+  font: inherit;
+}
+
+.classroom-calendar-slots {
+  display: grid;
+  gap: 8px;
+  padding: 14px 22px 22px;
+  overflow-y: auto;
+}
+
+.classroom-calendar-slot {
+  display: grid;
+  grid-template-columns: minmax(130px, .7fr) minmax(180px, 1.3fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  text-align: left;
+}
+
+.classroom-calendar-slot.available { border: 1px solid #bfe2dc; color: #176c60; background: #f0faf7; }
+.classroom-calendar-slot.available:hover:not(:disabled) { border-color: #16a085; background: #e5f7f2; }
+.classroom-calendar-slot.occupied { border: 1px solid #f1d0aa; color: #8b561f; background: #fff8ef; }
+.classroom-calendar-slot:disabled { cursor: not-allowed; opacity: .78; }
+.classroom-calendar-slot.available:disabled { border-color: #dde5e7; color: #819397; background: #f5f7f7; }
+.slot-time { display: flex; align-items: center; gap: 7px; font-size: .8rem; font-weight: 800; }
+.slot-detail { display: flex; min-width: 0; flex-direction: column; }
+.slot-detail strong { overflow: hidden; font-size: .79rem; text-overflow: ellipsis; white-space: nowrap; }
+.slot-detail small { overflow: hidden; color: currentColor; font-size: .68rem; opacity: .78; text-overflow: ellipsis; white-space: nowrap; }
+.classroom-calendar-loading { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 180px; color: #688187; font-size: .8rem; }
+.calendar-spin { animation: calendar-spin .8s linear infinite; }
+@keyframes calendar-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 575.98px) {
+  .request-modal-layer { align-items: end; padding: 0; }
+  .request-modal-card { width: 100%; max-height: 94svh; border-radius: 8px 8px 0 0 !important; }
+  .classroom-calendar-layer { align-items: end; padding: 0; }
+  .classroom-calendar-card { width: 100%; max-height: 92svh; border-width: 1px 0 0; border-radius: 8px 8px 0 0; }
+  .classroom-calendar-header { padding: 16px 16px 13px; }
+  .classroom-calendar-header p { max-width: 260px; }
+  .classroom-calendar-toolbar { padding: 10px 16px; }
+  .classroom-calendar-days { grid-template-columns: repeat(6, 58px); padding: 0 16px 12px; }
+  .classroom-calendar-status { flex-wrap: wrap; gap: 8px 12px; padding: 9px 16px; }
+  .classroom-calendar-status button { width: 100%; margin-left: 0; }
+  .classroom-calendar-slots { padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .classroom-calendar-slot { grid-template-columns: 1fr; gap: 4px; min-height: 68px; }
+}
+
+/* Monthly classroom calendar */
+.classroom-calendar-card { width: min(820px, 100%); }
+.classroom-calendar-header { padding: 14px 22px 10px; border-bottom: 0; }
+.classroom-calendar-header h2 { margin-top: 2px; font-size: .86rem; }
+.classroom-calendar-month-heading {
+  display: grid;
+  grid-template-columns: 36px 1fr auto 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 22px 14px;
+}
+
+.classroom-calendar-month-heading strong,
+.classroom-calendar-month-heading span {
+  color: #182124;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.classroom-calendar-month-heading strong { font-size: 2.5rem; text-transform: uppercase; }
+.classroom-calendar-month-heading span { font-size: 2.25rem; }
+.classroom-calendar-month-heading button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #cfdadd;
+  border-radius: 50%;
+  color: #34575d;
+  background: #fff;
+}
+
+.classroom-calendar-weekdays,
+.classroom-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0 22px;
+  border-top: 1px solid #526064;
+  border-left: 1px solid #526064;
+}
+
+.classroom-calendar-weekdays span {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 4px 2px;
+  border-right: 1px solid #526064;
+  border-bottom: 1px solid #526064;
+  color: #4f5960;
+  background: #fdeaf6;
+  font-size: .62rem;
+  font-weight: 500;
+}
+
+.classroom-calendar-days { border-top: 0; padding: 0; overflow: visible; }
+.classroom-calendar-days button,
+.classroom-calendar-empty {
+  position: relative;
+  display: block;
+  min-height: 58px;
+  padding: 6px;
+  border: 0;
+  border-right: 1px solid #526064;
+  border-bottom: 1px solid #526064;
+  border-radius: 0;
+  color: #3f494d;
+  background: #fff;
+  text-align: left;
+}
+
+.classroom-calendar-days button strong { font-size: .68rem; font-weight: 500; }
+.classroom-calendar-days button small {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  color: #0f8f9d;
+  font-size: .55rem;
+  font-weight: 800;
+}
+
+.classroom-calendar-days button i {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #fff;
+  background: #df779f;
+  font-size: .55rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.classroom-calendar-days button:hover { background: #f4fbfb; }
+.classroom-calendar-days button.active { color: #075e67; background: #dff4f3; box-shadow: inset 0 0 0 2px #0f8f9d; }
+.classroom-calendar-days button.active strong { color: #075e67; font-weight: 800; }
+.classroom-calendar-days button.active small { color: #075e67; }
+.classroom-calendar-empty { background: #fafafa; }
+.classroom-calendar-status { margin-top: 14px; }
+.classroom-calendar-slots h3 {
+  margin: 0 0 4px;
+  color: #294f56;
+  font-size: .82rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+@media (max-width: 575.98px) {
+  .classroom-calendar-month-heading { grid-template-columns: 32px 1fr auto 32px; gap: 7px; padding: 0 16px 12px; }
+  .classroom-calendar-month-heading strong { font-size: 1.55rem; }
+  .classroom-calendar-month-heading span { font-size: 1.45rem; }
+  .classroom-calendar-month-heading button { width: 30px; height: 30px; }
+  .classroom-calendar-weekdays,
+  .classroom-calendar-days { margin: 0 10px; }
+  .classroom-calendar-weekdays span { min-height: 27px; font-size: .48rem; }
+  .classroom-calendar-days button,
+  .classroom-calendar-empty { min-height: 43px; padding: 4px; }
+  .classroom-calendar-days button strong { font-size: .6rem; }
+  .classroom-calendar-days button i { right: 3px; top: 3px; width: 14px; height: 14px; font-size: .48rem; }
+}
+
+/* Desktop professor workspace */
+.profesor-dashboard-main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (min-width: 992px) {
+  .profesor-shell { min-height: 100vh; background: #f4f7f8; }
+  .profesor-header {
+    width: 264px;
+    padding: 28px 18px 20px;
+    border-right: 1px solid rgba(255, 255, 255, .08);
+    background: #123f47;
+    box-shadow: 8px 0 28px rgba(16, 58, 65, .11);
+  }
+
+  .profesor-content { min-height: 100vh; margin-left: 264px; }
+  .profesor-dashboard-main { padding: 32px 38px 56px !important; }
+  .profesor-sidebar-brand { gap: 13px; padding: 0 8px 27px; border-bottom-color: rgba(255, 255, 255, .12); }
+  .profesor-sidebar-brand img { width: 52px; height: 52px; }
+  .profesor-sidebar-kicker { color: #83d4d2; font-size: .64rem; letter-spacing: 0; }
+  .profesor-sidebar-title { margin-top: 3px; font-size: 1.08rem; }
+  .profesor-sidebar-nav { gap: 8px; padding-top: 26px; }
+  .profesor-header .header-nav-item {
+    min-height: 48px;
+    padding: 0 15px;
+    border-radius: 7px;
+    color: #c3d6d9;
+    font-size: .86rem;
+  }
+
+  .profesor-header .header-nav-item:hover { color: #fff; background: rgba(99, 211, 208, .1); }
+  .profesor-header .header-nav-item.active {
+    color: #0b7179;
+    background: #f8fdfd;
+    box-shadow: 0 7px 18px rgba(3, 28, 33, .17);
+  }
+
+  .profesor-sidebar-user { border-top-color: rgba(255, 255, 255, .12); }
+  .profesor-sidebar-avatar { border-color: #63d3d0; color: #fff; background: rgba(99, 211, 208, .13); }
+  .profesor-sidebar-user-copy span { color: #86aeb3; }
+  .profesor-sidebar-logout { border-color: rgba(255, 255, 255, .15); color: #dce9eb; background: rgba(255, 255, 255, .03); }
+  .profesor-sidebar-logout:hover { border-color: rgba(99, 211, 208, .45); background: rgba(99, 211, 208, .1); }
+
+  .profesor-dashboard-main .mobile-hero-banner {
+    min-height: auto;
+    padding: 8px 4px 14px;
+    border: 0;
+    border-radius: 0;
+    color: #173f46;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .profesor-dashboard-main .mobile-hero-banner::before,
+  .profesor-dashboard-main .mobile-hero-banner::after { display: none; }
+  .profesor-dashboard-main .mobile-hero-banner h1 { margin-top: 8px; color: #173f46 !important; font-size: 1.55rem; }
+  .profesor-dashboard-main .mobile-hero-banner p { color: #71868b !important; }
+  .profesor-dashboard-main .mobile-hero-badge {
+    border: 0;
+    color: #0b7d85;
+    background: transparent;
+    padding-left: 0;
+  }
+  .profesor-dashboard-main .mobile-hero-area {
+    border-color: #d6e5e7;
+    color: #58747a;
+    background: #edf5f5;
+  }
+  .profesor-dashboard-main .mobile-hero-avatar {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    border-color: #dbe7e9;
+    color: #315e64;
+    background: transparent;
+    box-shadow: none;
+    font-size: 1.1rem;
+  }
+  .profesor-dashboard-main .mobile-stat-tile {
+    min-height: 112px;
+    padding: 17px 14px;
+    border-color: #e0e9eb;
+    border-radius: 8px;
+    box-shadow: 0 3px 12px rgba(19, 66, 73, .045);
+  }
+
+  .profesor-dashboard-main .mobile-stat-tile:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(19, 66, 73, .08); }
+  .profesor-dashboard-main .mobile-stat-icon { width: 38px; height: 38px; border-radius: 50%; }
+  .profesor-dashboard-main .mobile-stat-value { font-size: 1.5rem; }
+  .profesor-dashboard-main .mobile-stat-label { margin-top: 3px; font-size: .66rem; letter-spacing: 0; }
+  .profesor-dashboard-main .mobile-action-card {
+    min-height: 82px;
+    padding: 15px 17px;
+    border-color: #e0e9eb;
+    border-radius: 8px;
+    box-shadow: 0 3px 12px rgba(19, 66, 73, .045);
+  }
+
+  .profesor-dashboard-main .mobile-action-card:hover {
+    border-color: #bfdcde;
+    background: #fff;
+    box-shadow: 0 7px 20px rgba(19, 66, 73, .075);
+    transform: translateY(-2px);
+  }
+
+  .profesor-dashboard-main .mobile-action-card .action-icon-wrap { width: 46px; height: 46px; border-radius: 50%; }
+  .profesor-dashboard-main .mobile-action-description { margin-top: 5px; font-size: .73rem; }
+  .profesor-dashboard-main > section.card {
+    border: 1px solid #e0e9eb !important;
+    background: #fff;
+    box-shadow: 0 5px 18px rgba(19, 66, 73, .055) !important;
+  }
+
+  .profesor-dashboard-main > section.card .card-header { min-height: 72px; padding: 18px 22px !important; }
+  .profesor-dashboard-main > section.card .card-body { padding: 16px !important; }
+  .profesor-dashboard-main .mobile-solicitud-card { padding: 17px 18px; border-radius: 7px; }
+}
+
+@media (min-width: 1440px) {
+  .profesor-dashboard-main { max-width: 1360px; padding-right: 48px !important; padding-left: 48px !important; }
+}
+
+@media (max-width: 991.98px) {
+  .profesor-dashboard-main .mobile-hero-banner {
+    min-height: auto;
+    padding: 7px 2px 12px;
+    border: 0;
+    border-radius: 0;
+    color: #173f46;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .profesor-dashboard-main .mobile-hero-banner h1 {
+    color: #173f46 !important;
+    font-size: 1.2rem;
+  }
+
+  .profesor-dashboard-main .mobile-hero-banner p { color: #71868b !important; }
+  .profesor-dashboard-main .mobile-hero-badge {
+    padding-left: 0;
+    border: 0;
+    color: #0b7d85;
+    background: transparent;
+  }
+
+  .profesor-dashboard-main .mobile-hero-area {
+    border-color: #d6e5e7;
+    color: #58747a;
+    background: #edf5f5;
+  }
+
+  .profesor-dashboard-main .mobile-hero-avatar {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+    border-color: #dbe7e9;
+    color: #315e64;
+    background: transparent;
+    box-shadow: none;
+    font-size: 1rem;
   }
 }

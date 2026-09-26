@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUser, FiLock, FiLogIn, FiAlertTriangle, FiMessageSquare } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
 import './Login.css';
 
 export default function Login() {
@@ -69,7 +69,8 @@ export default function Login() {
           style={{ backgroundImage: `url("${backgrounds[currentBackground]}")` }}
         />
         <div className="login-image-overlay">
-          <h2>I.E. Manuel Scorza</h2>
+          <span className="login-image-kicker">I.E. Manuel Scorza</span>
+          <h2>Bienvenido<br />de nuevo</h2>
           <p>Sistema centralizado para la gestión del inventario y reservas del aula de cómputo.</p>
         </div>
       </div>
@@ -77,11 +78,12 @@ export default function Login() {
       <div className="login-form-section">
         <div className="login-form-wrapper">
           <div className="login-header">
-            <div className="login-mark" aria-hidden="true"><FiMessageSquare /></div>
-            <img src="/logo.png" alt="Insignia del colegio" className="login-logo" />
+            <div className="login-mark">
+              <img src="/logo.png" alt="Insignia de la I.E. Manuel Scorza" className="login-logo" />
+            </div>
             <p className="login-school">I.E. Manuel Scorza</p>
-            <h1 className="login-title">Bienvenido</h1>
-            <p className="login-subtitle">Accede al sistema de inventario</p>
+            <h1 className="login-title">Iniciar sesión</h1>
+            <p className="login-subtitle">Ingresa tus credenciales para continuar</p>
           </div>
 
           {error && (
