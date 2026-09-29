@@ -60,6 +60,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Para solicitar un aula debes especificar fecha y horas' }, { status: 400 });
     }
 
+    if (tipo_solicitud === 'aula') {
+      const validDate = typeof fecha_reserva === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha_reserva);
+      const validTime = (value: unknown) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+      const start = new Date(`${fecha_reserva}T${hora_inicio}:00-05:00`);
+      if (!validDate || !validTime(hora_inicio) || !validTime(hora_fin) || !Number.isFinite(start.getTime()) || hora_inicio >= hora_fin) {
+        return NextResponse.json({ error: 'Indica una fecha válida y una hora de fin posterior al inicio.' }, { status: 400 });
+      }
+      if (start <= new Date()) {
+        return NextResponse.json({ error: 'La reserva debe comenzar en un horario futuro.' }, { status: 400 });
+      }
+    }
+
     if (tipo_solicitud !== 'aula' && (!inventario_id || !Number.isInteger(cantidad) || cantidad <= 0)) {
       return NextResponse.json({ error: 'Selecciona un artículo de inventario válido' }, { status: 400 });
     }
@@ -77,11 +89,14 @@ export async function POST(request: NextRequest) {
         const dateObj = new Date(fecha_reserva + 'T12:00:00');
         const dia_semana = dias[dateObj.getDay()];
 
+        // Serializar solicitudes para evitar reservas simultáneas superpuestas.
+        await client.query('SELECT pg_advisory_xact_lock(3011, 1)');
+
         // Verificar si el aula ya está ocupada en ese horario
         const overlapCheck = await client.query(
           `SELECT id FROM disponibilidad 
            WHERE (
-             (sala_nombre = 'Horario de Clases' AND dia_semana = $1)
+             (fecha_reserva IS NULL AND dia_semana = $1)
              OR (fecha_reserva::date = $2::date)
            )
            AND estado IN ('separado', 'pendiente')

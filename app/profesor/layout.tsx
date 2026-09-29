@@ -9,7 +9,7 @@ export default function ProfesorLayout({
 }) {
   return (
     <div className="profesor-shell min-vh-100 pb-nav-mobile">
-      <div className="d-lg-none">
+      <div className="profesor-mobile-header d-lg-none">
         <MobileTopBar />
       </div>
       <div className="d-none d-lg-block">

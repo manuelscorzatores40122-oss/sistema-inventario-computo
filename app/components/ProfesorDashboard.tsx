@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import RequestActions from './RequestActions';
+import { useRouter } from 'next/navigation';
 import {
   FiUser,
   FiArrowRight,
@@ -57,25 +59,46 @@ interface HorarioAula {
 }
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-const BLOQUES_AULA = [
-  { hora_inicio: '08:00', hora_fin: '09:00' },
-  { hora_inicio: '09:00', hora_fin: '10:00' },
-  { hora_inicio: '10:00', hora_fin: '11:00' },
-  { hora_inicio: '11:00', hora_fin: '12:00' },
-  { hora_inicio: '12:00', hora_fin: '13:00' },
-];
-
 const toLocalDate = (date: Date) => {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().split('T')[0];
 };
 
-export default function ProfesorDashboard() {
+export default function ProfesorDashboard({ openArticleRequest = false }: { openArticleRequest?: boolean }) {
+  const router = useRouter();
   const [inventario, setInventario] = useState<Item[]>([]);
   const [misSolicitudes, setMisSolicitudes] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [showGreeting, setShowGreeting] = useState(true);
+  const [hiddenRequests, setHiddenRequests] = useState<number[]>([]);
+
+  useEffect(() => {
+    setHiddenRequests([]);
+    if (!user?.id) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`hiddenRequests:${user.id}`) || '[]');
+      if (Array.isArray(saved)) setHiddenRequests(saved.filter(id => Number.isInteger(id)));
+    } catch { /* La vista funciona aunque el almacenamiento no esté disponible. */ }
+  }, [user?.id]);
+
+  const visibleRequests = misSolicitudes.filter(sol => sol.estado !== 'cancelada' || !hiddenRequests.includes(sol.id));
+  const hideRequest = (id: number) => {
+    const next = Array.from(new Set([...hiddenRequests, id]));
+    setHiddenRequests(next);
+    try {
+      localStorage.setItem(`hiddenRequests:${user.id}`, JSON.stringify(next));
+      setAlertNotice({ type: 'success', text: 'Solicitud ocultada del panel. Sigue disponible en tu historial.' });
+    } catch {
+      setAlertNotice({ type: 'success', text: 'Solicitud ocultada por ahora. Este navegador no permite recordar la ocultación.' });
+    }
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowGreeting(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [cantidad, setCantidad] = useState(1);
@@ -84,12 +107,17 @@ export default function ProfesorDashboard() {
   const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
   const [alertNotice, setAlertNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(openArticleRequest);
+
+  const closeRequestModal = () => {
+    setShowRequestModal(false);
+    if (openArticleRequest) router.push('/profesor/dashboard');
+  };
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [horariosAula, setHorariosAula] = useState<HorarioAula[]>([]);
   const [calendarUpdatedAt, setCalendarUpdatedAt] = useState<Date | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => toLocalDate(new Date()));
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState('');
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -135,41 +163,27 @@ export default function ProfesorDashboard() {
     const month = calendarMonth.getMonth();
     const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    return Array.from({ length: 42 }, (_, index) => {
+    return Array.from({ length: Math.ceil((firstWeekday + daysInMonth) / 7) * 7 }, (_, index) => {
       const day = index - firstWeekday + 1;
       return day > 0 && day <= daysInMonth ? new Date(year, month, day) : null;
     });
   }, [calendarMonth]);
 
-  const calendarBlocks = useMemo(() => {
-    const blocks = new Map(BLOQUES_AULA.map((block) => [block.hora_inicio, block]));
-    horariosAula.forEach((horario) => {
-      blocks.set(horario.hora_inicio.slice(0, 5), {
-        hora_inicio: horario.hora_inicio.slice(0, 5),
-        hora_fin: horario.hora_fin.slice(0, 5),
-      });
-    });
-    return Array.from(blocks.values()).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
-  }, [horariosAula]);
+  const selectedReservations = useMemo(() => {
+    if (!selectedCalendarDate) return [];
+    const dayName = DIAS_SEMANA[new Date(`${selectedCalendarDate}T12:00:00`).getDay()];
+    return horariosAula.filter((horario) => {
+      const date = horario.fecha_reserva?.split('T')[0];
+      return ['separado', 'pendiente'].includes(horario.estado)
+        && (date ? date === selectedCalendarDate : horario.dia_semana === dayName);
+    }).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  }, [horariosAula, selectedCalendarDate]);
 
-  const selectedDateObject = useMemo(
-    () => new Date(`${selectedCalendarDate}T12:00:00`),
-    [selectedCalendarDate]
-  );
-
-  const selectedDayName = DIAS_SEMANA[selectedDateObject.getDay()];
-
-  const getReservationForBlock = (horaInicio: string, horaFin: string) => horariosAula.find((horario) => {
-    const sameDay = horario.dia_semana === selectedDayName;
-    const reservationDate = horario.fecha_reserva?.split('T')[0];
-    const appliesToDate = reservationDate ? reservationDate === selectedCalendarDate : sameDay;
-    const occupied = ['separado', 'pendiente'].includes(horario.estado);
-    return appliesToDate && occupied && horario.hora_inicio.slice(0, 5) < horaFin && horario.hora_fin.slice(0, 5) > horaInicio;
-  });
-
-  const selectFreeBlock = (horaInicio: string, horaFin: string) => {
+  const createClassroomSchedule = () => {
     setSolicitudType('aula');
-    setAulaForm({ fecha_reserva: selectedCalendarDate, hora_inicio: horaInicio, hora_fin: horaFin });
+    setMotivo('');
+    setAlertNotice(null);
+    setAulaForm({ fecha_reserva: selectedCalendarDate, hora_inicio: '', hora_fin: '' });
     setShowCalendar(false);
     setShowRequestModal(true);
   };
@@ -177,7 +191,7 @@ export default function ProfesorDashboard() {
   const changeCalendarMonth = (offset: number) => {
     const nextMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + offset, 1);
     setCalendarMonth(nextMonth);
-    setSelectedCalendarDate(toLocalDate(nextMonth));
+    setSelectedCalendarDate('');
   };
 
   const fetchData = async (profesorId?: number) => {
@@ -236,7 +250,7 @@ export default function ProfesorDashboard() {
       return;
     }
 
-    if (itemSeleccionado && cantidad > itemSeleccionado.cantidad_disponible) {
+    if (solicitudType === 'equipo' && itemSeleccionado && cantidad > itemSeleccionado.cantidad_disponible) {
       setAlertNotice({
         type: 'error',
         text: `Solo hay ${itemSeleccionado.cantidad_disponible} unidad(es) disponible(s).`,
@@ -244,6 +258,16 @@ export default function ProfesorDashboard() {
       return;
     }
 
+    if (solicitudType === 'aula') {
+      if (!aulaForm.fecha_reserva || !aulaForm.hora_inicio || !aulaForm.hora_fin || aulaForm.hora_inicio >= aulaForm.hora_fin) {
+        setAlertNotice({ type: 'error', text: 'Selecciona una fecha y una hora de fin posterior a la hora de inicio.' });
+        return;
+      }
+      if (new Date(`${aulaForm.fecha_reserva}T${aulaForm.hora_inicio}:00`) <= new Date()) {
+        setAlertNotice({ type: 'error', text: 'Elige un horario futuro para solicitar el aula.' });
+        return;
+      }
+    }
     setEnviando(true);
     setAlertNotice(null);
 
@@ -334,7 +358,7 @@ export default function ProfesorDashboard() {
       <main className="profesor-dashboard-main container-fluid py-3 py-md-4">
         
         {/* MOBILE HERO BANNER */}
-        <section className="mobile-hero-banner mb-3 mb-md-4">
+        {showGreeting && <section className="mobile-hero-banner d-none d-md-block mb-3 mb-md-4">
           <div className="mobile-hero-content">
             <div className="mobile-hero-copy">
               <div className="d-flex align-items-center gap-2 mb-2">
@@ -365,46 +389,55 @@ export default function ProfesorDashboard() {
           </div>
         </section>
 
+        }
+        <section className="teacher-app-hero d-md-none" aria-label="Bienvenida">
+          <div className="teacher-app-greeting">
+            <span className="teacher-app-avatar" aria-hidden="true">{user?.nombre?.charAt(0).toUpperCase() || 'P'}</span>
+            <span>Hola, {user?.nombre?.split(' ')[0] || 'profe'}</span>
+          </div>
+          <h1>Todo listo para<br />tu próxima clase</h1>
+          <p>Reserva tu aula y solicita lo que necesitas.</p>
+        </section>
         {/* ACCESOS RÁPIDOS MÓVILES */}
-        <div className="row g-2 g-md-3 mb-3 mb-md-4">
+        <div className="dashboard-quick-actions row g-2 g-md-3 mb-3 mb-md-4">
           <div className="col-12 col-md-4">
-            <Link href="/profesor/perfil" className="mobile-action-card">
-              <div className="action-icon-wrap bg-secondary bg-opacity-10 text-secondary">
+            <Link href="/profesor/perfil" className="mobile-action-card dashboard-action-profile">
+              <div className="action-icon-wrap">
                 <FiUser size={22} />
               </div>
               <div className="flex-grow-1 min-w-0">
-                <h2 className="h6 fw-bold text-dark mb-0">Mi Perfil & Seguridad</h2>
+                <h2 className="h6 fw-bold text-dark mb-0">Perfil</h2>
                 <p className="mobile-action-description">
-                  DNI, contacto y cambio de clave
+                  Actualiza tus datos y contraseña
                 </p>
               </div>
-              <FiArrowRight className="text-secondary flex-shrink-0" size={18} />
+              <FiArrowRight className="action-arrow flex-shrink-0" size={18} />
             </Link>
           </div>
 
           <div className="col-12 col-md-4">
-            <button type="button" className="mobile-action-card w-100 text-start" onClick={() => setShowCalendar(true)}>
+            <button type="button" className="mobile-action-card dashboard-action-classroom w-100 text-start" onClick={() => { setSelectedCalendarDate(''); setShowCalendar(true); }}>
               <div className="action-icon-wrap calendar-action-icon">
                 <FiCalendar size={22} />
               </div>
               <div className="flex-grow-1 min-w-0">
-                <h2 className="h6 fw-bold text-dark mb-0">Calendario del Aula</h2>
-                <p className="mobile-action-description">Consulta horarios libres y separa un turno</p>
+                <h2 className="h6 fw-bold text-dark mb-0">Separar aula</h2>
+                <p className="mobile-action-description">Elige un horario y reserva el aula de cómputo</p>
               </div>
-              <FiArrowRight className="text-primary flex-shrink-0" size={18} />
+              <FiArrowRight className="action-arrow flex-shrink-0" size={18} />
             </button>
           </div>
 
           <div className="col-12 col-md-4">
-            <button type="button" className="mobile-action-card w-100 text-start" onClick={() => setShowRequestModal(true)}>
+            <button type="button" className="mobile-action-card dashboard-action-supplies w-100 text-start" onClick={() => { setSolicitudType('equipo'); setAlertNotice(null); setShowRequestModal(true); }}>
               <div className="action-icon-wrap request-action-icon">
-                <FiSend size={22} />
+                <FiPackage size={22} />
               </div>
               <div className="flex-grow-1 min-w-0">
-                <h2 className="h6 fw-bold text-dark mb-0">Nueva Solicitud</h2>
-                <p className="mobile-action-description">Solicita equipos o separa el aula</p>
+                <h2 className="h6 fw-bold text-dark mb-0">Solicitar artículos</h2>
+                <p className="mobile-action-description">Solicita los equipos y materiales que necesitas</p>
               </div>
-              <FiArrowRight className="text-primary flex-shrink-0" size={18} />
+              <FiArrowRight className="action-arrow flex-shrink-0" size={18} />
             </button>
           </div>
         </div>
@@ -431,63 +464,42 @@ export default function ProfesorDashboard() {
         {/* SOLICITUD DE ARTÍCULOS O AULAS */}
         {showRequestModal && (
           <div className="request-modal-layer" role="presentation" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setShowRequestModal(false);
+            if (event.target === event.currentTarget) closeRequestModal();
           }}>
         <section id="solicitud-aula" className="request-modal-card card border-0 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
           <header className="request-modal-header">
             <div>
               <span>Gestión docente</span>
-              <h2 id="request-modal-title">Nueva solicitud</h2>
+              <h2 id="request-modal-title">{solicitudType === 'aula' ? 'Solicitar aula' : 'Solicitar artículos'}</h2>
             </div>
-            <button type="button" onClick={() => setShowRequestModal(false)} aria-label="Cerrar formulario"><FiX size={20} /></button>
+            <button type="button" onClick={closeRequestModal} aria-label="Cerrar formulario"><FiX size={20} /></button>
           </header>
-          <div className="d-flex w-100">
-            <button
-              className={`flex-fill py-3 fw-bold border-0 ${solicitudType === 'equipo' ? 'bg-white text-primary border-bottom border-primary border-3' : 'bg-light text-secondary'}`}
-              onClick={() => setSolicitudType('equipo')}
-            >
-              <FiPackage className="me-2" /> Solicitar Equipo
-            </button>
-            <button
-              className={`flex-fill py-3 fw-bold border-0 ${solicitudType === 'aula' ? 'bg-white text-primary border-bottom border-primary border-3' : 'bg-light text-secondary'}`}
-              onClick={() => setSolicitudType('aula')}
-            >
-              <FiClock className="me-2" /> Solicitar Aula
-            </button>
-          </div>
-
-          <div className="card-body p-3 p-md-4 bg-white">
+          <div className="request-form-body card-body p-3 p-md-4 bg-white">
+            <p className="request-form-intro">{solicitudType === 'equipo' ? 'Elige un artículo y cuéntanos para qué lo usarás.' : 'Elige el horario y cuéntanos para qué usarás el aula.'}</p>
             {solicitudType === 'equipo' ? (
               <>
-                {/* Categorías pill horizontal scroll */}
-                <div className="mb-3">
-                  <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
-                    <FiFilter size={12} />
-                    Filtrar por categoría
-                  </label>
-              <div className="mobile-pill-scroll">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`mobile-filter-pill ${selectedCategory === cat ? 'active' : ''}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Selector de artículo visual */}
-            <div className="mb-3">
-              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
-                <FiPackage size={12} />
-                Selecciona el equipo o accesorio
+            <div className="request-form-step mb-3">
+              <label htmlFor="request-item" className="inventory-form-label request-step-title">
+                <span className="request-step-number" aria-hidden="true">1</span>
+                ¿Qué artículo necesitas?
               </label>
+              <details className="request-category-filter">
+                <summary><FiFilter size={14} /> Filtrar por categoría{selectedCategory !== 'Todas' ? `: ${selectedCategory}` : ' (opcional)'}</summary>
+                <div className="mobile-pill-scroll">
+                  {categories.map((cat) => (
+                    <button key={cat} type="button"
+                      onClick={() => { setSelectedCategory(cat); setSelectedItem(null); setCantidad(1); }}
+                      aria-pressed={selectedCategory === cat}
+                      className={`mobile-filter-pill ${selectedCategory === cat ? 'active' : ''}`}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </details>
 
               {/* Selector desplegable estilizado */}
               <select
+                id="request-item"
                 value={selectedItem || ''}
                 onChange={(e) => {
                   const val = e.target.value ? Number(e.target.value) : null;
@@ -497,7 +509,7 @@ export default function ProfesorDashboard() {
                 className="form-select form-select-lg rounded-3 fw-semibold text-dark shadow-none border-slate-300"
                 style={{ fontSize: '0.95rem' }}
               >
-                <option value="">-- Toca aquí para elegir un artículo --</option>
+                <option value="">Elige un artículo</option>
                 {filteredItems.map((item) => (
                   <option
                     key={item.id}
@@ -510,57 +522,33 @@ export default function ProfesorDashboard() {
               </select>
             </div>
 
-            {/* DETALLES CUANDO HAY ARTÍCULO SELECCIONADO */}
-            {itemSeleccionado && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-3 mb-3 animate__animated animate__fadeIn">
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <span className="badge bg-primary text-white text-uppercase" style={{ fontSize: '0.65rem' }}>
-                    {itemSeleccionado.categoria}
-                  </span>
-                  <span className="small fw-bold text-primary">
-                    {itemSeleccionado.cantidad_disponible} unidades disponibles
-                  </span>
-                </div>
-
-                <div className="fw-bold text-dark h6 mb-3">
-                  {itemSeleccionado.nombre}
-                </div>
-
-                {/* STEPPER DE CANTIDAD TOUCH-FRIENDLY */}
-                <div className="d-flex flex-column flex-sm-row sm:align-items-center justify-content-between gap-3 pt-2 border-top border-blue-200">
-                  <div>
-                    <div className="small fw-bold text-slate-700">Cantidad a solicitar:</div>
-                    <div className="small text-slate-500" style={{ fontSize: '0.72rem' }}>
-                      Máximo disponible: {maxStock}
-                    </div>
-                  </div>
-
-                  <div className="mobile-stepper">
-                    <button
-                      type="button"
-                      className="mobile-stepper-btn"
-                      onClick={() => setCantidad((prev) => Math.max(1, prev - 1))}
-                      disabled={cantidad <= 1}
-                      title="Disminuir"
-                    >
-                      <FiMinus size={14} />
-                    </button>
-
-                    <span className="mobile-stepper-val">{cantidad}</span>
-
-                    <button
-                      type="button"
-                      className="mobile-stepper-btn"
-                      onClick={() => setCantidad((prev) => Math.min(maxStock, prev + 1))}
-                      disabled={cantidad >= maxStock}
-                      title="Aumentar"
-                    >
-                      <FiPlus size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {filteredItems.length === 0 && !loading && (
+              <p className="request-form-empty" role="status">No hay artículos en esta categoría. Prueba con otra.</p>
             )}
+            <div className="request-form-step request-quantity-step mb-3">
+              <div>
+                <h3 className="inventory-form-label request-step-title" id="request-quantity-label">
+                  <span className="request-step-number" aria-hidden="true">2</span>
+                  ¿Cuántas unidades?
+                </h3>
+                <p className="request-step-help" id="request-stock" aria-live="polite">
+                  {itemSeleccionado ? `${maxStock} disponibles` : 'Primero elige un artículo.'}
+                </p>
+              </div>
+              <div className="mobile-stepper" role="group" aria-labelledby="request-quantity-label" aria-describedby="request-stock">
+                <button type="button" className="mobile-stepper-btn"
+                  onClick={() => setCantidad((prev) => Math.max(1, prev - 1))}
+                  disabled={!itemSeleccionado || cantidad <= 1} aria-label="Disminuir cantidad">
+                  <FiMinus size={16} />
+                </button>
+                <span className="mobile-stepper-val" aria-live="polite">{cantidad}</span>
+                <button type="button" className="mobile-stepper-btn"
+                  onClick={() => setCantidad((prev) => Math.min(maxStock, prev + 1))}
+                  disabled={!itemSeleccionado || cantidad >= maxStock} aria-label="Aumentar cantidad">
+                  <FiPlus size={16} />
+                </button>
+              </div>
+            </div>
             </>
             ) : (
               <div className="row g-3 mb-3 animate__animated animate__fadeIn">
@@ -570,7 +558,7 @@ export default function ProfesorDashboard() {
                     type="date"
                     className="form-control border-slate-300"
                     value={aulaForm.fecha_reserva}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={toLocalDate(new Date())}
                     onChange={(e) => setAulaForm({ ...aulaForm, fecha_reserva: e.target.value })}
                     required
                   />
@@ -596,47 +584,52 @@ export default function ProfesorDashboard() {
               </div>
             )}
 
-            {/* MOTIVO DE SOLICITUD */}
-            <div className="mb-3">
-              <label className="inventory-form-label d-flex align-items-center gap-1 mb-2">
-                <FiTag size={12} />
-                Motivo / Justificación
+            <div className="request-form-step mb-3">
+              <label htmlFor="request-reason" className="inventory-form-label request-step-title">
+                {solicitudType === 'equipo' && <span className="request-step-number" aria-hidden="true">3</span>}
+                ¿Para qué lo necesitas?
               </label>
-
-              {/* Chips de motivos rápidos */}
-              <div className="d-flex flex-wrap gap-1 mb-2">
-                {motivosPredefinidos.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setMotivo(preset)}
-                    className={`reason-preset-chip ${motivo === preset ? 'active' : ''}`}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-
-              <input
-                type="text"
+              <textarea
+                id="request-reason"
+                rows={2}
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
                 className="form-control rounded-3 border-slate-300"
-                placeholder="Escribe el motivo o selecciona una sugerencia arriba..."
-                style={{ fontSize: '0.9rem', padding: '0.65rem 0.85rem' }}
+                placeholder="Ej.: Proyectar una presentación en clase"
+                style={{ fontSize: '1rem', padding: '0.65rem 0.85rem' }}
               />
+              <details className="request-reason-suggestions">
+                <summary>Usar un motivo sugerido</summary>
+                <div className="request-reason-options d-flex flex-wrap gap-1 mb-2">
+                  {motivosPredefinidos.map((preset) => (
+                    <button key={preset} type="button" onClick={() => setMotivo(preset)}
+                      aria-pressed={motivo === preset}
+                      className={`reason-preset-chip ${motivo === preset ? 'active' : ''}`}>
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </details>
             </div>
 
+            {alertNotice?.type === 'error' && <div className="alert alert-danger" role="alert">{alertNotice.text}</div>}
+            <div className="request-form-footer">
+            {solicitudType === 'equipo' && (
+              <p className="request-submit-hint" aria-live="polite">
+                {itemSeleccionado ? `${cantidad} ${cantidad === 1 ? 'unidad' : 'unidades'} · ${itemSeleccionado.nombre}` : 'Selecciona un artículo para continuar.'}
+              </p>
+            )}
             {/* BOTÓN ENVIAR */}
             <button
               onClick={handleSolicitar}
               disabled={loading || enviando || (solicitudType === 'equipo' && !selectedItem)}
-              className="btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm mt-4"
+              className="request-submit btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm mt-4"
               style={{ fontSize: '0.95rem' }}
             >
               <FiSend size={18} />
-              {enviando ? 'Enviando solicitud...' : 'Enviar Solicitud'}
+              {enviando ? 'Enviando solicitud...' : 'Enviar solicitud'}
             </button>
+            </div>
           </div>
         </section>
           </div>
@@ -662,16 +655,17 @@ export default function ProfesorDashboard() {
                 <div className="spinner-border spinner-border-sm text-primary mb-2" role="status" />
                 <div className="small">Cargando tus solicitudes...</div>
               </div>
-            ) : misSolicitudes.length === 0 ? (
+            ) : visibleRequests.length === 0 ? (
               <div className="text-center py-4 text-secondary">
                 <FiPackage className="text-slate-300 mb-2" size={32} />
-                <p className="small mb-0">Aún no has registrado solicitudes de material.</p>
+                <p className="small mb-0">No hay solicitudes para mostrar en este panel.</p>
               </div>
             ) : (
               <div className="recent-requests-list">
-                {misSolicitudes.slice(0, 3).map((sol) => {
+                {visibleRequests.slice(0, 3).map((sol) => {
                   const isClassroom = sol.item_nombre?.toLowerCase().includes('aula de cómputo');
-                  return (
+                  const classroomDetails = isClassroom ? sol.item_nombre?.match(/^(.+?)\s*\((.*)\)$/) : null;
+                  const card = (
                     <article key={sol.id} className={`recent-request-item status-${sol.estado}`}>
                       <div className={`recent-request-icon ${isClassroom ? 'classroom' : 'equipment'}`}>
                         {isClassroom ? <FiCalendar size={19} /> : <FiPackage size={19} />}
@@ -679,12 +673,13 @@ export default function ProfesorDashboard() {
 
                       <div className="recent-request-copy">
                         <div className="recent-request-title-row">
-                          <h3>{sol.item_nombre || 'Artículo sin especificar'}</h3>
+                          <h3>{classroomDetails?.[1] || sol.item_nombre || 'Artículo sin especificar'}</h3>
                           <span className={`status-badge ${sol.estado}`}>{sol.estado}</span>
                         </div>
+                        {classroomDetails && <p className="recent-request-schedule"><FiCalendar size={13} />{classroomDetails[2]}</p>}
                         <div className="recent-request-meta">
                           <span><FiTag size={12} /> {sol.motivo || 'Sin motivo especificado'}</span>
-                          <span><FiPackage size={12} /> {sol.cantidad_solicitada} {sol.cantidad_solicitada === 1 ? 'unidad' : 'unidades'}</span>
+                          {!isClassroom && <span><FiPackage size={12} /> {sol.cantidad_solicitada} {sol.cantidad_solicitada === 1 ? 'unidad' : 'unidades'}</span>}
                           <time dateTime={sol.fecha_solicitud}>
                             <FiClock size={12} />
                             {new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -693,6 +688,12 @@ export default function ProfesorDashboard() {
                       </div>
                     </article>
                   );
+                  return ['pendiente', 'cancelada'].includes(sol.estado) ? (
+                    <RequestActions key={sol.id} id={sol.id} name={sol.item_nombre || 'Solicitud'} onHide={sol.estado === 'cancelada' ? () => hideRequest(sol.id) : undefined} onCancelled={() => {
+                      setMisSolicitudes(current => current.map(item => item.id === sol.id ? { ...item, estado: 'cancelada' } : item));
+                      setAlertNotice({ type: 'success', text: 'Solicitud cancelada correctamente.' });
+                    }}>{card}</RequestActions>
+                  ) : card;
                 })}
               </div>
             )}
@@ -722,10 +723,10 @@ export default function ProfesorDashboard() {
               </div>
 
               <div className="classroom-calendar-weekdays" aria-hidden="true">
-                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => <span key={day}>{day}</span>)}
+                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <span key={day}>{day}</span>)}
               </div>
 
-              <div className="classroom-calendar-days" role="grid" aria-label="Días del mes">
+              <div className="classroom-calendar-days" role="group" aria-label="Días del mes">
                 {calendarDays.map((date, index) => {
                   if (!date) return <span className="classroom-calendar-empty" key={`empty-${index}`} />;
                   const value = toLocalDate(date);
@@ -740,14 +741,15 @@ export default function ProfesorDashboard() {
                     <button
                       key={value}
                       type="button"
-                      className={selected ? 'active' : ''}
+                      className={`${selected ? 'active' : ''} ${today ? 'is-today' : ''}`}
+                      aria-pressed={selected}
+                      aria-current={today ? 'date' : undefined}
                       onClick={() => setSelectedCalendarDate(value)}
-                      role="gridcell"
                       aria-label={`${date.toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}${reservations ? `, ${reservations} horarios ocupados` : ''}`}
                     >
                       <strong>{date.getDate()}</strong>
-                      {today && <small>Hoy</small>}
-                      {reservations > 0 && <i>{reservations}</i>}
+
+                      {reservations > 0 && <i aria-hidden="true" />}
                     </button>
                   );
                 })}
@@ -762,37 +764,27 @@ export default function ProfesorDashboard() {
                 </button>
               </div>
 
-              <div className="classroom-calendar-slots">
-                <h3>{selectedDateObject.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-                {calendarLoading && horariosAula.length === 0 ? (
-                  <div className="classroom-calendar-loading"><span className="spinner-border spinner-border-sm" /> Cargando horarios...</div>
-                ) : calendarBlocks.map((block) => {
-                  const reservation = getReservationForBlock(block.hora_inicio, block.hora_fin);
-                  const past = new Date(`${selectedCalendarDate}T${block.hora_fin}:00`) < new Date();
-                  return (
-                    <button
-                      key={block.hora_inicio}
-                      type="button"
-                      className={`classroom-calendar-slot ${reservation ? 'occupied' : 'available'}`}
-                      disabled={Boolean(reservation) || past}
-                      onClick={() => selectFreeBlock(block.hora_inicio, block.hora_fin)}
-                    >
-                      <span className="slot-time"><FiClock /> {block.hora_inicio} - {block.hora_fin}</span>
-                      {reservation ? (
-                        <span className="slot-detail">
-                          <strong>{reservation.reservado_por_nombre} {reservation.reservado_por_apellido}</strong>
-                          <small>{reservation.motivo_reserva || 'Aula separada'}</small>
-                        </span>
-                      ) : (
-                        <span className="slot-detail">
-                          <strong>{past ? 'Turno finalizado' : 'Disponible'}</strong>
-                          <small>{past ? 'Selecciona otro horario' : 'Toca para solicitar el aula'}</small>
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              {selectedCalendarDate ? (
+                <div className="classroom-calendar-slots">
+                  <h3>{new Date(`${selectedCalendarDate}T12:00:00`).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                  {calendarLoading ? (
+                    <p role="status">Actualizando horarios…</p>
+                  ) : selectedReservations.length ? selectedReservations.map((reservation) => (
+                    <article key={reservation.id} className="classroom-calendar-slot occupied">
+                      <span className="slot-time"><FiClock /> {reservation.hora_inicio.slice(0, 5)} – {reservation.hora_fin.slice(0, 5)}</span>
+                      <span className="slot-detail">
+                        <strong>{[reservation.reservado_por_nombre, reservation.reservado_por_apellido].filter(Boolean).join(' ') || 'Docente asignado'}</strong>
+                        <small>{reservation.estado === 'pendiente' ? 'Pendiente de aprobación' : 'Ocupado'}{reservation.motivo_reserva ? ` · ${reservation.motivo_reserva}` : ''}</small>
+                      </span>
+                    </article>
+                  )) : <p className="small text-secondary">No hay reservas registradas para este día.</p>}
+                  <button type="button" className="btn btn-primary rounded-pill mt-2" onClick={createClassroomSchedule} disabled={selectedCalendarDate < toLocalDate(new Date())}>
+                    <FiPlus /> Crear horario para este día
+                  </button>
+                  <p className="small text-secondary mb-0">Elige tu hora de inicio y fin. La solicitud será revisada por administración.</p>
+                </div>
+              ) : <p className="small text-center text-secondary p-3 mb-0">Selecciona un día para ver sus reservas o crear un horario.</p>}
+
             </section>
           </div>
         )}

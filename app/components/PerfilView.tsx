@@ -1,21 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FiUser,
   FiMail,
   FiPhone,
-  FiShield,
+  FiSettings,
   FiKey,
   FiSave,
   FiCheckCircle,
   FiAlertCircle,
   FiArrowLeft,
-  FiBriefcase,
-  FiHash,
   FiRefreshCw,
+  FiX,
 } from 'react-icons/fi';
+import './PerfilView.css';
 
 type UsuarioInfo = {
   id: number;
@@ -36,10 +36,35 @@ export default function PerfilView() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const editorRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = editorRef.current;
+    if (!editing || !dialog) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [editing]);
 
   // Credenciales
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  useEffect(() => {
+    if (!editing) {
+      setChangingPassword(false);
+      setPassword('');
+    }
+  }, [editing]);
   const [telefono, setTelefono] = useState('');
   const [correoPersonal, setCorreoPersonal] = useState('');
 
@@ -91,8 +116,17 @@ export default function PerfilView() {
     return () => controller.abort();
   }, [router, reloadKey]);
 
+  useEffect(() => {
+    if (!message || !user) return;
+    const timer = window.setTimeout(() => {
+      router.push(user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard');
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [message, user, router]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving || message || !user) return;
     setMessage('');
     setError('');
 
@@ -101,7 +135,7 @@ export default function PerfilView() {
       telefono,
       correo_personal: correoPersonal,
     };
-    if (password) {
+    if (changingPassword && password) {
       if (password.length < 6) {
         setError('La contraseña debe tener al menos 6 caracteres');
         return;
@@ -109,31 +143,40 @@ export default function PerfilView() {
       payload.password = password;
     }
 
-    const res = await fetch(`/api/usuarios/${user?.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/usuarios/${user?.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.error || 'Error al guardar');
-      return;
+      if (!res.ok) {
+        setError(data.error || 'Error al guardar');
+        return;
+      }
+
+      localStorage.setItem('user', JSON.stringify({
+        id: user?.id,
+        email,
+        nombre: user?.nombre,
+        apellido: user?.apellido,
+        role: user?.role,
+        telefono,
+        correo_personal: correoPersonal,
+      }));
+
+      setUser(current => current ? { ...current, email, telefono, correo_personal: correoPersonal } : current);
+      setPassword('');
+      setEditing(false);
+      setMessage('Cambios guardados correctamente. Te llevamos al inicio…');
+    } catch {
+      setError('No se pudieron guardar los cambios. Comprueba tu conexión e inténtalo nuevamente.');
+    } finally {
+      setSaving(false);
     }
-
-    localStorage.setItem('user', JSON.stringify({
-      id: user?.id,
-      email,
-      nombre: user?.nombre,
-      apellido: user?.apellido,
-      role: user?.role,
-      telefono,
-      correo_personal: correoPersonal,
-    }));
-
-    setPassword('');
-    setMessage('Perfil actualizado correctamente');
   };
 
   if (loading) {
@@ -166,176 +209,122 @@ export default function PerfilView() {
   const isAdmin = user.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="mx-auto" style={{ maxWidth: '72rem' }}>
-
-        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center border-b border-slate-200 pb-4 mb-4">
-          <div>
-            <h1 className="h3 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-              <FiUser className="text-primary" size={26} />
-              Mi Perfil
-            </h1>
-            <p className="text-secondary small mb-0">
-              Consulta tu información personal y administra tus credenciales de acceso.
-            </p>
-          </div>
-
-          <a
-            href={isAdmin ? '/admin/dashboard' : '/profesor/dashboard'}
-            className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2 align-self-start mt-2 mt-sm-0"
-          >
-            <FiArrowLeft size={14} />
-            Volver al panel
-          </a>
-        </div>
+    <div className="profile-page">
+      <div className="profile-card">
+        <header className="profile-toolbar">
+          <h1>Perfil</h1>
+          <button type="button" className="profile-settings" aria-label={editing ? 'Cerrar edición del perfil' : 'Editar perfil'} aria-expanded={editing} aria-controls="profile-editor" onClick={() => setEditing(!editing)}>
+            <FiSettings size={20} />
+          </button>
+        </header>
+        <section className="profile-identity" aria-label="Información del usuario">
+          <div className="profile-avatar"><FiUser size={42} aria-hidden="true" /></div>
+          <h2>{user.nombre} {user.apellido}</h2>
+          <p>{isAdmin ? 'Administrador' : 'Profesor'}{user.area ? ` · ${user.area}` : ''}</p>
+        </section>
 
         {message && (
-          <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
+          <div className="alert alert-success profile-save-notice d-flex align-items-center gap-2" role="status" aria-live="polite">
             <FiCheckCircle size={18} />
             <span>{message}</span>
           </div>
         )}
-        {error && (
+        {error && !editing && (
           <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
             <FiAlertCircle size={18} />
             <span>{error}</span>
           </div>
         )}
 
-        {/* TARJETA DE PERFIL */}
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-body p-4 p-md-5">
-            <div className="d-flex flex-column flex-md-row align-items-start gap-4">
-              <div
-                className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
-                style={{ width: '80px', height: '80px', fontSize: '32px', flexShrink: 0 }}
-              >
-                {user.nombre.charAt(0).toUpperCase()}
-              </div>
-
-              <div className="w-100">
-                <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                  <h2 className="h4 fw-bold text-dark mb-0">
-                    {user.nombre} {user.apellido}
-                  </h2>
-                  <span className={`badge ${isAdmin ? 'bg-purple' : 'bg-success'}`}>
-                    {isAdmin ? 'Administrador' : 'Profesor'}
-                  </span>
-                </div>
-                <p className="text-secondary small mb-3">{user.email}</p>
-
-                <div className="row g-3">
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
-                      <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-                        <FiHash size={16} />
-                      </span>
-                      <div>
-                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>DNI</div>
-                        <div className="font-semibold text-dark small">{user.dni || user.email}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
-                      <span className="rounded d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-                        <FiBriefcase size={16} />
-                      </span>
-                      <div>
-                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Área</div>
-                        <div className="font-semibold text-dark small">{user.area || '—'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
-                      <span className="rounded d-flex align-items-center justify-content-center bg-info bg-opacity-10 text-info" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-                        <FiPhone size={16} />
-                      </span>
-                      <div>
-                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Teléfono</div>
-                        <div className="font-semibold text-dark small">{user.telefono || '—'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="d-flex align-items-center gap-2 rounded-3 border p-3 h-100">
-                      <span className="rounded d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-                        <FiMail size={16} />
-                      </span>
-                      <div>
-                        <div className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>Correo</div>
-                        <div className="font-semibold text-dark small">{user.correo_personal || '—'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="profile-information">
+          <dl className="profile-details">
+            <div><dt>DNI</dt><dd>{user.dni || user.email}</dd></div>
+            <div><dt>Correo</dt><dd>{user.correo_personal || 'Sin registrar'}</dd></div>
+            <div><dt>Teléfono</dt><dd>{user.telefono || 'Sin registrar'}</dd></div>
+            <div><dt>Área</dt><dd>{user.area || 'Sin asignar'}</dd></div>
+          </dl>
+          <button type="button" className="profile-edit-button" aria-expanded={editing} aria-controls="profile-editor" onClick={() => setEditing(!editing)}>
+            {editing ? 'Cerrar edición' : 'Editar perfil'} <FiSettings size={15} />
+          </button>
+          <a href={isAdmin ? '/admin/dashboard' : '/profesor/dashboard'} className="profile-back-link"><FiArrowLeft size={14} /> Volver al panel</a>
         </div>
 
         {/* CREDENCIALES */}
-        <div className="card border-0 shadow-sm">
-          <div className="card-body p-4 p-md-5">
-            <h2 className="h5 fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-              <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
+        <dialog id="profile-editor" ref={editorRef} className="profile-editor profile-editor-dialog"
+          aria-labelledby="profile-editor-heading" aria-describedby="profile-editor-description"
+          onCancel={(event) => { event.preventDefault(); if (!saving) setEditing(false); }}>
+          <header className="profile-editor-dialog-header">
+            <h2 id="profile-editor-heading">Editar perfil</h2>
+            <button type="button" className="profile-editor-close" onClick={() => setEditing(false)} disabled={saving} aria-label="Cerrar edición">
+              <FiX size={20} strokeWidth={2} aria-hidden="true" />
+            </button>
+          </header>
+          <div className="profile-editor-content">
+            <h3 className="profile-editor-title">
+              <span className="profile-editor-icon">
                 <FiKey size={17} />
               </span>
-              Credenciales de acceso
-            </h2>
-            <p className="text-secondary small mb-4">
+              Tus datos y acceso
+            </h3>
+            <p id="profile-editor-description" className="profile-editor-description">
               Actualiza tu usuario, contraseña o datos de contacto.
             </p>
 
-            <form onSubmit={handleSave} className="row g-4">
-              <div className="col-12 col-md-6">
-                <label className="inventory-form-label">
+            {error && <div className="alert alert-danger" role="alert">{error}</div>}
+            <form onSubmit={handleSave}>
+              <fieldset disabled={saving || !!message} className="row g-4">
+              <div className="col-12">
+                <label htmlFor="email" className="inventory-form-label">
                   <span className="d-inline-flex align-items-center gap-1"><FiUser size={12} /> Usuario (DNI)</span>
                 </label>
                 <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} className="inventory-form-input" required />
               </div>
 
-              <div className="col-12 col-md-6">
-                <label className="inventory-form-label">
+              <div className="col-12">
+                <label htmlFor="correoPersonal" className="inventory-form-label">
                   <span className="d-inline-flex align-items-center gap-1"><FiMail size={12} /> Correo personal</span>
                 </label>
                 <input id="correoPersonal" type="email" value={correoPersonal} onChange={e => setCorreoPersonal(e.target.value)} className="inventory-form-input" placeholder="contacto@email.com" />
               </div>
 
-              <div className="col-12 col-md-6">
-                <label className="inventory-form-label">
+              <div className="col-12">
+                <label htmlFor="telefono" className="inventory-form-label">
                   <span className="d-inline-flex align-items-center gap-1"><FiPhone size={12} /> Teléfono / WhatsApp</span>
                 </label>
-                <input id="telefono" type="text" value={telefono} onChange={e => setTelefono(e.target.value)} className="inventory-form-input" placeholder="+51999999999" />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="inventory-form-label">
-                  <span className="d-inline-flex align-items-center gap-1"><FiKey size={12} /> Nueva contraseña</span>
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="inventory-form-input"
-                  placeholder="Dejar vacío para no cambiar"
-                />
+                <input id="telefono" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} className="inventory-form-input" placeholder="+51999999999" />
               </div>
 
               <div className="col-12">
-                <button type="submit" className="btn-primary-custom d-inline-flex align-items-center gap-2">
+                <button type="button" className="profile-password-toggle"
+                  aria-expanded={changingPassword} aria-controls="profile-password-fields"
+                  onClick={() => { setChangingPassword(!changingPassword); setPassword(''); }}>
+                  <FiKey size={17} aria-hidden="true" />
+                  {changingPassword ? 'Cancelar cambio de contraseña' : 'Cambiar contraseña'}
+                </button>
+                <div id="profile-password-fields" hidden={!changingPassword}>
+                  {changingPassword && (
+                    <div className="mt-3">
+                      <label htmlFor="password" className="inventory-form-label">Nueva contraseña</label>
+                      <input id="password" type="password" autoComplete="new-password"
+                        value={password} onChange={e => setPassword(e.target.value)}
+                        className="inventory-form-input" minLength={6} required
+                        aria-describedby="profile-password-help" />
+                      <p id="profile-password-help" className="profile-password-help">Usa al menos 6 caracteres.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="col-12">
+                <button type="submit" className="profile-edit-button">
                   <FiSave size={15} />
-                  Guardar cambios
+                  {saving ? 'Guardando…' : message ? 'Guardado correctamente' : 'Guardar cambios'}
                 </button>
               </div>
+              </fieldset>
             </form>
           </div>
-        </div>
+        </dialog>
 
       </div>
     </div>

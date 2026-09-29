@@ -7,14 +7,14 @@ import { usePathname } from 'next/navigation';
 import NotificacionesBell from './NotificacionesBell';
 import {
   FiHome,
-  FiFileText,
+  FiPackage,
   FiUser,
   FiLogOut,
 } from 'react-icons/fi';
 
 const menuItems = [
   { href: '/profesor/dashboard', title: 'Inicio', icon: FiHome },
-  { href: '/profesor/solicitudes', title: 'Mis Solicitudes', icon: FiFileText },
+  { href: '/profesor/solicitar-articulo', title: 'Solicitar artículo', icon: FiPackage },
   { href: '/profesor/perfil', title: 'Mi Perfil', icon: FiUser },
 ];
 
