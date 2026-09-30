@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import RequestListControls from './RequestListControls';
+import { compareRequests } from '@/app/lib/request-order';
+import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
 import RequestActions from './RequestActions';
+import RequestSubmittedNotice from './RequestSubmittedNotice';
+import ArticleAutocomplete from './ArticleAutocomplete';
 import { useRouter } from 'next/navigation';
 import {
   FiUser,
@@ -15,7 +20,6 @@ import {
   FiXCircle,
   FiPlus,
   FiMinus,
-  FiFilter,
   FiCalendar,
   FiTag,
   FiTrendingUp,
@@ -40,6 +44,8 @@ interface Solicitud {
   item_nombre: string | null;
   cantidad_solicitada: number;
   motivo: string | null;
+  seccion?: string | null;
+  numero_aula?: string | null;
   estado: string;
   fecha_solicitud: string;
   comentarios: string | null;
@@ -68,6 +74,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
   const router = useRouter();
   const [inventario, setInventario] = useState<Item[]>([]);
   const [misSolicitudes, setMisSolicitudes] = useState<Solicitud[]>([]);
+  const [visibleRequestCount, setVisibleRequestCount] = useState(2);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -83,7 +90,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
     } catch { /* La vista funciona aunque el almacenamiento no esté disponible. */ }
   }, [user?.id]);
 
-  const visibleRequests = misSolicitudes.filter(sol => sol.estado !== 'cancelada' || !hiddenRequests.includes(sol.id));
+  const visibleRequests = misSolicitudes.filter(sol => sol.estado !== 'cancelada' || !hiddenRequests.includes(sol.id)).sort(compareRequests);
   const hideRequest = (id: number) => {
     const next = Array.from(new Set([...hiddenRequests, id]));
     setHiddenRequests(next);
@@ -100,14 +107,16 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
     return () => window.clearTimeout(timer);
   }, []);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
+  const [articleSearch, setArticleSearch] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [motivo, setMotivo] = useState('');
+  const [requestLocation, setRequestLocation] = useState(emptyRequestLocation);
   const [solicitudType, setSolicitudType] = useState<'equipo' | 'aula'>('equipo');
   const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
   const [alertNotice, setAlertNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(openArticleRequest);
+  const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
 
   const closeRequestModal = () => {
     setShowRequestModal(false);
@@ -134,6 +143,13 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
       fetchData();
     }
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => { void fetchData(user.id); };
+    window.addEventListener('teacher-requests-updated', refresh);
+    return () => window.removeEventListener('teacher-requests-updated', refresh);
+  }, [user?.id]);
 
   const fetchHorariosAula = async () => {
     setCalendarLoading(true);
@@ -218,20 +234,11 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
     }
   };
 
-  // Categories list
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    inventario.forEach((item) => {
-      if (item.categoria) set.add(item.categoria);
-    });
-    return ['Todas', ...Array.from(set)];
-  }, [inventario]);
-
-  // Filtered inventory items
   const filteredItems = useMemo(() => {
-    if (selectedCategory === 'Todas') return inventario;
-    return inventario.filter((item) => item.categoria === selectedCategory);
-  }, [inventario, selectedCategory]);
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const search = normalize(articleSearch);
+    return inventario.filter(item => item.cantidad_disponible > 0 && item.estado === 'disponible' && normalize(item.nombre).includes(search));
+  }, [inventario, articleSearch]);
 
   const itemSeleccionado = useMemo(() => {
     return inventario.find((item) => item.id === selectedItem) || null;
@@ -268,12 +275,17 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
         return;
       }
     }
+    if (!requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
+      setAlertNotice({ type: 'error', text: 'Indica la sección o el número de aula donde lo usarás.' });
+      return;
+    }
     setEnviando(true);
     setAlertNotice(null);
 
     try {
       const bodyPayload: any = {
         profesor_id: user.id,
+        ...requestLocation,
         motivo: motivo.trim() || 'Uso docente en clase',
       };
 
@@ -297,14 +309,14 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
       });
 
       if (response.ok) {
-        setAlertNotice({
-          type: 'success',
-          text: '¡Solicitud registrada con éxito! Administración la evaluará a la brevedad.',
-        });
+        setAlertNotice(null);
+        setShowSubmittedNotice(true);
 
         setSelectedItem(null);
+        setArticleSearch('');
         setCantidad(1);
         setMotivo('');
+        setRequestLocation(emptyRequestLocation);
         setAulaForm({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
         setShowRequestModal(false);
 
@@ -355,6 +367,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
 
   return (
     <div className="min-vh-100 bg-slate-50">
+      {showSubmittedNotice && <RequestSubmittedNotice onAccept={() => setShowSubmittedNotice(false)} />}
       <main className="profesor-dashboard-main container-fluid py-3 py-md-4">
         
         {/* MOBILE HERO BANNER */}
@@ -483,48 +496,24 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
                 <span className="request-step-number" aria-hidden="true">1</span>
                 ¿Qué artículo necesitas?
               </label>
-              <details className="request-category-filter">
-                <summary><FiFilter size={14} /> Filtrar por categoría{selectedCategory !== 'Todas' ? `: ${selectedCategory}` : ' (opcional)'}</summary>
-                <div className="mobile-pill-scroll">
-                  {categories.map((cat) => (
-                    <button key={cat} type="button"
-                      onClick={() => { setSelectedCategory(cat); setSelectedItem(null); setCantidad(1); }}
-                      aria-pressed={selectedCategory === cat}
-                      className={`mobile-filter-pill ${selectedCategory === cat ? 'active' : ''}`}>
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </details>
-
-              {/* Selector desplegable estilizado */}
-              <select
-                id="request-item"
-                value={selectedItem || ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : null;
-                  setSelectedItem(val);
+              <ArticleAutocomplete
+                items={filteredItems}
+                value={articleSearch}
+                selectedId={selectedItem}
+                loading={loading}
+                onChange={value => {
+                  setArticleSearch(value);
+                  setSelectedItem(null);
                   setCantidad(1);
                 }}
-                className="form-select form-select-lg rounded-3 fw-semibold text-dark shadow-none border-slate-300"
-                style={{ fontSize: '0.95rem' }}
-              >
-                <option value="">Elige un artículo</option>
-                {filteredItems.map((item) => (
-                  <option
-                    key={item.id}
-                    value={item.id}
-                    disabled={item.cantidad_disponible <= 0}
-                  >
-                    {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
-                  </option>
-                ))}
-              </select>
+                onSelect={item => {
+                  setArticleSearch(item.nombre);
+                  setSelectedItem(item.id);
+                  setCantidad(1);
+                }}
+              />
             </div>
 
-            {filteredItems.length === 0 && !loading && (
-              <p className="request-form-empty" role="status">No hay artículos en esta categoría. Prueba con otra.</p>
-            )}
             <div className="request-form-step request-quantity-step mb-3">
               <div>
                 <h3 className="inventory-form-label request-step-title" id="request-quantity-label">
@@ -584,6 +573,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
               </div>
             )}
 
+            <RequestLocationFields value={requestLocation} onChange={setRequestLocation} />
             <div className="request-form-step mb-3">
               <label htmlFor="request-reason" className="inventory-form-label request-step-title">
                 {solicitudType === 'equipo' && <span className="request-step-number" aria-hidden="true">3</span>}
@@ -662,7 +652,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
               </div>
             ) : (
               <div className="recent-requests-list">
-                {visibleRequests.slice(0, 3).map((sol) => {
+                {visibleRequests.slice(0, visibleRequestCount).map((sol) => {
                   const isClassroom = sol.item_nombre?.toLowerCase().includes('aula de cómputo');
                   const classroomDetails = isClassroom ? sol.item_nombre?.match(/^(.+?)\s*\((.*)\)$/) : null;
                   const card = (
@@ -679,6 +669,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
                         {classroomDetails && <p className="recent-request-schedule"><FiCalendar size={13} />{classroomDetails[2]}</p>}
                         <div className="recent-request-meta">
                           <span><FiTag size={12} /> {sol.motivo || 'Sin motivo especificado'}</span>
+                          {formatRequestLocation(sol) && <span>{formatRequestLocation(sol)}</span>}
                           {!isClassroom && <span><FiPackage size={12} /> {sol.cantidad_solicitada} {sol.cantidad_solicitada === 1 ? 'unidad' : 'unidades'}</span>}
                           <time dateTime={sol.fecha_solicitud}>
                             <FiClock size={12} />
@@ -697,6 +688,8 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
                 })}
               </div>
             )}
+            {!loading && <RequestListControls total={visibleRequests.length} visible={visibleRequestCount}
+              onMore={() => setVisibleRequestCount(count => count + 2)} onLess={() => setVisibleRequestCount(2)} />}
           </div>
         </section>
 

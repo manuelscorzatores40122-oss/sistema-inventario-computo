@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   disponibilidad_id INTEGER,
   cantidad_solicitada INTEGER NOT NULL DEFAULT 1,
   motivo TEXT,
+  seccion VARCHAR(60),
+  numero_aula VARCHAR(30),
   estado VARCHAR(50) DEFAULT 'pendiente',
   fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_aprobacion TIMESTAMP,

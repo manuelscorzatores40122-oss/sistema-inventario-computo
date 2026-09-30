@@ -49,8 +49,20 @@ export async function GET(request: NextRequest) {
 // POST - Crear solicitud (profesor)
 export async function POST(request: NextRequest) {
   try {
-    const { profesor_id, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin } = await request.json();
+    const { profesor_id, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, seccion, numero_aula } = await request.json();
     const cantidad = inventario_id ? Number(cantidad_solicitada || 1) : 1;
+    if ((seccion != null && typeof seccion !== 'string') || (numero_aula != null && typeof numero_aula !== 'string')) {
+      return NextResponse.json({ error: 'La sección y el número de aula deben ser texto.' }, { status: 400 });
+    }
+    const seccionLimpia = seccion?.trim() || null;
+    const aulaLimpia = numero_aula?.trim() || null;
+    if (!seccionLimpia && !aulaLimpia) {
+      return NextResponse.json({ error: 'Indica la sección o el número de aula donde lo usarás.' }, { status: 400 });
+    }
+    if ((seccionLimpia?.length || 0) > 60 || (aulaLimpia?.length || 0) > 30) {
+      return NextResponse.json({ error: 'La sección admite hasta 60 caracteres y el aula hasta 30.' }, { status: 400 });
+    }
+
 
     if (!profesor_id) {
       return NextResponse.json({ error: 'Faltan parámetros de profesor' }, { status: 400 });
@@ -139,8 +151,8 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await client.query(
-        'INSERT INTO solicitudes (profesor_id, inventario_id, disponibilidad_id, cantidad_solicitada, motivo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [profesor_id, tipo_solicitud === 'aula' ? null : inventario_id, idDisponibilidad, cantidad, motivo]
+        'INSERT INTO solicitudes (profesor_id, inventario_id, disponibilidad_id, cantidad_solicitada, motivo, seccion, numero_aula) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [profesor_id, tipo_solicitud === 'aula' ? null : inventario_id, idDisponibilidad, cantidad, motivo, seccionLimpia, aulaLimpia]
       );
 
       const admins = await client.query(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
+import { verifyToken } from '@/app/lib/auth';
 
 // POST - Enviar notificación WhatsApp
 export async function POST(request: NextRequest) {
@@ -66,7 +67,14 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const usuario_id = searchParams.get('usuario_id');
+    const token = request.cookies.get('auth-token')?.value;
+    const session = token ? verifyToken(token) : null;
+    if (!session || typeof session === 'string' || !session.userId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+    const usuario_id = session.role === 'admin'
+      ? searchParams.get('usuario_id') || String(session.userId)
+      : String(session.userId);
 
     let sql = 'SELECT * FROM notificaciones_whatsapp WHERE 1=1';
     const params: any[] = [];
@@ -83,7 +91,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       notificaciones: result.rows,
       total: result.rows.length,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error al obtener notificaciones:', error);
     return NextResponse.json(

@@ -2,6 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import RequestListControls from './RequestListControls';
+import { compareRequests } from '@/app/lib/request-order';
+import RequestSubmittedNotice from './RequestSubmittedNotice';
+import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
 import {
   FiArrowLeft,
   FiArrowRight,
@@ -110,6 +114,8 @@ type Solicitud = {
   item_nombre: string | null;
   cantidad_solicitada: number;
   motivo: string | null;
+  seccion?: string | null;
+  numero_aula?: string | null;
   estado: string;
   comentarios: string | null;
   fecha_solicitud: string;
@@ -1026,7 +1032,7 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
               <td className="font-bold text-slate-900">{solicitud.profesor_nombre} {solicitud.apellido}</td>
               <td>{solicitud.item_nombre ? <span className="font-semibold text-slate-800">{solicitud.item_nombre}</span> : <span className="text-slate-400">-</span>}</td>
               <td className="font-semibold">{solicitud.item_nombre ? solicitud.cantidad_solicitada : '-'}</td>
-              <td className="text-xs text-slate-600">{solicitud.motivo || '-'}</td>
+              <td className="text-xs text-slate-600">{solicitud.motivo || '-'}{formatRequestLocation(solicitud) && <div className="mt-1 fw-semibold">{formatRequestLocation(solicitud)}</div>}</td>
               <td><StatusBadge value={solicitud.estado} /></td>
               <td className="text-xs text-slate-500">{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</td>
               <td className="text-right space-y-1">
@@ -1051,13 +1057,17 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
 export function ProfesorSolicitudesView() {
   const [user, setUser] = useState<Usuario | null>(null);
   useEffect(() => { setUser(getStoredUser()); }, []);
+  const [requestLocation, setRequestLocation] = useState(emptyRequestLocation);
   const [items, setItems] = useState<Item[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [form, setForm] = useState({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
   const [message, setMessage] = useState<Message>(null);
   const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'>('todas');
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleRequestCount, setVisibleRequestCount] = useState(2);
+  useEffect(() => { setVisibleRequestCount(2); }, [activeTab, searchQuery]);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [solicitudType, setSolicitudType] = useState<'equipo' | 'aula'>('equipo');
   const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
@@ -1077,7 +1087,11 @@ export function ProfesorSolicitudesView() {
   };
 
   useEffect(() => {
-    if (user?.id) fetchData();
+    if (!user?.id) return;
+    void fetchData();
+    const refresh = () => { void fetchData(); };
+    window.addEventListener('teacher-requests-updated', refresh);
+    return () => window.removeEventListener('teacher-requests-updated', refresh);
   }, [user]);
 
   const selectedItemData = useMemo(() => {
@@ -1093,10 +1107,15 @@ export function ProfesorSolicitudesView() {
       return;
     }
 
+    if (!requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
+      setMessage({ type: 'error', text: 'Indica la sección o el número de aula donde lo usarás.' });
+      return;
+    }
     setSubmitting(true);
     
     const bodyPayload: any = {
       profesor_id: user?.id,
+      ...requestLocation,
       motivo: form.motivo.trim() || 'Uso docente en clase',
     };
 
@@ -1123,8 +1142,10 @@ export function ProfesorSolicitudesView() {
       return;
     }
 
-    setMessage({ type: 'success', text: 'Solicitud enviada con éxito' });
+    setMessage(null);
+    setShowSubmittedNotice(true);
     setForm({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
+    setRequestLocation(emptyRequestLocation);
     setShowNewForm(false);
     fetchData();
   };
@@ -1156,7 +1177,7 @@ export function ProfesorSolicitudesView() {
         (s.item_nombre && s.item_nombre.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (s.motivo && s.motivo.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchTab && matchSearch;
-    });
+    }).sort(compareRequests);
   }, [solicitudes, activeTab, searchQuery]);
 
   const counts = useMemo(() => {
@@ -1177,16 +1198,25 @@ export function ProfesorSolicitudesView() {
   ];
 
   return (
-    <PageShell title="Mis Solicitudes" subtitle="Revisa el estado de tus solicitudes de material o genera una nueva.">
+    <PageShell title="Mis solicitudes" subtitle="Todo lo que necesitas para tu próxima clase.">
+      <div className="teacher-requests">
+      <ConfirmComponent />
+      {showSubmittedNotice && <RequestSubmittedNotice onAccept={() => setShowSubmittedNotice(false)} />}
+      <div className="teacher-requests-intro">
+        <span className="teacher-requests-intro-icon"><FiInbox size={24} /></span>
+        <div><span className="teacher-requests-eyebrow">TU ACTIVIDAD</span><h2>Tus clases, en marcha</h2><p>{counts.pendiente ? `${counts.pendiente} solicitud${counts.pendiente > 1 ? 'es' : ''} en espera de revisión.` : 'Solicita equipos o reserva el aula de cómputo.'}</p></div>
+      </div>
       <Notice message={message} />
 
       {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+      <div className="teacher-requests-toolbar">
         <div className="d-flex align-items-center gap-2">
           <button
             type="button"
             onClick={() => setShowNewForm(!showNewForm)}
-            className={`${primaryButton} d-inline-flex align-items-center gap-2`}
+            className="teacher-requests-create"
+            aria-expanded={showNewForm}
+            aria-controls="teacher-request-form"
           >
             {showNewForm ? <FiX size={16} /> : <FiPlus size={16} />}
             {showNewForm ? 'Ocultar Formulario' : 'Nueva Solicitud'}
@@ -1197,7 +1227,8 @@ export function ProfesorSolicitudesView() {
         <div className="position-relative" style={{ minWidth: '240px' }}>
           <FiSearch className="position-absolute text-secondary" size={15} style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar solicitudes por artículo o motivo"
             className="inventory-form-input ps-5"
             placeholder="Buscar por artículo o motivo..."
             value={searchQuery}
@@ -1208,7 +1239,7 @@ export function ProfesorSolicitudesView() {
 
       {/* NEW REQUEST FORM (COLLAPSIBLE / ACCORDION) */}
       {showNewForm && (
-        <form onSubmit={handleSubmit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
+        <form id="teacher-request-form" onSubmit={handleSubmit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
           <div className="border-b border-slate-200 pb-2 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-0">
               <span className="rounded-3 d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '32px', height: '32px' }}>
@@ -1310,6 +1341,7 @@ export function ProfesorSolicitudesView() {
               </>
             )}
 
+            <div className="col-12"><RequestLocationFields value={requestLocation} onChange={setRequestLocation} /></div>
             <div className="col-12">
               <label className={label}>Motivo o justificación de la clase</label>
               <div className="d-flex flex-wrap gap-1 mb-2">
@@ -1354,114 +1386,60 @@ export function ProfesorSolicitudesView() {
         </form>
       )}
 
-      {/* MOBILE SEGMENT / FILTER TABS */}
-      <div className="mobile-segment-control mb-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab('todas')}
-          className={`mobile-segment-tab ${activeTab === 'todas' ? 'active' : ''}`}
-        >
-          Todas ({counts.todas})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('pendiente')}
-          className={`mobile-segment-tab ${activeTab === 'pendiente' ? 'active' : ''}`}
-        >
-          ⏳ Pendientes ({counts.pendiente})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('aprobada')}
-          className={`mobile-segment-tab ${activeTab === 'aprobada' ? 'active' : ''}`}
-        >
-          ✅ Aprobadas ({counts.aprobada})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('rechazada')}
-          className={`mobile-segment-tab ${activeTab === 'rechazada' ? 'active' : ''}`}
-        >
-          ❌ Rechazadas ({counts.rechazada})
-        </button>
+      <div className="teacher-requests-filters" role="group" aria-label="Filtrar solicitudes por estado">
+        {([
+          ['todas', 'Todas'], ['pendiente', 'Pendientes'], ['aprobada', 'Aprobadas'],
+          ['rechazada', 'Rechazadas'], ['cancelada', 'Canceladas'],
+        ] as const).map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={activeTab === value}
+            onClick={() => setActiveTab(value)} className={activeTab === value ? 'active' : ''}>
+            {label}<span>{counts[value]}</span>
+          </button>
+        ))}
       </div>
-
-      {/* MOBILE VIEW: NATIVE CARDS (VISIBLE ON PHONES) */}
-      <div className="d-block d-md-none">
-        {filteredSolicitudes.length === 0 ? (
-          <div className={`${panel} p-4 text-center text-secondary`}>
-            <FiInbox className="text-slate-300 mb-2" size={36} />
-            <p className="small mb-0">No se encontraron solicitudes para este filtro.</p>
-          </div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {filteredSolicitudes.map((sol) => (
-              <div
-                key={sol.id}
-                className={`mobile-solicitud-card status-${sol.estado}`}
-              >
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <h3 className="h6 fw-bold text-dark mb-0">
-                      {sol.item_nombre || 'Artículo sin especificar'}
-                    </h3>
-                    <div className="small text-secondary" style={{ fontSize: '0.72rem' }}>
-                      <FiCalendar className="me-1" size={11} />
-                      {new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                  <span className={`status-badge ${sol.estado}`}>
-                    {sol.estado}
+      <p className="teacher-requests-results" aria-live="polite">{filteredSolicitudes.length} solicitud{filteredSolicitudes.length !== 1 ? 'es' : ''}{activeTab === 'todas' ? ' en tu historial' : ' en este estado'}</p>
+      {filteredSolicitudes.length === 0 ? (
+        <div className="teacher-requests-empty">
+          <FiInbox size={36} aria-hidden="true" />
+          <h3>{solicitudes.length ? 'No hay coincidencias' : 'Prepara tu próxima clase'}</h3>
+          <p>{solicitudes.length ? 'Prueba otro estado o busca con otras palabras.' : 'Tus solicitudes de equipos y aula aparecerán aquí.'}</p>
+          <button type="button" className="teacher-requests-create" onClick={() => {
+            if (solicitudes.length) { setActiveTab('todas'); setSearchQuery(''); }
+            else { setShowNewForm(true); }
+          }}>{solicitudes.length ? 'Ver todas las solicitudes' : 'Crear mi primera solicitud'}</button>
+        </div>
+      ) : (
+        <div className="teacher-requests-grid">
+          {filteredSolicitudes.slice(0, visibleRequestCount).map((sol) => {
+            const schedule = !sol.inventario_id ? sol.item_nombre?.match(/^(.*?) \((.*?)\)$/) : null;
+            const title = schedule?.[1] || sol.item_nombre || 'Artículo sin especificar';
+            const isClassroom = !sol.inventario_id;
+            return (
+              <article key={sol.id} className={`teacher-request-card is-${sol.estado}`}>
+                <div className="teacher-request-card-top">
+                  <span className={`teacher-request-icon ${isClassroom ? 'classroom' : ''}`}>
+                    {isClassroom ? <FiCalendar size={21} /> : <FiPackage size={21} />}
                   </span>
+                  <StatusBadge value={sol.estado} />
                 </div>
-
-                <div className="bg-slate-50 rounded-3 p-2 mb-2">
-                  <div className="small text-dark mb-1">
-                    <span className="text-secondary fw-semibold">Cantidad: </span>
-                    <strong className="badge bg-primary text-white rounded-pill px-2">
-                      {sol.cantidad_solicitada} unidad{sol.cantidad_solicitada > 1 ? 'es' : ''}
-                    </strong>
-                  </div>
-                  <div className="small text-slate-700">
-                    <span className="text-secondary fw-semibold">Motivo: </span>
-                    {sol.motivo || 'Sin motivo especificado'}
-                  </div>
-                  {sol.comentarios && (
-                    <div className="small text-primary mt-1 border-top pt-1" style={{ fontSize: '0.75rem' }}>
-                      <strong>Nota de Administración: </strong>
-                      {sol.comentarios}
-                    </div>
-                  )}
-                </div>
-
-                {sol.estado === 'pendiente' && (
-                  <div className="d-flex justify-content-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleCancel(sol.id)}
-                      className="btn btn-outline-danger btn-sm py-1 px-3 fw-semibold d-inline-flex align-items-center gap-1"
-                      style={{ fontSize: '0.78rem' }}
-                    >
-                      <FiXCircle size={13} />
-                      Cancelar Solicitud
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* DESKTOP VIEW: TABLE (VISIBLE ON TABLETS & DESKTOPS) */}
-      <div className="d-none d-md-block">
-        <SolicitudesTable solicitudes={filteredSolicitudes} onCancel={handleCancel} />
+                <span className="teacher-requests-eyebrow">{isClassroom ? 'RESERVA DE AULA' : 'PRÉSTAMO DE EQUIPO'}</span>
+                <h3>{title}</h3>
+                {schedule && <div className="teacher-request-schedule"><FiClock size={16} /><span>{schedule[2]}</span></div>}
+                {!isClassroom && <div className="teacher-request-schedule"><FiLayers size={16} /><span>{sol.cantidad_solicitada} unidad{sol.cantidad_solicitada !== 1 ? 'es' : ''}</span></div>}
+                <div className="teacher-request-reason"><span>Para tu clase</span><p>{sol.motivo || 'Sin motivo especificado'}</p></div>
+                {formatRequestLocation(sol) && <div className="teacher-request-schedule"><FiMapPin size={16} /><span>{formatRequestLocation(sol)}</span></div>}
+                {sol.comentarios && <div className="teacher-request-note"><FiMail size={16} /><div><strong>Administración</strong><p>{sol.comentarios}</p></div></div>}
+                <footer>
+                  <span>Enviada el <time dateTime={sol.fecha_solicitud}>{new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</time></span>
+                  {sol.estado === 'pendiente' && <button type="button" onClick={() => handleCancel(sol.id)} aria-label={`Cancelar solicitud de ${title}`}><FiX size={16} />Cancelar solicitud</button>}
+                </footer>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <RequestListControls total={filteredSolicitudes.length} visible={visibleRequestCount}
+        onMore={() => setVisibleRequestCount(count => count + 2)} onLess={() => setVisibleRequestCount(2)} />
       </div>
     </PageShell>
   );

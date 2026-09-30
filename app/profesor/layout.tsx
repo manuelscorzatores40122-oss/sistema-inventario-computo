@@ -1,3 +1,4 @@
+import SolicitudApprovalNotice from '@/app/components/SolicitudApprovalNotice';
 import ProfesorHeader from '@/app/components/ProfesorHeader';
 import ProfesorBottomNav from '@/app/components/ProfesorBottomNav';
 import MobileTopBar from '@/app/components/MobileTopBar';
@@ -17,6 +18,7 @@ export default function ProfesorLayout({
       </div>
       <div className="profesor-content">{children}</div>
       <ProfesorBottomNav />
+      <SolicitudApprovalNotice />
     </div>
   );
 }
