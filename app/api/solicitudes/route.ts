@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
+import { notifyAdminsOfRequest } from '@/app/lib/admin-notifications';
 
 // GET - Listar solicitudes
 export async function GET(request: NextRequest) {
@@ -51,16 +52,21 @@ export async function POST(request: NextRequest) {
   try {
     const { profesor_id, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, seccion, numero_aula } = await request.json();
     const cantidad = inventario_id ? Number(cantidad_solicitada || 1) : 1;
-    if ((seccion != null && typeof seccion !== 'string') || (numero_aula != null && typeof numero_aula !== 'string')) {
-      return NextResponse.json({ error: 'La sección y el número de aula deben ser texto.' }, { status: 400 });
-    }
-    const seccionLimpia = seccion?.trim() || null;
-    const aulaLimpia = numero_aula?.trim() || null;
-    if (!seccionLimpia && !aulaLimpia) {
-      return NextResponse.json({ error: 'Indica la sección o el número de aula donde lo usarás.' }, { status: 400 });
-    }
-    if ((seccionLimpia?.length || 0) > 60 || (aulaLimpia?.length || 0) > 30) {
-      return NextResponse.json({ error: 'La sección admite hasta 60 caracteres y el aula hasta 30.' }, { status: 400 });
+    let seccionLimpia: string | null = null;
+    let aulaLimpia: string | null = null;
+    // La reserva ya identifica el ambiente; la ubicación solo corresponde a equipos.
+    if (tipo_solicitud !== 'aula') {
+      if ((seccion != null && typeof seccion !== 'string') || (numero_aula != null && typeof numero_aula !== 'string')) {
+        return NextResponse.json({ error: 'La sección y el número de aula deben ser texto.' }, { status: 400 });
+      }
+      seccionLimpia = seccion?.trim() || null;
+      aulaLimpia = numero_aula?.trim() || null;
+      if (!seccionLimpia && !aulaLimpia) {
+        return NextResponse.json({ error: 'Indica la sección o el número de aula donde lo usarás.' }, { status: 400 });
+      }
+      if ((seccionLimpia?.length || 0) > 60 || (aulaLimpia?.length || 0) > 30) {
+        return NextResponse.json({ error: 'La sección admite hasta 60 caracteres y el aula hasta 30.' }, { status: 400 });
+      }
     }
 
 
@@ -155,24 +161,7 @@ export async function POST(request: NextRequest) {
         [profesor_id, tipo_solicitud === 'aula' ? null : inventario_id, idDisponibilidad, cantidad, motivo, seccionLimpia, aulaLimpia]
       );
 
-      const admins = await client.query(
-        'SELECT id, telefono FROM usuarios WHERE role = $1 AND activo = true AND telefono IS NOT NULL',
-        ['admin']
-      );
-
-      for (const admin of admins.rows) {
-        await client.query(
-          'INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado) VALUES ($1, $2, $3, $4, $5, $6)',
-          [
-            admin.id,
-            admin.telefono,
-            `Nueva solicitud #${result.rows[0].id}: ${itemNombre}`,
-            'solicitud_creada',
-            result.rows[0].id,
-            'pendiente',
-          ]
-        );
-      }
+      await notifyAdminsOfRequest(client, result.rows[0].id, profesor_id, 'creada', itemNombre);
 
       await client.query('COMMIT');
 

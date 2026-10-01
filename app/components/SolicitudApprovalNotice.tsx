@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FiCheck, FiCheckCircle } from 'react-icons/fi';
+import { FiCheck, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 
 export type TeacherNotification = {
   id: number;
@@ -49,7 +49,7 @@ export default function SolicitudApprovalNotice() {
         if (stopped || !Array.isArray(data.notificaciones)) return;
         const notifications: TeacherNotification[] = data.notificaciones;
         readAccepted();
-        setQueue(notifications.filter(n => n.tipo === 'solicitud_aprobada' && !accepted.current.has(n.id)).sort((a, b) => a.id - b.id));
+        setQueue(notifications.filter(n => ['solicitud_aprobada', 'solicitud_rechazada', 'prestamo_registrado'].includes(n.tipo) && !accepted.current.has(n.id)).sort((a, b) => a.id - b.id));
         window.dispatchEvent(new CustomEvent('teacher-notifications', { detail: notifications }));
         const ids = notifications.map(n => n.id).join(',');
         if (previousIds !== null && ids !== previousIds) window.dispatchEvent(new Event('teacher-requests-updated'));
@@ -97,16 +97,19 @@ export default function SolicitudApprovalNotice() {
   };
 
   if (!current) return null;
+  const rejected = current.tipo === 'solicitud_rechazada';
+  const directLoan = current.tipo === 'prestamo_registrado';
+  const StatusIcon = rejected ? FiXCircle : FiCheckCircle;
   return (
-    <dialog ref={dialog} className="approval-notice" aria-labelledby="approval-title" aria-describedby="approval-description" onCancel={event => event.preventDefault()}>
-      <div className="approval-notice-decoration" aria-hidden="true"><span /><span /><span /></div>
-      <div className="approval-notice-icon"><FiCheck size={36} aria-hidden="true" /></div>
-      <span className="approval-notice-eyebrow">¡TODO LISTO PARA TU CLASE!</span>
-      <h2 id="approval-title">Tu solicitud fue procesada con éxito</h2>
-      <p id="approval-description">La administración aprobó tu solicitud. Puedes revisar los detalles en tu historial.</p>
-      <div className="approval-notice-detail"><FiCheckCircle size={20} aria-hidden="true" /><p>{current.mensaje}</p></div>
+    <dialog ref={dialog} className={`approval-notice ${rejected ? 'approval-notice-rejected' : ''}`} aria-labelledby="approval-title" aria-describedby="approval-description" onCancel={event => event.preventDefault()}>
+      {!rejected && <div className="approval-notice-decoration" aria-hidden="true"><span /><span /><span /></div>}
+      <div className="approval-notice-icon">{rejected ? <FiXCircle size={36} aria-hidden="true" /> : <FiCheck size={36} aria-hidden="true" />}</div>
+      <span className="approval-notice-eyebrow">{directLoan ? 'PRÉSTAMO REGISTRADO POR ADMINISTRACIÓN' : rejected ? 'ACTUALIZACIÓN DE TU SOLICITUD' : '¡TODO LISTO PARA TU CLASE!'}</span>
+      <h2 id="approval-title">{directLoan ? 'Tienes un nuevo préstamo' : rejected ? 'Tu solicitud fue rechazada' : 'Tu solicitud fue procesada con éxito'}</h2>
+      <p id="approval-description">{directLoan ? 'La administración registró este préstamo a tu nombre, sin necesidad de una solicitud en la aplicación.' : rejected ? 'La administración no aprobó tu solicitud. Revisa el detalle a continuación.' : 'La administración aprobó tu solicitud. Puedes revisar los detalles en tu historial.'}</p>
+      <div className="approval-notice-detail"><StatusIcon size={20} aria-hidden="true" /><p>{current.mensaje}</p></div>
       <button type="button" onClick={accept} autoFocus>Aceptar <FiCheck size={18} aria-hidden="true" /></button>
-      {queue.length > 1 && <small>Tienes {queue.length - 1} aprobación{queue.length > 2 ? 'es' : ''} más por revisar</small>}
+      {queue.length > 1 && <small>Tienes {queue.length - 1} aviso{queue.length > 2 ? 's' : ''} más por revisar</small>}
     </dialog>
   );
 }

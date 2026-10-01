@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/app/lib/auth';
 import { getClient } from '@/app/lib/db';
+import { notifyAdminsOfRequest } from '@/app/lib/admin-notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const token = request.cookies.get('auth-token')?.value;
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (sol.disponibilidad_id) {
       await client.query("UPDATE disponibilidad SET estado = 'disponible', reservado_por = NULL, motivo_reserva = NULL WHERE id = $1 AND estado = 'pendiente'", [sol.disponibilidad_id]);
     }
+    await notifyAdminsOfRequest(client, sol.id, actor.userId, 'cancelada');
     await client.query('COMMIT');
     return NextResponse.json({ message: 'Solicitud cancelada' });
   } catch (error) {

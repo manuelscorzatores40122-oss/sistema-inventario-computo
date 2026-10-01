@@ -12,6 +12,7 @@ function route() {
     async query(sql, params) {
       calls.push({ sql, params });
       if (sql.startsWith('SELECT id, nombre')) return { rows: [{ id: 1, nombre: 'Proyector', cantidad_disponible: 5 }] };
+      if (sql.startsWith('INSERT INTO disponibilidad')) return { rows: [{ id: 20 }] };
       if (sql.startsWith('INSERT INTO solicitudes')) return { rows: [{ id: 10, seccion: params[5], numero_aula: params[6] }] };
       return { rows: [] };
     },
@@ -23,6 +24,11 @@ function route() {
     exports: exported, console, URL,
     require(name) {
       if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
+      if (name === '@/app/lib/admin-notifications') {
+        const helper = {};
+        vm.runInNewContext(ts.transpileModule(readFileSync(resolve(__dirname, '../app/lib/admin-notifications.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: helper });
+        return helper;
+      }
       if (name === '@/app/lib/db') return { getClient: async () => client };
       throw new Error(name);
     },
@@ -47,4 +53,35 @@ test('guarda sección o aula, limpia espacios y conserva NULL en el campo no com
     assert.equal(response.body.solicitud.numero_aula, room);
     assert.ok(calls.some(call => call.sql === 'COMMIT'));
   }
+});
+
+
+test('reserva el aula sin ubicación y descarta la sección de un formulario anterior', async () => {
+  const future = new Date();
+  future.setUTCDate(future.getUTCDate() + 7);
+  for (const location of [{}, { seccion: '2.º B', numero_aula: '201' }]) {
+    const { post, calls } = route();
+    const response = await post({
+      tipo_solicitud: 'aula', inventario_id: null,
+      fecha_reserva: future.toISOString().slice(0, 10), hora_inicio: '08:00', hora_fin: '10:00',
+      ...location,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.solicitud.seccion, null);
+    assert.equal(response.body.solicitud.numero_aula, null);
+    assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  }
+});
+
+
+test('genera avisos internos para todos los administradores activos sin exigir teléfono', async () => {
+  const { post, calls } = route();
+  assert.equal((await post({ seccion: '2.º B' })).status, 200);
+  const notification = calls.find(call => call.sql.includes('INSERT INTO notificaciones_whatsapp'));
+  assert.ok(notification);
+  assert.ok(notification.sql.includes("role = 'admin' AND activo = true"));
+  assert.ok(notification.sql.includes("COALESCE(NULLIF(telefono, ''), '-')"));
+  assert.equal(notification.params[1], 'solicitud_creada');
+  assert.equal(notification.params[2], 10);
+  assert.ok(calls.indexOf(notification) < calls.findIndex(call => call.sql === 'COMMIT'));
 });

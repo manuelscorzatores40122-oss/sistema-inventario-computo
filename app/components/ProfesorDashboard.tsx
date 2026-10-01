@@ -275,7 +275,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
         return;
       }
     }
-    if (!requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
+    if (solicitudType === 'equipo' && !requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
       setAlertNotice({ type: 'error', text: 'Indica la sección o el número de aula donde lo usarás.' });
       return;
     }
@@ -285,7 +285,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
     try {
       const bodyPayload: any = {
         profesor_id: user.id,
-        ...requestLocation,
+        ...(solicitudType === 'equipo' ? requestLocation : {}),
         motivo: motivo.trim() || 'Uso docente en clase',
       };
 
@@ -573,7 +573,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
               </div>
             )}
 
-            <RequestLocationFields value={requestLocation} onChange={setRequestLocation} />
+            {solicitudType === 'equipo' && <RequestLocationFields value={requestLocation} onChange={setRequestLocation} />}
             <div className="request-form-step mb-3">
               <label htmlFor="request-reason" className="inventory-form-label request-step-title">
                 {solicitudType === 'equipo' && <span className="request-step-number" aria-hidden="true">3</span>}

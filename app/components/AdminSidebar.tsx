@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import NotificacionesBell from './NotificacionesBell';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -92,6 +93,8 @@ export default function AdminSidebar() {
           </div>
         </div>
       </div>
+
+      <div className="px-4 py-2 d-flex align-items-center justify-content-between"><span className="small">Notificaciones</span><NotificacionesBell /></div>
 
       <nav className="flex-grow-1 overflow-auto py-3">
         <div className="text-uppercase small fw-bold px-4 mb-3" style={{ color: 'var(--color-slate-500)', letterSpacing: '0.05em' }}>

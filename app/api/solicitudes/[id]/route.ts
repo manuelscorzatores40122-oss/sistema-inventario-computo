@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
+import { verifyToken } from '@/app/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -11,10 +12,11 @@ export async function GET(
               u.nombre as profesor_nombre,
               u.apellido,
               u.telefono,
-              i.nombre as item_nombre
+              COALESCE(i.nombre, 'Aula de Cómputo (' || d.dia_semana || ' ' || TO_CHAR(d.fecha_reserva, 'DD/MM/YYYY') || ' ' || d.hora_inicio || '-' || d.hora_fin || ')') as item_nombre
        FROM solicitudes s
        JOIN usuarios u ON s.profesor_id = u.id
        LEFT JOIN inventario i ON s.inventario_id = i.id
+       LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
        WHERE s.id = $1`,
       [params.id]
     );
@@ -42,22 +44,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { estado, admin_id: bodyAdminId, comentarios, cantidad_solicitada, motivo } = await request.json();
+    const { estado, comentarios, cantidad_solicitada, motivo } = await request.json();
     
-    // Extraer admin_id del token por seguridad si no viene en el body
-    let admin_id = bodyAdminId;
-    const authToken = request.cookies.get('auth-token')?.value;
-    if (authToken && !admin_id) {
-      try {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(authToken, process.env.JWT_SECRET || 'tu_secreto_jwt_cambiar') as any;
-        if (decoded && decoded.userId) {
-          admin_id = decoded.userId;
-        }
-      } catch (e) {
-        console.error("Error validando token en solicitudes:", e);
-      }
+    const token = request.cookies.get('auth-token')?.value;
+    const actor = token ? verifyToken(token) : null;
+    if (!actor || typeof actor === 'string' || actor.role !== 'admin' || !actor.userId) {
+      return NextResponse.json({ error: 'Solo un administrador puede gestionar solicitudes.' }, { status: 403 });
     }
+    const admin_id = actor.userId;
     const cantidad = cantidad_solicitada === undefined || cantidad_solicitada === ''
       ? undefined
       : Number(cantidad_solicitada);
@@ -106,15 +100,15 @@ export async function PUT(
       const nextEstado = estado || sol.estado;
       const nextCantidad = cantidad ?? sol.cantidad_solicitada;
 
-      if (sol.estado !== 'pendiente' && nextEstado !== sol.estado) {
+      if (sol.estado !== 'pendiente' && estado) {
         await client.query('ROLLBACK');
         return NextResponse.json(
-          { error: 'Solo se puede cambiar el estado de solicitudes pendientes' },
-          { status: 400 }
+          { error: 'Esta solicitud ya fue procesada. Actualiza la lista para ver su estado.' },
+          { status: 409 }
         );
       }
 
-      if (nextEstado === 'aprobada') {
+      if (sol.estado === 'pendiente' && nextEstado === 'aprobada') {
         if (!admin_id) {
           await client.query('ROLLBACK');
           return NextResponse.json(
@@ -178,7 +172,7 @@ export async function PUT(
         [nextCantidad, motivo, nextEstado, admin_id, comentarios, params.id, ['aprobada', 'rechazada'].includes(nextEstado)]
       );
 
-      if (['aprobada', 'rechazada', 'cancelada'].includes(nextEstado)) {
+      if (sol.estado === 'pendiente' && ['aprobada', 'rechazada', 'cancelada'].includes(nextEstado)) {
         const itemType = sol.item_nombre ? 'equipo' : 'salon';
         const itemName = sol.item_nombre || 'Aula de Cómputo';
         const msgEstado = nextEstado === 'aprobada' ? 'aprobado' : (nextEstado === 'rechazada' ? 'desaprobado' : 'cancelado');

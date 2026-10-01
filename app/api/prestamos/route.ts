@@ -64,6 +64,15 @@ export async function POST(request: NextRequest) {
     try {
       await client.query('BEGIN');
 
+      const profesor = await client.query(
+        "SELECT id, telefono FROM usuarios WHERE id = $1 AND role = 'profesor' AND activo = true",
+        [profesor_id]
+      );
+      if (!profesor.rows.length) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Profesor no disponible' }, { status: 400 });
+      }
+
       const inventario = await client.query(
         'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
         [inventario_id, 'disponible']
@@ -100,6 +109,14 @@ export async function POST(request: NextRequest) {
       await client.query(
         'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
         [inventario_id, 'salida', cantidadNum, profesor_id, `Préstamo #${result.rows[0].id} a profesor`]
+      );
+
+      // El aviso interno se guarda junto al préstamo, incluso sin teléfono.
+      const mensaje = `La administración registró a tu nombre el préstamo #${result.rows[0].id}: ${inventario.rows[0].nombre}, ${cantidadNum} ${cantidadNum === 1 ? 'unidad' : 'unidades'}.${detalle ? ` Detalle: ${detalle}` : ''}`;
+      await client.query(
+        `INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [profesor_id, profesor.rows[0].telefono || '-', mensaje, 'prestamo_registrado', result.rows[0].id, 'pendiente']
       );
 
       await client.query('COMMIT');

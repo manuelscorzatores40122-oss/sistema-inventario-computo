@@ -964,7 +964,10 @@ export function AdminSolicitudesView() {
   };
 
   useEffect(() => {
-    fetchSolicitudes().catch(() => setMessage({ type: 'error', text: 'Error al cargar solicitudes' }));
+    const refresh = () => { fetchSolicitudes().catch(() => setMessage({ type: 'error', text: 'Error al cargar solicitudes' })); };
+    refresh();
+    window.addEventListener('admin-requests-updated', refresh);
+    return () => window.removeEventListener('admin-requests-updated', refresh);
   }, []);
 
   const updateEstado = async (id: number, estado: string) => {
@@ -1107,7 +1110,7 @@ export function ProfesorSolicitudesView() {
       return;
     }
 
-    if (!requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
+    if (solicitudType === 'equipo' && !requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
       setMessage({ type: 'error', text: 'Indica la sección o el número de aula donde lo usarás.' });
       return;
     }
@@ -1115,7 +1118,7 @@ export function ProfesorSolicitudesView() {
     
     const bodyPayload: any = {
       profesor_id: user?.id,
-      ...requestLocation,
+      ...(solicitudType === 'equipo' ? requestLocation : {}),
       motivo: form.motivo.trim() || 'Uso docente en clase',
     };
 
@@ -1152,11 +1155,7 @@ export function ProfesorSolicitudesView() {
 
   const handleCancel = async (id: number) => {
     confirmDialog('¿Estás seguro de que deseas cancelar esta solicitud?', async () => {
-      const response = await fetch(`/api/solicitudes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'cancelada' }),
-      });
+      const response = await fetch(`/api/solicitudes/${id}/cancelar`, { method: 'POST' });
 
       if (!response.ok) {
         setMessage({ type: 'error', text: await readError(response) });
@@ -1341,7 +1340,7 @@ export function ProfesorSolicitudesView() {
               </>
             )}
 
-            <div className="col-12"><RequestLocationFields value={requestLocation} onChange={setRequestLocation} /></div>
+            {solicitudType === 'equipo' && <div className="col-12"><RequestLocationFields value={requestLocation} onChange={setRequestLocation} /></div>}
             <div className="col-12">
               <label className={label}>Motivo o justificación de la clase</label>
               <div className="d-flex flex-wrap gap-1 mb-2">

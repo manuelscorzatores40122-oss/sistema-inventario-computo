@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { FiBell, FiX } from 'react-icons/fi';
+import Link from 'next/link';
 
 type Notificacion = {
   id: number;
@@ -29,24 +30,10 @@ export default function NotificacionesBell() {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (user.role === 'profesor') {
-      const receive = (event: Event) => setNotificaciones((event as CustomEvent<Notificacion[]>).detail);
-      window.addEventListener('teacher-notifications', receive);
-      return () => window.removeEventListener('teacher-notifications', receive);
-    }
-    const fetchNotificaciones = async () => {
-      try {
-        const res = await fetch(`/api/notificaciones/whatsapp?usuario_id=${user.id}`);
-        const data = await res.json();
-        setNotificaciones(data.notificaciones || []);
-      } catch (e) {
-        console.error('Error fetching notifications:', e);
-      }
-    };
-    fetchNotificaciones();
-    // Poll every 30s
-    const interval = setInterval(fetchNotificaciones, 30000);
-    return () => clearInterval(interval);
+    const eventName = user.role === 'profesor' ? 'teacher-notifications' : 'admin-notifications';
+    const receive = (event: Event) => setNotificaciones((event as CustomEvent<Notificacion[]>).detail);
+    window.addEventListener(eventName, receive);
+    return () => window.removeEventListener(eventName, receive);
   }, [user]);
 
   useEffect(() => {
@@ -127,11 +114,11 @@ export default function NotificacionesBell() {
 
       {open && (
         <div 
-          className="position-absolute bg-white shadow-lg rounded-3 overflow-hidden animate__animated animate__fadeIn animate__faster"
+          className="notifications-dropdown position-absolute bg-white shadow-lg rounded-3 overflow-hidden animate__animated animate__fadeIn animate__faster"
           style={{ 
             top: '100%', 
             right: 0, 
-            width: '320px', 
+            width: 'min(320px, calc(100vw - 32px))',
             zIndex: 1000, 
             border: '1px solid var(--color-slate-200)',
             marginTop: '8px'
@@ -143,6 +130,7 @@ export default function NotificacionesBell() {
               <FiX size={16} className="text-slate-500" />
             </button>
           </div>
+          {user.role === 'admin' && <Link href="/admin/solicitudes" className="d-block px-3 py-2 small fw-semibold" onClick={() => setOpen(false)}>Ver solicitudes de profesores</Link>}
           <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
             {notificaciones.length === 0 ? (
               <div className="p-4 text-center text-slate-500 small">
