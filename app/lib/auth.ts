@@ -56,12 +56,18 @@ export const createUser = async (
   password: string,
   role: string = 'profesor',
   telefono?: string,
-  correo_personal?: string
+  correo_personal?: string,
+  activo: boolean = true,
+  dni?: string,
+  area?: string
 ) => {
   const hashedPassword = await hashPassword(password);
+  const userDni = dni || email;
   const result = await query(
-    'INSERT INTO usuarios (email, nombre, apellido, password, role, telefono, correo_personal) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nombre, apellido, role',
-    [email, nombre, apellido, hashedPassword, role, telefono, correo_personal || null]
+    `INSERT INTO usuarios (email, nombre, apellido, password, role, telefono, correo_personal, activo, dni, area)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id, email, nombre, apellido, role, activo, dni, area`,
+    [email, nombre, apellido, hashedPassword, role, telefono || null, correo_personal || null, activo, userDni, area || null]
   );
   return result.rows[0];
 };

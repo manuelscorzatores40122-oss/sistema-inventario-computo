@@ -37,6 +37,8 @@ import {
   FiX,
   FiBookOpen,
   FiEye,
+  FiKey,
+  FiCheck,
 } from 'react-icons/fi';
 
 type Usuario = {
@@ -573,6 +575,13 @@ export function AdminProfesoresView() {
   const [message, setMessage] = useState<Message>(null);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const [filterTab, setFilterTab] = useState<'todos' | 'activos' | 'pendientes'>('todos');
+
+  // Modal para restablecer contraseña
+  const [resetUser, setResetUser] = useState<Usuario | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [savingReset, setSavingReset] = useState(false);
+
   const pageSize = 10;
   const [page, setPage] = useState(1);
   
@@ -588,12 +597,16 @@ export function AdminProfesoresView() {
     fetchUsuarios().catch(() => setMessage({ type: 'error', text: 'Error al cargar usuarios' }));
   }, []);
 
+  const pendingCount = useMemo(() => usuarios.filter(u => !u.activo).length, [usuarios]);
+
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter((u) => {
+      if (filterTab === 'activos' && !u.activo) return false;
+      if (filterTab === 'pendientes' && u.activo) return false;
       const full = `${u.nombre} ${u.apellido} ${u.email} ${u.correo_personal || ''}`.toLowerCase();
       return full.includes(search.toLowerCase());
     });
-  }, [usuarios, search]);
+  }, [usuarios, search, filterTab]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -644,8 +657,62 @@ export function AdminProfesoresView() {
     });
   };
 
+  const aprobarCuenta = async (usuario: Usuario) => {
+    const response = await fetch(`/api/usuarios/${usuario.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: true }),
+    });
+
+    if (!response.ok) {
+      setMessage({ type: 'error', text: 'No se pudo activar la cuenta' });
+      return;
+    }
+
+    setMessage({ type: 'success', text: `¡Cuenta de ${usuario.nombre} ${usuario.apellido} aprobada y activada con éxito!` });
+    fetchUsuarios();
+  };
+
+  const rechazarCuenta = async (id: number) => {
+    confirmDialog('¿Deseas rechazar y eliminar esta solicitud de registro?', async () => {
+      const response = await fetch(`/api/usuarios/${id}?hard=true`, { method: 'DELETE' });
+      if (!response.ok) {
+        setMessage({ type: 'error', text: 'No se pudo rechazar el registro' });
+        return;
+      }
+      setMessage({ type: 'success', text: 'Solicitud de registro rechazada y eliminada' });
+      fetchUsuarios();
+    });
+  };
+
+  const handleResetPasswordSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resetUser || !newPasswordInput) return;
+    setSavingReset(true);
+    try {
+      const response = await fetch(`/api/usuarios/${resetUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPasswordInput }),
+      });
+
+      if (!response.ok) {
+        setMessage({ type: 'error', text: 'No se pudo restablecer la contraseña' });
+        return;
+      }
+
+      setMessage({ type: 'success', text: `Contraseña restablecida exitosamente para ${resetUser.nombre} ${resetUser.apellido}` });
+      setResetUser(null);
+      setNewPasswordInput('');
+    } catch {
+      setMessage({ type: 'error', text: 'Error al restablecer contraseña' });
+    } finally {
+      setSavingReset(false);
+    }
+  };
+
   return (
-    <PageShell title="Gestión de Profesores" subtitle="Administra las cuentas y credenciales del personal docente.">
+    <PageShell title="Gestión de Profesores" subtitle="Administra las cuentas, aprueba registros nuevos y restablece credenciales.">
       <Notice message={message} />
       <ConfirmComponent />
 
@@ -681,15 +748,35 @@ export function AdminProfesoresView() {
 
       <div className={`${panel} p-4 space-y-4`}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
-          <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2">
-            <FiUsers size={17} className="text-slate-500" />
-            Directorio de Usuarios ({filteredUsuarios.length})
-            {filteredUsuarios.length > 0 && (
-              <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                {rangeStart}-{rangeEnd}
-              </span>
-            )}
-          </h3>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2 mb-0 me-3">
+              <FiUsers size={17} className="text-slate-500" />
+              Directorio de Usuarios ({filteredUsuarios.length})
+            </h3>
+            <div className="btn-group btn-group-sm">
+              <button
+                type="button"
+                className={`btn ${filterTab === 'todos' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => { setFilterTab('todos'); setPage(1); }}
+              >
+                Todos ({usuarios.length})
+              </button>
+              <button
+                type="button"
+                className={`btn ${filterTab === 'activos' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => { setFilterTab('activos'); setPage(1); }}
+              >
+                Activos ({usuarios.filter(u => u.activo).length})
+              </button>
+              <button
+                type="button"
+                className={`btn ${filterTab === 'pendientes' ? 'btn-warning text-dark font-bold' : 'btn-outline-warning text-dark'}`}
+                onClick={() => { setFilterTab('pendientes'); setPage(1); }}
+              >
+                Pendientes ({pendingCount})
+              </button>
+            </div>
+          </div>
           <div className="d-flex align-items-center gap-2">
             <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
             <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => handleSearch(e.target.value)} />
@@ -699,7 +786,7 @@ export function AdminProfesoresView() {
         {filteredUsuarios.length === 0 ? (
           <div className="text-center py-8 text-slate-500 font-semibold">
             <FiUsers size={36} className="mx-auto mb-3 text-slate-300" />
-            No se encontraron usuarios que coincidan con la búsqueda.
+            No se encontraron usuarios que coincidan con la búsqueda o filtro seleccionado.
           </div>
         ) : (
           <div className="space-y-3">
@@ -713,7 +800,7 @@ export function AdminProfesoresView() {
               return (
                 <div
                   key={usuario.id}
-                  className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center`}
+                  className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center ${!activo ? 'border-warning bg-warning bg-opacity-10' : ''}`}
                   style={{ cursor: 'pointer', transition: 'border-color 0.2s, box-shadow 0.2s' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -742,7 +829,13 @@ export function AdminProfesoresView() {
                           {isAdmin ? <FiShield size={11} /> : <FiUser size={11} />}
                           {isAdmin ? 'Admin' : 'Profesor'}
                         </span>
-                        <StatusBadge value={activo ? 'disponible' : 'agotado'} />
+                        {activo ? (
+                          <StatusBadge value="disponible" />
+                        ) : (
+                          <span className="badge bg-warning text-dark d-inline-flex align-items-center gap-1">
+                            <FiClock size={11} /> Pendiente de Aprobación
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -768,13 +861,29 @@ export function AdminProfesoresView() {
                     </div>
                   </div>
 
-                  <div className="d-flex gap-2 flex-shrink-0">
-                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}>
-                      <FiEdit2 size={13} />Editar
-                    </button>
-                    <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}>
-                      {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
-                    </button>
+                  <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center" onClick={(e) => e.stopPropagation()}>
+                    {!activo ? (
+                      <>
+                        <button className="btn btn-sm btn-success d-inline-flex align-items-center gap-1 font-bold" onClick={() => aprobarCuenta(usuario)}>
+                          <FiCheck size={14} /> Aprobar Cuenta
+                        </button>
+                        <button className="btn btn-sm btn-danger d-inline-flex align-items-center gap-1 font-bold" onClick={() => rechazarCuenta(usuario.id)}>
+                          <FiX size={14} /> Rechazar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" onClick={() => { setResetUser(usuario); setNewPasswordInput(''); }} title="Restablecer contraseña">
+                          <FiKey size={13} /> Clave
+                        </button>
+                        <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}>
+                          <FiEdit2 size={13} />Editar
+                        </button>
+                        <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}>
+                          {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -829,6 +938,62 @@ export function AdminProfesoresView() {
           </div>
         )}
       </div>
+
+      {/* Modal Restablecer Contraseña por el Administrador */}
+      {resetUser && (
+        <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-b p-4">
+                <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '32px', height: '32px' }}>
+                    <FiKey size={16} />
+                  </span>
+                  Restablecer Contraseña
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setResetUser(null)} />
+              </div>
+              <form onSubmit={handleResetPasswordSubmit}>
+                <div className="modal-body p-4 space-y-3">
+                  <p className="text-slate-700 text-sm mb-3">
+                    Estás restableciendo la contraseña para el profesor(a):<br />
+                    <strong className="text-slate-900 text-base">{resetUser.nombre} {resetUser.apellido}</strong> (DNI: {resetUser.email})
+                  </p>
+
+                  <div className="mb-3">
+                    <label className={label}>Nueva Contraseña (mínimo 6 caracteres)</label>
+                    <input
+                      type="text"
+                      className={input}
+                      value={newPasswordInput}
+                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                      placeholder="Escribe la nueva contraseña..."
+                      required
+                      minLength={6}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary w-100 mb-2 d-flex align-items-center justify-content-center gap-2"
+                    onClick={() => setNewPasswordInput(resetUser.email)}
+                  >
+                    <FiKey size={14} /> Usar DNI ({resetUser.email}) como contraseña por defecto
+                  </button>
+                </div>
+                <div className="modal-footer border-top p-3 d-flex justify-between">
+                  <button type="button" className={secondaryButton} onClick={() => setResetUser(null)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className={primaryButton} disabled={savingReset || newPasswordInput.length < 6}>
+                    {savingReset ? 'Guardando...' : 'Cambiar Contraseña'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedUser && (
         <>
@@ -1449,6 +1614,8 @@ export function AdminPrestamosView() {
   const [items, setItems] = useState<Item[]>([]);
   const [profesores, setProfesores] = useState<{ id: number; nombre: string; apellido: string }[]>([]);
   const [tab, setTab] = useState<'pendiente' | 'prestado' | 'devuelto'>('pendiente');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   const [form, setForm] = useState({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
@@ -1457,8 +1624,14 @@ export function AdminPrestamosView() {
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchData = async () => {
+    let url = '/api/prestamos';
+    const params = new URLSearchParams();
+    if (fechaInicio) params.append('desde', fechaInicio);
+    if (fechaFin) params.append('hasta', fechaFin);
+    if (params.toString()) url += `?${params.toString()}`;
+
     const [preRes, invRes, profRes] = await Promise.all([
-      fetch('/api/prestamos'),
+      fetch(url),
       fetch('/api/inventario?estado=disponible'),
       fetch('/api/usuarios?role=profesor&activo=true'),
     ]);
@@ -1478,7 +1651,7 @@ export function AdminPrestamosView() {
 
   useEffect(() => {
     fetchData().catch(() => setMessage({ type: 'error', text: 'Error al cargar préstamos' }));
-  }, []);
+  }, [fechaInicio, fechaFin]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -1657,6 +1830,44 @@ export function AdminPrestamosView() {
           <input className={input} value={form.detalle} onChange={(e) => setForm({ ...form, detalle: e.target.value })} placeholder="Ej. Laptop P2, Control N° 3, Monitor del aula A..." />
         </div>
       </form>
+
+      {/* Filtro por Rango de Fechas */}
+      <div className={`${panel} p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3`}>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="fw-bold text-slate-800 d-flex align-items-center gap-1 me-2">
+            <FiCalendar size={16} className="text-primary" /> Filtrar por fechas:
+          </span>
+          <div className="d-flex align-items-center gap-1">
+            <span className="text-xs text-slate-500 font-semibold">Desde:</span>
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              style={{ width: '150px' }}
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+            />
+          </div>
+          <div className="d-flex align-items-center gap-1">
+            <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              style={{ width: '150px' }}
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+            />
+          </div>
+          {(fechaInicio || fechaFin) && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+              onClick={() => { setFechaInicio(''); setFechaFin(''); }}
+            >
+              <FiX size={14} /> Limpiar fechas
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
         <div className="d-flex gap-2">

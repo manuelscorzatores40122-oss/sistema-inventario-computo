@@ -9,6 +9,9 @@ import './Login.css';
 export default function Login({ register = false }: { register?: boolean }) {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [correoPersonal, setCorreoPersonal] = useState('');
+  const [area, setArea] = useState('');
   const [registered, setRegistered] = useState(false);
   const [greeting, setGreeting] = useState('Te damos la bienvenida');
   const [welcomeMessage, setWelcomeMessage] = useState('Tu espacio para organizar los recursos y reservar el aula de cómputo.');
@@ -59,7 +62,20 @@ export default function Login({ register = false }: { register?: boolean }) {
       const response = await fetch(isRegister ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password, nombre: nombre.trim(), apellido: apellido.trim() }),
+        body: JSON.stringify(
+          isRegister
+            ? {
+                dni: email.trim(),
+                email: email.trim(),
+                password,
+                nombre: nombre.trim(),
+                apellido: apellido.trim(),
+                telefono: telefono.trim(),
+                correo_personal: correoPersonal.trim(),
+                area: area.trim(),
+              }
+            : { email: email.trim(), password }
+        ),
       });
 
       const data = await response.json();
@@ -114,11 +130,18 @@ export default function Login({ register = false }: { register?: boolean }) {
             </div>
             <p className="login-school">I.E. Manuel Scorza</p>
             <p className="login-mobile-greeting">{greeting}</p>
-            <h1 className="login-title">{isRegister ? 'Crea tu cuenta' : 'Iniciar sesión'}</h1>
-            <p className="login-subtitle">{isRegister ? 'Regístrate como docente de nuestra comunidad' : 'Ingresa tus credenciales para continuar'}</p>
+            <h1 className="login-title">{isRegister ? 'Solicitud de Cuenta Docente' : 'Iniciar sesión'}</h1>
+            <p className="login-subtitle">{isRegister ? 'Completa tus datos. El administrador revisará y aprobará tu acceso.' : 'Ingresa tus credenciales para continuar'}</p>
           </div>
 
-          {registered && <p className="login-success" role="status">Tu cuenta está lista. Inicia sesión con tu DNI y contraseña.</p>}
+          {registered && (
+            <div className="login-alert bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded mb-3" role="status" style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>
+              <div className="fw-bold mb-1">¡Solicitud enviada con éxito!</div>
+              <div style={{ fontSize: '0.85rem' }}>
+                Tu cuenta de docente fue registrada y está <strong>pendiente de aprobación por el Administrador</strong>. Podrás ingresar tan pronto como la administración la active.
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="login-alert" role="alert">
@@ -128,24 +151,47 @@ export default function Login({ register = false }: { register?: boolean }) {
           )}
 
           <form onSubmit={handleSubmit} className="login-form">
-            {isRegister && <>
-              <div className="form-group">
-                <label htmlFor="nombre">Nombres</label>
-                <div className="input-with-icon">
-                  <FiUser className="input-icon" />
-                  <input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" placeholder="Tus nombres" required maxLength={100} />
+            {isRegister && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="nombre">Nombres</label>
+                  <div className="input-with-icon">
+                    <FiUser className="input-icon" />
+                    <input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" placeholder="Ej. Juan Carlos" required maxLength={100} />
+                  </div>
                 </div>
-              </div>
-              <div className="form-group">
-                <label htmlFor="apellido">Apellidos</label>
-                <div className="input-with-icon">
-                  <FiUser className="input-icon" />
-                  <input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" placeholder="Tus apellidos" required maxLength={100} />
+                <div className="form-group">
+                  <label htmlFor="apellido">Apellidos</label>
+                  <div className="input-with-icon">
+                    <FiUser className="input-icon" />
+                    <input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" placeholder="Ej. Pérez García" required maxLength={100} />
+                  </div>
                 </div>
-              </div>
-            </>}
+                <div className="form-group">
+                  <label htmlFor="telefono">Teléfono / WhatsApp</label>
+                  <div className="input-with-icon">
+                    <FiUser className="input-icon" />
+                    <input id="telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Ej. 987654321" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="area">Área / Asignatura o Grado</label>
+                  <div className="input-with-icon">
+                    <FiUser className="input-icon" />
+                    <input id="area" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ej. Primaria 4° A / Matemática" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="correoPersonal">Correo Personal (Opcional)</label>
+                  <div className="input-with-icon">
+                    <FiUser className="input-icon" />
+                    <input id="correoPersonal" type="email" value={correoPersonal} onChange={(e) => setCorreoPersonal(e.target.value)} placeholder="contacto@email.com" />
+                  </div>
+                </div>
+              </>
+            )}
             <div className="form-group">
-              <label htmlFor="email">DNI</label>
+              <label htmlFor="email">DNI (Usuario)</label>
               <div className="input-with-icon">
                 <FiUser className="input-icon" />
                 <input
@@ -178,13 +224,13 @@ export default function Login({ register = false }: { register?: boolean }) {
             </div>
 
             <button type="submit" disabled={loading} className="login-submit-btn">
-              {loading ? (isRegister ? 'Creando cuenta...' : 'Verificando...') : (isRegister ? 'Registrarse' : 'Iniciar sesión')}
+              {loading ? (isRegister ? 'Enviando solicitud...' : 'Verificando...') : (isRegister ? 'Solicitar Cuenta' : 'Iniciar sesión')}
             </button>
           </form>
 
           <p className="login-register-link">
-            {isRegister ? '¿Ya tienes una cuenta? ' : '¿No tienes una cuenta? '}
-            <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Regístrate'}</Link>
+            {isRegister ? '¿Ya tienes una cuenta aprobada? ' : '¿Eres un docente nuevo? '}
+            <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Solicita tu cuenta aquí'}</Link>
           </p>
 
           <div className="login-footer">

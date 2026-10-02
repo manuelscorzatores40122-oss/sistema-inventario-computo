@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUser, FiSearch, FiPackage, FiBookOpen, FiArrowLeft, FiX } from 'react-icons/fi';
+import { FiUser, FiSearch, FiPackage, FiBookOpen, FiArrowLeft, FiX, FiCalendar } from 'react-icons/fi';
 import Link from 'next/link';
 import { StatusBadge } from './CrudViews';
 
@@ -39,6 +39,9 @@ export default function AdminHistorialView() {
   const [selectedProfesor, setSelectedProfesor] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -59,8 +62,12 @@ export default function AdminHistorialView() {
     }
 
     setLoadingHistory(true);
+    let prestamosUrl = `/api/prestamos?profesor_id=${selectedProfesor}`;
+    if (fechaInicio) prestamosUrl += `&desde=${fechaInicio}`;
+    if (fechaFin) prestamosUrl += `&hasta=${fechaFin}`;
+
     Promise.all([
-      fetch(`/api/prestamos?profesor_id=${selectedProfesor}`).then(r => r.json()),
+      fetch(prestamosUrl).then(r => r.json()),
       fetch(`/api/disponibilidad?reservado_por=${selectedProfesor}`).then(r => r.json())
     ])
       .then(([prestamosData, clasesData]) => {
@@ -69,9 +76,18 @@ export default function AdminHistorialView() {
       })
       .catch(e => console.error(e))
       .finally(() => setLoadingHistory(false));
-  }, [selectedProfesor]);
+  }, [selectedProfesor, fechaInicio, fechaFin]);
 
   const profesorObj = profesores.find(p => p.id === selectedProfesor);
+
+  // Filtrado de clases por fecha de reserva si está definida
+  const filteredClases = clases.filter((c) => {
+    if (!c.fecha_reserva) return true;
+    const dateStr = c.fecha_reserva.split('T')[0];
+    if (fechaInicio && dateStr < fechaInicio) return false;
+    if (fechaFin && dateStr > fechaFin) return false;
+    return true;
+  });
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -199,10 +215,47 @@ export default function AdminHistorialView() {
       </div>
 
       {selectedProfesor && (
-        <div className="animate__animated animate__fadeIn">
-          <div className="d-flex align-items-center gap-2 mb-4 bg-primary bg-opacity-10 text-primary p-3 rounded border border-blue-200">
-            <FiUser size={20} />
-            <h3 className="mb-0 fw-bold">Historial de: {profesorObj?.nombre} {profesorObj?.apellido}</h3>
+        <div className="animate__animated animate__fadeIn space-y-4">
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 bg-primary bg-opacity-10 text-primary p-3 rounded border border-blue-200">
+            <div className="d-flex align-items-center gap-2">
+              <FiUser size={20} />
+              <h3 className="mb-0 fw-bold">Historial de: {profesorObj?.nombre} {profesorObj?.apellido}</h3>
+            </div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="fw-bold text-slate-800 text-xs d-flex align-items-center gap-1">
+                <FiCalendar size={14} /> Filtrar rango:
+              </span>
+              <div className="d-flex align-items-center gap-1">
+                <span className="text-xs text-slate-500 font-semibold">Desde:</span>
+                <input
+                  type="date"
+                  className="form-control form-control-sm"
+                  style={{ width: '140px' }}
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
+                <input
+                  type="date"
+                  className="form-control form-control-sm"
+                  style={{ width: '140px' }}
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                />
+              </div>
+              {(fechaInicio || fechaFin) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                  onClick={() => { setFechaInicio(''); setFechaFin(''); }}
+                >
+                  <FiX size={14} /> Limpiar
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="inventory-panel p-4 mb-5 overflow-x-auto">
@@ -210,7 +263,7 @@ export default function AdminHistorialView() {
               <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
                 <FiPackage size={15} />
               </span>
-              Préstamos de Equipos
+              Préstamos de Equipos ({prestamos.length})
             </h2>
             {loadingHistory ? (
               <div className="text-center py-4 text-slate-500">Cargando préstamos...</div>
@@ -238,7 +291,7 @@ export default function AdminHistorialView() {
                     </tr>
                   ))}
                   {prestamos.length === 0 && (
-                    <tr><td colSpan={6} className="text-center py-6 text-slate-500">No hay historial de préstamos para este profesor.</td></tr>
+                    <tr><td colSpan={6} className="text-center py-6 text-slate-500">No hay préstamos registrados para este rango o profesor.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -250,7 +303,7 @@ export default function AdminHistorialView() {
               <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
                 <FiBookOpen size={15} />
               </span>
-              Reservas del Aula de Cómputo
+              Reservas del Aula de Cómputo ({filteredClases.length})
             </h2>
             {loadingHistory ? (
               <div className="text-center py-4 text-slate-500">Cargando reservas...</div>
@@ -266,7 +319,7 @@ export default function AdminHistorialView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {clases
+                  {filteredClases
                     .sort((a, b) => (b.fecha_reserva || '').localeCompare(a.fecha_reserva || ''))
                     .map((c) => (
                       <tr key={c.id}>
@@ -281,8 +334,8 @@ export default function AdminHistorialView() {
                         </td>
                       </tr>
                     ))}
-                  {clases.length === 0 && (
-                    <tr><td colSpan={5} className="text-center py-6 text-slate-500">No hay historial de reservas para este profesor.</td></tr>
+                  {filteredClases.length === 0 && (
+                    <tr><td colSpan={5} className="text-center py-6 text-slate-500">No hay reservas registradas para este rango o profesor.</td></tr>
                   )}
                 </tbody>
               </table>

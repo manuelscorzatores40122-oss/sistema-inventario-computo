@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
     const profesor_id = searchParams.get('profesor_id');
+    const desde = searchParams.get('desde');
+    const hasta = searchParams.get('hasta');
 
     let sql = `SELECT p.*,
                       i.nombre as item_nombre,
@@ -27,6 +29,16 @@ export async function GET(request: NextRequest) {
     if (profesor_id) {
       sql += ' AND p.profesor_id = $' + (params.length + 1);
       params.push(profesor_id);
+    }
+
+    if (desde) {
+      sql += ' AND p.fecha_prestamo >= $' + (params.length + 1);
+      params.push(`${desde} 00:00:00`);
+    }
+
+    if (hasta) {
+      sql += ' AND p.fecha_prestamo <= $' + (params.length + 1);
+      params.push(`${hasta} 23:59:59`);
     }
 
     sql += ' ORDER BY p.fecha_prestamo DESC';

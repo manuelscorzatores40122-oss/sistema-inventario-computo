@@ -14,9 +14,16 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserByEmail(email);
 
-    if (!user || !user.activo) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Usuario o contraseña inválidos' },
+        { status: 401 }
+      );
+    }
+
+    if (!user.activo) {
+      return NextResponse.json(
+        { error: 'Tu cuenta está pendiente de aprobación por el administrador del colegio.' },
         { status: 401 }
       );
     }
