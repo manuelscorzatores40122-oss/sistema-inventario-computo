@@ -134,6 +134,14 @@ export default function AdminNotifications() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => {
+      setNotice(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [notice?.id]);
+
   const dismissRequest = () => {
     const current = queue[0];
     if (!current) return;
@@ -223,14 +231,6 @@ export default function AdminNotifications() {
       </aside>
     );
   }
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => {
-      setNotice(null);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [notice?.id]);
 
   if (!notice) return null;
 
