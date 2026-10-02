@@ -181,9 +181,11 @@ export function StatusBadge({ value }: { value: string }) {
       ? FiCheckCircle
       : value === 'mantenimiento' || value === 'separado' || value === 'prestado'
         ? FiClock
-        : value === 'agotado' || value === 'rechazada'
-          ? FiXCircle
-          : FiInbox;
+        : value === 'vencido'
+          ? FiAlertTriangle
+          : value === 'agotado' || value === 'rechazada'
+            ? FiXCircle
+            : FiInbox;
 
   return (
     <span className={`status-badge ${value}`}>
@@ -1873,7 +1875,7 @@ export function ProfesorSolicitudesView() {
 
 export function AdminPrestamosView() {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
-  const [tab, setTab] = useState<'pendiente' | 'prestado' | 'devuelto'>('pendiente');
+  const [tab, setTab] = useState<'pendiente' | 'prestado' | 'vencido' | 'devuelto'>('pendiente');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [message, setMessage] = useState<Message>(null);
@@ -1976,10 +1978,20 @@ export function AdminPrestamosView() {
     }, true);
   };
 
+  const isLoanOverdue = (fechaStr: string, estado: string) => {
+    if (estado !== 'prestado') return false;
+    const loanDate = new Date(fechaStr);
+    const now = new Date();
+    const diffHours = (now.getTime() - loanDate.getTime()) / (1000 * 60 * 60);
+    const isPreviousDay = loanDate.toDateString() !== now.toDateString() && loanDate < now;
+    return diffHours >= 24 || isPreviousDay;
+  };
+
   const pendientes = prestamos.filter((p) => p.estado === 'pendiente');
   const activos = prestamos.filter((p) => p.estado === 'prestado');
+  const vencidos = prestamos.filter((p) => isLoanOverdue(p.fecha_prestamo, p.estado));
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
-  const currentLoans = tab === 'pendiente' ? pendientes : tab === 'prestado' ? activos : devueltos;
+  const currentLoans = tab === 'pendiente' ? pendientes : tab === 'vencido' ? vencidos : tab === 'prestado' ? activos : devueltos;
   const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const list = currentLoans.filter(loan => normalize(`${loan.item_nombre || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.detalle || ''} ${loan.id}`).includes(normalize(search.trim())));
   const borrowedUnits = activos.reduce((sum, loan) => sum + Number(loan.cantidad), 0);
@@ -2037,7 +2049,22 @@ export function AdminPrestamosView() {
       </div>
 
       <div className="inventory-summary">
-        {[{ label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox }, { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock }, { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage }, { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
+        {[
+          { label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox },
+          { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock },
+          { label: '⚠️ Vencidos', value: vencidos.length, unit: 'sin devolver a tiempo', icon: FiAlertTriangle, highlight: vencidos.length > 0 },
+          { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage },
+          { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle }
+        ].map(({ label, value, unit, icon: Icon, highlight }) => (
+          <div className={`inventory-summary-card ${highlight ? 'border border-danger bg-rose-50/50' : ''}`} key={label}>
+            <div>
+              <span className={highlight ? 'text-danger font-bold' : ''}>{label}</span>
+              <Icon size={20} className={highlight ? 'text-danger' : ''} />
+            </div>
+            <strong className={highlight ? 'text-danger' : ''}>{loading ? '—' : value}</strong>
+            <small>{unit}</small>
+          </div>
+        ))}
       </div>
       <div className="inventory-panel inventory-list-panel">
         <div className="inventory-list-toolbar">
@@ -2045,9 +2072,32 @@ export function AdminPrestamosView() {
           <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar préstamos" placeholder="Buscar profesor, equipo o detalle…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><FiX size={15} /></button>}</label>
         </div>
         <div className="inventory-state-tabs" role="group" aria-label="Estado del préstamo">
-          {([{ value: 'pendiente', label: 'Por recoger', count: pendientes.length }, { value: 'prestado', label: 'Prestados', count: activos.length }, { value: 'devuelto', label: 'Devueltos', count: devueltos.length }] as const).map(state => <button key={state.value} type="button" className={tab === state.value ? 'active' : ''} aria-pressed={tab === state.value} onClick={() => setTab(state.value)}>{state.label}<span>{state.count}</span></button>)}
+          {([
+            { value: 'pendiente', label: 'Por recoger', count: pendientes.length },
+            { value: 'prestado', label: 'Prestados', count: activos.length },
+            { value: 'vencido', label: '⚠️ Vencidos', count: vencidos.length },
+            { value: 'devuelto', label: 'Devueltos', count: devueltos.length }
+          ] as const).map(state => (
+            <button
+              key={state.value}
+              type="button"
+              className={`${tab === state.value ? 'active' : ''} ${state.value === 'vencido' && state.count > 0 ? 'text-danger font-bold' : ''}`}
+              aria-pressed={tab === state.value}
+              onClick={() => setTab(state.value)}
+            >
+              {state.label}<span>{state.count}</span>
+            </button>
+          ))}
         </div>
-        <p className="loans-tab-hint">{tab === 'pendiente' ? 'Confirma la entrega cuando el profesor recoja sus equipos.' : tab === 'prestado' ? 'Registra la devolución cuando los equipos regresen al inventario.' : 'Consulta las entregas que ya fueron devueltas.'}</p>
+        <p className="loans-tab-hint">
+          {tab === 'pendiente'
+            ? 'Confirma la entrega cuando el profesor recoja sus equipos.'
+            : tab === 'vencido'
+              ? 'Préstamos activos que superan las 24 horas sin devolución registrada.'
+              : tab === 'prestado'
+                ? 'Registra la devolución cuando los equipos regresen al inventario.'
+                : 'Consulta las entregas que ya fueron devueltas.'}
+        </p>
         <div className="overflow-x-auto">
         <table className="inventory-table">
           <thead>
@@ -2063,8 +2113,10 @@ export function AdminPrestamosView() {
             </tr>
           </thead>
           <tbody>
-            {!loading && list.map((prestamo) => (
-              <tr key={prestamo.id}>
+            {!loading && list.map((prestamo) => {
+              const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
+              return (
+              <tr key={prestamo.id} className={overdue ? 'bg-red-50/40' : ''}>
                 <td><div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{prestamo.item_nombre || 'Equipo'}</strong><small>PR-{String(prestamo.id).padStart(3, '0')}</small></div></div></td>
                 <td>
                   <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
@@ -2076,7 +2128,15 @@ export function AdminPrestamosView() {
                 <td className="loans-detail">{prestamo.detalle || '-'}</td>
                 <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>}
-                <td><StatusBadge value={prestamo.estado} /></td>
+                <td>
+                  {overdue ? (
+                    <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
+                      <FiAlertTriangle size={12} /> Vencido
+                    </span>
+                  ) : (
+                    <StatusBadge value={prestamo.estado} />
+                  )}
+                </td>
                 <td className="text-right">
                   {prestamo.estado === 'pendiente' ? (
                     <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarPrestado(prestamo.id)}>
@@ -2096,7 +2156,7 @@ export function AdminPrestamosView() {
                   )}
                 </td>
               </tr>
-            ))}
+            );})}
             {(loading || list.length === 0) && (
               <tr>
                 <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>

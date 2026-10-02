@@ -74,6 +74,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
   const router = useRouter();
   const [inventario, setInventario] = useState<Item[]>([]);
   const [misSolicitudes, setMisSolicitudes] = useState<Solicitud[]>([]);
+  const [misPrestamosVencidos, setMisPrestamosVencidos] = useState<{ id: number; item_nombre: string; cantidad: number; fecha_prestamo: string }[]>([]);
   const [visibleRequestCount, setVisibleRequestCount] = useState(2);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -221,10 +222,26 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
 
       const profId = profesorId || user?.id;
       if (profId) {
-        const solRes = await fetch(`/api/solicitudes?profesor_id=${profId}`);
+        const [solRes, prestRes] = await Promise.all([
+          fetch(`/api/solicitudes?profesor_id=${profId}`),
+          fetch(`/api/prestamos?profesor_id=${profId}`)
+        ]);
         if (solRes.ok) {
           const solData = await solRes.json();
           setMisSolicitudes(solData.solicitudes || []);
+        }
+        if (prestRes.ok) {
+          const prestData = await prestRes.json();
+          const prestamos = prestData.prestamos || [];
+          const now = new Date();
+          const vencidos = prestamos.filter((p: any) => {
+            if (p.estado !== 'prestado') return false;
+            const loanDate = new Date(p.fecha_prestamo);
+            const diffHours = (now.getTime() - loanDate.getTime()) / (1000 * 60 * 60);
+            const isPreviousDay = loanDate.toDateString() !== now.toDateString() && loanDate < now;
+            return diffHours >= 24 || isPreviousDay;
+          });
+          setMisPrestamosVencidos(vencidos);
         }
       }
     } catch (error) {
@@ -403,14 +420,28 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
         </section>
 
         }
-        <section className="teacher-app-hero d-md-none" aria-label="Bienvenida">
-          <div className="teacher-app-greeting">
-            <span className="teacher-app-avatar" aria-hidden="true">{user?.nombre?.charAt(0).toUpperCase() || 'P'}</span>
-            <span>Hola, {user?.nombre?.split(' ')[0] || 'profe'}</span>
+        {/* ALERTA DE PRÉSTAMOS VENCIDOS / EQUIPOS NO DEVUELTOS */}
+        {misPrestamosVencidos.length > 0 && (
+          <div className="alert alert-danger shadow-sm border-danger rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ background: '#fff5f5' }}>
+            <div className="d-flex align-items-center gap-3">
+              <div className="bg-danger text-white p-2 rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm">
+                <FiAlertCircle size={22} />
+              </div>
+              <div>
+                <h6 className="fw-bold mb-1 text-danger d-flex align-items-center gap-1">
+                  ⚠️ Préstamo Vencido / Equipo No Devuelto
+                </h6>
+                <p className="small mb-0 text-slate-700">
+                  Tienes {misPrestamosVencidos.length} equipo(s) con más de 24h en préstamo ({misPrestamosVencidos.map(p => `${p.item_nombre || 'Equipo'} (x${p.cantidad})`).join(', ')}). Por favor entrégalos a la brevedad en el Centro de Cómputo.
+                </p>
+              </div>
+            </div>
+            <button className="btn btn-sm btn-danger text-white font-semibold d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2 shadow-sm" onClick={() => router.push('/profesor/solicitudes')}>
+              Ver mis préstamos
+            </button>
           </div>
-          <h1>Todo listo para<br />tu próxima clase</h1>
-          <p>Reserva tu aula y solicita lo que necesitas.</p>
-        </section>
+        )}
+
         {/* ACCESOS RÁPIDOS MÓVILES */}
         <div className="dashboard-quick-actions row g-2 g-md-3 mb-3 mb-md-4">
           <div className="col-12 col-md-4">
