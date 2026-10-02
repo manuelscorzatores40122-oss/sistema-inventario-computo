@@ -2684,16 +2684,16 @@ body {
 .request-list-controls button:focus-visible { outline: 3px solid #287f82; outline-offset: 3px; }
 
 .admin-sidebar .notifications-dropdown { left: 0; right: auto !important; }
-.admin-live-notice { position: fixed; top: 20px; right: 20px; z-index: 1100; display: flex; align-items: flex-start; gap: 12px; width: min(400px, calc(100vw - 32px)); padding: 18px; border: 1px solid #b6dddc; border-radius: 18px; background: #f0faf8; color: #235e63; box-shadow: 0 12px 40px #194f5526; }
+.admin-live-notice { position: fixed; bottom: 24px; top: auto; right: 24px; z-index: 11000; display: flex; align-items: flex-start; gap: 12px; width: min(420px, calc(100vw - 32px)); padding: 18px; border: 1px solid #b6dddc; border-radius: 18px; background: #f0faf8; color: #235e63; box-shadow: 0 12px 40px #194f5533; }
 .admin-live-notice > svg { flex-shrink: 0; margin-top: 3px; }
 .admin-live-notice > div { flex: 1; min-width: 0; }
 .admin-live-notice strong { font-size: .9rem; }
 .admin-live-notice p { margin: 6px 0; font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere; }
 .admin-live-notice a { display: inline-flex; align-items: center; min-height: 44px; color: #343065; font-size: .85rem; font-weight: 700; }
 .admin-live-notice button { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border: 0; border-radius: 12px; background: #dcefed; color: #235e63; }
-@media (max-width: 991.98px) { .admin-live-notice { top: 80px; right: 16px; } }
+@media (max-width: 991.98px) { .admin-live-notice { bottom: 80px; top: auto; right: 16px; left: 16px; width: auto; } }
 
-.admin-request-alert { position: fixed; top: 20px; right: 24px; z-index: 1100; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); margin: 0; padding: 24px; border: 0; border-radius: 24px; color: #343065; background: #fff; box-shadow: 0 24px 80px #142e3940; overflow-y: auto; }
+.admin-request-alert { position: fixed; bottom: 24px; top: auto; right: 24px; z-index: 11000; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 100px); margin: 0; padding: 24px; border: 0; border-radius: 24px; color: #343065; background: #fff; box-shadow: 0 24px 80px #142e3940; overflow-y: auto; }
 
 .admin-request-alert header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 .admin-request-alert header > span { display: grid; place-items: center; width: 50px; height: 50px; flex-shrink: 0; border-radius: 16px; background: #e0f3f1; color: #287f82; }
@@ -2712,7 +2712,6 @@ body {
 .admin-request-alert-later { display: block; width: 100%; min-height: 44px; margin: 8px 0; border: 0; background: transparent; color: #69647c; font-size: .82rem; }
 .admin-request-alert button:focus-visible, .admin-request-alert textarea:focus-visible { outline: 3px solid #8276bd; outline-offset: 3px; }
 
-
 /* La decisión rechazada conserva el mismo diseño, con un estado visual distinto. */
 .approval-notice-rejected .approval-notice-icon { border-color: #fff5f2; background: #ffe4dc; color: #b34b37; }
 .approval-notice-rejected .approval-notice-eyebrow { color: #a14635; }
@@ -2721,7 +2720,7 @@ body {
 .admin-request-alert header > div { flex: 1; min-width: 0; }
 .admin-request-alert-close { display: grid; place-items: center; flex-shrink: 0; align-self: flex-start; width: 44px; height: 44px; border: 0; border-radius: 12px; color: #42646a; background: #e0f3f1; }
 @media (max-width: 991.98px) {
-  .admin-request-alert { top: 76px; right: 16px; max-height: calc(100dvh - 160px); padding: 18px; }
+  .admin-request-alert { bottom: 80px; top: auto; right: 16px; left: 16px; width: auto; max-height: calc(100dvh - 160px); padding: 18px; }
 }
 
 /* Administración: paleta gris y naranja del dashboard. */

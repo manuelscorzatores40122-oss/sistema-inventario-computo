@@ -428,15 +428,15 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
                 <FiAlertCircle size={22} />
               </div>
               <div>
-                <h6 className="fw-bold mb-1 text-danger d-flex align-items-center gap-1">
-                  ⚠️ Préstamo Vencido / Equipo No Devuelto
+                <h6 className="fw-bold mb-1 text-danger">
+                  Préstamo Vencido / Equipo No Devuelto
                 </h6>
                 <p className="small mb-0 text-slate-700">
-                  Tienes {misPrestamosVencidos.length} equipo(s) con más de 24h en préstamo ({misPrestamosVencidos.map(p => `${p.item_nombre || 'Equipo'} (x${p.cantidad})`).join(', ')}). Por favor entrégalos a la brevedad en el Centro de Cómputo.
+                  Tienes {misPrestamosVencidos.length === 1 ? '1 equipo pendiente' : `${misPrestamosVencidos.length} equipos pendientes`} de devolución: {misPrestamosVencidos.map(p => `${(p.item_nombre || 'Equipo').replace(/\s*\([^)]*\)/g, '').trim()} (x${p.cantidad})`).join(', ')}. Por favor entrégalos a la brevedad en el Centro de Cómputo.
                 </p>
               </div>
             </div>
-            <button className="btn btn-sm btn-danger text-white font-semibold d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2 shadow-sm" onClick={() => router.push('/profesor/solicitudes')}>
+            <button className="btn btn-sm btn-danger text-white font-semibold d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2 shadow-sm" onClick={() => router.push('/profesor/solicitudes?tab=prestamos')}>
               Ver mis préstamos
             </button>
           </div>
