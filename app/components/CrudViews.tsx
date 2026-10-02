@@ -1492,6 +1492,8 @@ export function ProfesorSolicitudesView() {
   const [requestLocation, setRequestLocation] = useState(emptyRequestLocation);
   const [items, setItems] = useState<Item[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
+  const [viewMode, setViewMode] = useState<'solicitudes' | 'prestamos'>('solicitudes');
   const [form, setForm] = useState({ inventario_id: 0, cantidad_solicitada: 1, motivo: '' });
   const [message, setMessage] = useState<Message>(null);
   const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'>('todas');
@@ -1506,17 +1508,41 @@ export function ProfesorSolicitudesView() {
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
+  const isLoanOverdue = (fechaStr: string, estado: string) => {
+    if (estado !== 'prestado') return false;
+    const loanDate = new Date(fechaStr);
+    const now = new Date();
+    const diffHours = (now.getTime() - loanDate.getTime()) / (1000 * 60 * 60);
+    const isPreviousDay = loanDate.toDateString() !== now.toDateString() && loanDate < now;
+    return diffHours >= 24 || isPreviousDay;
+  };
+
   const fetchData = async () => {
     const invRes = await fetch('/api/inventario');
     const invData = await invRes.json();
     setItems(invData.items || []);
 
     if (user?.id) {
-      const solRes = await fetch(`/api/solicitudes?profesor_id=${user.id}`);
-      const solData = await solRes.json();
-      setSolicitudes(solData.solicitudes || []);
+      const [solRes, prestRes] = await Promise.all([
+        fetch(`/api/solicitudes?profesor_id=${user.id}`),
+        fetch(`/api/prestamos?profesor_id=${user.id}`)
+      ]);
+      if (solRes.ok) {
+        const solData = await solRes.json();
+        setSolicitudes(solData.solicitudes || []);
+      }
+      if (prestRes.ok) {
+        const prestData = await prestRes.json();
+        setPrestamos(prestData.prestamos || []);
+      }
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('tab=prestamos')) {
+      setViewMode('prestamos');
+    }
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1626,17 +1652,113 @@ export function ProfesorSolicitudesView() {
   ];
 
   return (
-    <PageShell title="Mis solicitudes" subtitle="Todo lo que necesitas para tu próxima clase.">
+    <PageShell title="Mis solicitudes y préstamos" subtitle="Todo lo que necesitas para tu próxima clase.">
       <div className="teacher-requests">
       <ConfirmComponent />
       {showSubmittedNotice && <RequestSubmittedNotice onAccept={() => setShowSubmittedNotice(false)} />}
+      
+      {/* SELECTOR DE VISTA: SOLICITUDES vs PRÉSTAMOS */}
+      <div className="d-flex align-items-center gap-2 mb-3 bg-white p-2 rounded-3 border shadow-sm">
+        <button
+          type="button"
+          className={`btn btn-sm ${viewMode === 'solicitudes' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
+          onClick={() => setViewMode('solicitudes')}
+        >
+          <FiInbox size={15} className="me-1" /> Mis Solicitudes ({solicitudes.length})
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${viewMode === 'prestamos' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
+          onClick={() => setViewMode('prestamos')}
+        >
+          <FiPackage size={15} className="me-1" /> Mis Préstamos de Equipos ({prestamos.length})
+        </button>
+      </div>
+
       <div className="teacher-requests-intro">
         <span className="teacher-requests-intro-icon"><FiInbox size={24} /></span>
-        <div><span className="teacher-requests-eyebrow">TU ACTIVIDAD</span><h2>Tus clases, en marcha</h2><p>{counts.pendiente ? `${counts.pendiente} solicitud${counts.pendiente > 1 ? 'es' : ''} en espera de revisión.` : 'Solicita equipos o reserva el aula de cómputo.'}</p></div>
+        <div>
+          <span className="teacher-requests-eyebrow">TU ACTIVIDAD</span>
+          <h2>{viewMode === 'prestamos' ? 'Historial de Préstamos' : 'Tus clases, en marcha'}</h2>
+          <p>{viewMode === 'prestamos' ? 'Consulta los equipos entregados por administración y el estado de su devolución.' : counts.pendiente ? `${counts.pendiente} solicitud${counts.pendiente > 1 ? 'es' : ''} en espera de revisión.` : 'Solicita equipos o reserva el aula de cómputo.'}</p>
+        </div>
       </div>
       <Notice message={message} />
 
-      {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
+      {viewMode === 'prestamos' ? (
+        <div className="inventory-panel inventory-list-panel mt-3 p-3">
+          <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <div>
+              <h3 className="h6 font-bold text-slate-900 mb-0 d-flex align-items-center gap-2">
+                <FiPackage className="text-primary" size={18} /> Equipos Prestados a mi Nombre
+              </h3>
+              <p className="text-xs text-slate-500 mb-0">Control de entregas, fechas de inicio y registro de devoluciones.</p>
+            </div>
+            <span className="badge bg-primary text-white font-semibold px-3 py-2 rounded-pill">
+              {prestamos.length} registro(s)
+            </span>
+          </div>
+
+          {prestamos.length === 0 ? (
+            <div className="text-center py-5 text-slate-500 bg-slate-50 rounded-3 border">
+              <FiPackage size={38} className="text-slate-300 mb-2" />
+              <p className="fw-semibold mb-0">No tienes registros de préstamos de equipos.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="inventory-table">
+                <thead>
+                  <tr>
+                    <th>Equipo / Código</th>
+                    <th>Cant.</th>
+                    <th>Detalle</th>
+                    <th>Fecha Préstamo</th>
+                    <th>Fecha Devolución</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prestamos.map((prestamo) => {
+                    const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
+                    return (
+                      <tr key={prestamo.id} className={overdue ? 'bg-red-50/50' : ''}>
+                        <td>
+                          <div className="inventory-item-name">
+                            <span className="inventory-item-icon"><FiPackage size={17} /></span>
+                            <div>
+                              <strong>{prestamo.item_nombre || 'Equipo'}</strong>
+                              <small>PR-{String(prestamo.id).padStart(3, '0')}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="font-semibold text-slate-800">{prestamo.cantidad}</td>
+                        <td className="loans-detail text-xs">{prestamo.detalle || '-'}</td>
+                        <td className="text-xs text-slate-500">
+                          {new Date(prestamo.fecha_prestamo).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="text-xs text-slate-500">
+                          {prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td>
+                          {overdue ? (
+                            <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
+                              <FiAlertTriangle size={12} /> Vencido
+                            </span>
+                          ) : (
+                            <StatusBadge value={prestamo.estado} />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
       <div className="teacher-requests-toolbar">
         <div className="d-flex align-items-center gap-2">
           <button
@@ -1868,6 +1990,8 @@ export function ProfesorSolicitudesView() {
       )}
       <RequestListControls total={filteredSolicitudes.length} visible={visibleRequestCount}
         onMore={() => setVisibleRequestCount(count => count + 2)} onLess={() => setVisibleRequestCount(2)} />
+      </>
+      )}
       </div>
     </PageShell>
   );

@@ -224,10 +224,18 @@ export default function AdminNotifications() {
     );
   }
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => {
+      setNotice(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [notice?.id]);
+
   if (!notice) return null;
 
   return (
-    <aside className="admin-live-notice" aria-label="Nueva notificación">
+    <aside className="admin-live-notice animate__animated animate__fadeInRight" aria-label="Nueva notificación" style={{ position: 'relative', overflow: 'hidden' }}>
       <FiBell size={22} aria-hidden="true" />
       <div>
         <strong>Actividad en el sistema</strong>
@@ -235,6 +243,15 @@ export default function AdminNotifications() {
         <Link href="/admin/solicitudes" onClick={() => setNotice(null)}>Ver solicitudes</Link>
       </div>
       <button type="button" aria-label="Cerrar aviso" onClick={() => setNotice(null)}><FiX size={19} /></button>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.2)' }}>
+        <div style={{ height: '100%', background: '#3b82f6', width: '100%', animation: 'toastBar 5s linear forwards' }} />
+      </div>
+      <style jsx>{`
+        @keyframes toastBar {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
     </aside>
   );
 }

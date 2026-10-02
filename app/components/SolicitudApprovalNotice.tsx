@@ -11,6 +11,27 @@ export type TeacherNotification = {
 };
 
 // Un único observador en el layout, compartido por las vistas móvil y escritorio.
+function playNotificationChime() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {
+    // Ignore audio context errors
+  }
+}
+
 export default function SolicitudApprovalNotice() {
   const [queue, setQueue] = useState<TeacherNotification[]>([]);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -79,14 +100,6 @@ export default function SolicitudApprovalNotice() {
     };
   }, []);
 
-  useEffect(() => {
-    const element = dialog.current;
-    if (!current || !element) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    element.showModal();
-    return () => { element.close(); previousFocus?.focus(); };
-  }, [current?.id]);
-
   const accept = () => {
     if (!current) return;
     accepted.current.add(current.id);
@@ -96,20 +109,64 @@ export default function SolicitudApprovalNotice() {
     setQueue(items => items.filter(n => n.id !== current.id));
   };
 
+  useEffect(() => {
+    const element = dialog.current;
+    if (!current || !element) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    playNotificationChime();
+    element.showModal();
+
+    // Auto-dismiss after 5 seconds (5000ms)
+    const autoDismissTimer = setTimeout(() => {
+      accept();
+    }, 5000);
+
+    return () => {
+      clearTimeout(autoDismissTimer);
+      element.close();
+      previousFocus?.focus();
+    };
+  }, [current?.id]);
+
   if (!current) return null;
   const rejected = current.tipo === 'solicitud_rechazada';
   const directLoan = current.tipo === 'prestamo_registrado';
   const StatusIcon = rejected ? FiXCircle : FiCheckCircle;
   return (
-    <dialog ref={dialog} className={`approval-notice ${rejected ? 'approval-notice-rejected' : ''}`} aria-labelledby="approval-title" aria-describedby="approval-description" onCancel={event => event.preventDefault()}>
+    <dialog
+      ref={dialog}
+      className={`approval-notice animate__animated animate__zoomIn animate__faster ${rejected ? 'approval-notice-rejected' : ''}`}
+      aria-labelledby="approval-title"
+      aria-describedby="approval-description"
+      onCancel={event => event.preventDefault()}
+      style={{ overflow: 'hidden' }}
+    >
       {!rejected && <div className="approval-notice-decoration" aria-hidden="true"><span /><span /><span /></div>}
       <div className="approval-notice-icon">{rejected ? <FiXCircle size={36} aria-hidden="true" /> : <FiCheck size={36} aria-hidden="true" />}</div>
       <span className="approval-notice-eyebrow">{directLoan ? 'PRÉSTAMO REGISTRADO POR ADMINISTRACIÓN' : rejected ? 'ACTUALIZACIÓN DE TU SOLICITUD' : '¡TODO LISTO PARA TU CLASE!'}</span>
-      <h2 id="approval-title">{directLoan ? 'Tienes un nuevo préstamo' : rejected ? 'Tu solicitud fue rechazada' : 'Tu solicitud fue procesada con éxito'}</h2>
-      <p id="approval-description">{directLoan ? 'La administración registró este préstamo a tu nombre, sin necesidad de una solicitud en la aplicación.' : rejected ? 'La administración no aprobó tu solicitud. Revisa el detalle a continuación.' : 'La administración aprobó tu solicitud. Puedes revisar los detalles en tu historial.'}</p>
+      <h2 id="approval-title">{directLoan ? 'Tienes un nuevo préstamo de equipo' : rejected ? 'Tu solicitud fue rechazada' : 'Tu solicitud fue aprobada'}</h2>
+      <p id="approval-description">{directLoan ? 'La administración te asignó un préstamo de equipo.' : rejected ? 'La administración no aprobó la solicitud. Revisa las observaciones a continuación.' : 'La administración aprobó tu solicitud con éxito.'}</p>
       <div className="approval-notice-detail"><StatusIcon size={20} aria-hidden="true" /><p>{current.mensaje}</p></div>
       <button type="button" onClick={accept} autoFocus>Aceptar <FiCheck size={18} aria-hidden="true" /></button>
       {queue.length > 1 && <small>Tienes {queue.length - 1} aviso{queue.length > 2 ? 's' : ''} más por revisar</small>}
+
+      {/* Visual 5-second progress countdown bar */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', background: 'rgba(0,0,0,0.1)' }}>
+        <div
+          style={{
+            height: '100%',
+            background: rejected ? '#ef4444' : '#22c55e',
+            width: '100%',
+            animation: 'toastCountdown 5s linear forwards'
+          }}
+        />
+      </div>
+      <style jsx>{`
+        @keyframes toastCountdown {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
     </dialog>
   );
 }
