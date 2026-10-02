@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import teacherStyles from './TeachersDirectory.module.css';
 import RequestListControls from './RequestListControls';
 import AdminQuickForm from './AdminQuickForm';
 import { compareRequests } from '@/app/lib/request-order';
@@ -694,7 +695,6 @@ export function AdminProfesoresView() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -729,13 +729,13 @@ export function AdminProfesoresView() {
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter((u) => {
       const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-      const full = normalize(`${u.nombre} ${u.apellido} ${u.email} ${u.correo_personal || ''} ${u.area || ''}`);
+      const full = normalize(`${u.nombre} ${u.apellido} ${u.email} ${u.dni || ''} ${u.correo_personal || ''} ${u.area || ''}`);
       const matchSearch = !search.trim() || full.includes(normalize(search.trim()));
-      const matchTab = filterTab === 'todos' ? (!statusFilter || u.activo === (statusFilter === 'activo')) : filterTab === 'activos' ? u.activo : !u.activo;
+      const matchTab = filterTab === 'todos' ? true : filterTab === 'activos' ? u.activo : !u.activo;
       const matchRole = !roleFilter || u.role === roleFilter;
       return matchSearch && matchTab && matchRole;
     });
-  }, [usuarios, search, filterTab, statusFilter, roleFilter]);
+  }, [usuarios, search, filterTab, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -855,7 +855,11 @@ export function AdminProfesoresView() {
   };
 
   return (
-    <PageShell title="Gestión de Profesores" subtitle="Administra las cuentas, aprueba registros nuevos y restablece credenciales.">
+    <section className={teacherStyles.page}>
+      <header className={teacherStyles.header}>
+        <div><Link href="/admin/dashboard" className={teacherStyles.breadcrumb}><FiArrowLeft size={14} /> Administración</Link><h1>Gestión de profesores</h1><p>Tu equipo docente, organizado en un solo lugar.</p></div>
+        <button className={teacherStyles.primary} onClick={() => { setEditingId(null); setForm(empty); setMessage(null); setShowForm(true); }}><FiPlus size={17} /> Nuevo usuario</button>
+      </header>
       <Notice message={message} />
       <ConfirmComponent />
       <div className="inventory-summary">
@@ -894,157 +898,36 @@ export function AdminProfesoresView() {
       </fieldset></form>
       </InventoryEditorContainer>}
 
-      <div className={`${panel} p-4 space-y-4`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2 mb-0 me-3">
-              <FiUsers size={17} className="text-slate-500" />
-              Directorio de Usuarios ({filteredUsuarios.length})
-            </h3>
-            <div className="btn-group btn-group-sm">
-              <button
-                type="button"
-                className={`btn ${filterTab === 'todos' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => { setFilterTab('todos'); setPage(1); }}
-              >
-                Todos ({usuarios.length})
-              </button>
-              <button
-                type="button"
-                className={`btn ${filterTab === 'activos' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => { setFilterTab('activos'); setPage(1); }}
-              >
-                Activos ({usuarios.filter(u => u.activo).length})
-              </button>
-              <button
-                type="button"
-                className={`btn ${filterTab === 'pendientes' ? 'btn-warning text-dark font-bold' : 'btn-outline-warning text-dark'}`}
-                onClick={() => { setFilterTab('pendientes'); setPage(1); }}
-              >
-                Pendientes ({pendingCount})
-              </button>
-            </div>
+      <section className={teacherStyles.directory} aria-label="Directorio de usuarios">
+        <div className={teacherStyles.directoryHeader}><div><h2>Directorio de usuarios <span>{usuarios.length}</span></h2><p>Consulta la información y administra los accesos de tu equipo.</p></div><FiUsers size={22} aria-hidden="true" /></div>
+        <div className={teacherStyles.toolbar}>
+          <div className={teacherStyles.tabs} role="group" aria-label="Estado de la cuenta">
+            {([{ value: 'todos', label: 'Todos', count: usuarios.length }, { value: 'activos', label: 'Activos', count: usuarios.filter(u => u.activo).length }, { value: 'pendientes', label: 'Pendientes / inactivos', count: pendingCount }] as const).map(tab => <button key={tab.value} aria-pressed={filterTab === tab.value} onClick={() => { setFilterTab(tab.value); setPage(1); }}>{tab.label}<span>{tab.count}</span></button>)}
           </div>
-          <div className="d-flex align-items-center gap-2">
-            <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
-            <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => handleSearch(e.target.value)} />
+          <div className={teacherStyles.filters}>
+            <div className={teacherStyles.search}><FiSearch size={18} /><input aria-label="Buscar usuarios por nombre, DNI o correo" placeholder="Buscar por nombre, DNI o correo…" value={search} onChange={e => handleSearch(e.target.value)} />{search && <button aria-label="Limpiar búsqueda" onClick={() => handleSearch('')}><FiX /></button>}</div>
+            <select aria-label="Filtrar por rol" value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}><option value="">Todos los roles</option><option value="profesor">Profesores</option><option value="admin">Administradores</option></select>
           </div>
         </div>
-
-        {loading || filteredUsuarios.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 font-semibold">
-            <FiUsers size={36} className="mx-auto mb-3 text-slate-300" />
-            No se encontraron usuarios que coincidan con la búsqueda o filtro seleccionado.
+        {loading || filteredUsuarios.length === 0 ? <div className={teacherStyles.empty} role="status"><FiUsers size={32} /><strong>{loading ? 'Cargando el directorio…' : 'No encontramos usuarios'}</strong><p>{loading ? 'Estamos consultando los datos de tu equipo.' : 'Prueba con otro nombre o modifica los filtros.'}</p>{!loading && (search || roleFilter || filterTab !== 'todos') && <button onClick={() => { handleSearch(''); setRoleFilter(''); setFilterTab('todos'); }}>Limpiar filtros</button>}</div> : <>
+          <div className={teacherStyles.columnLabels} aria-hidden="true"><span>Usuario</span><span>Contacto</span><span>Acceso</span><span>Acciones</span></div>
+          <div className={teacherStyles.list}>
+            {paginatedUsuarios.map(usuario => <article className={teacherStyles.row} key={usuario.id}>
+              <div className={teacherStyles.person}><span className={teacherStyles.avatar} aria-hidden="true">{usuario.nombre.charAt(0)}{usuario.apellido.charAt(0)}</span><div><button className={teacherStyles.name} onClick={() => setSelectedUser(usuario)}>{usuario.nombre} {usuario.apellido}</button><span className={teacherStyles.identity}>DNI: {usuario.dni || usuario.email}</span>{usuario.area && <span className={teacherStyles.area}>{usuario.area}</span>}</div></div>
+              <div className={teacherStyles.contact}><span><FiMail /><span>{usuario.correo_personal || 'Sin correo registrado'}</span></span><span><FiPhone /><span>{usuario.telefono || 'Sin teléfono'}</span></span></div>
+              <div className={teacherStyles.access}><span className={teacherStyles.role}>{usuario.role === 'admin' ? <FiShield /> : <FiUser />}{usuario.role === 'admin' ? 'Administrador' : 'Profesor'}</span><span className={usuario.activo ? teacherStyles.active : teacherStyles.inactive}><span aria-hidden="true">●</span>{usuario.activo ? 'Activo' : 'Pendiente / inactivo'}</span></div>
+              <div className={teacherStyles.actions}>
+                <button onClick={() => edit(usuario)} aria-label={`Editar a ${usuario.nombre} ${usuario.apellido}`}><FiEdit2 /> Editar</button>
+                {usuario.activo ? <><button title="Restablecer contraseña" aria-label={`Restablecer contraseña de ${usuario.nombre} ${usuario.apellido}`} onClick={() => { setResetUser(usuario); setNewPasswordInput(''); }}><FiKey /><span className={teacherStyles.mobileAction}>Clave</span></button><button className={teacherStyles.danger} title="Desactivar cuenta" aria-label={`Desactivar cuenta de ${usuario.nombre} ${usuario.apellido}`} disabled={updatingId === usuario.id} onClick={() => deactivate(usuario.id)}><FiUserX /><span className={teacherStyles.mobileAction}>{updatingId === usuario.id ? 'Actualizando…' : 'Desactivar'}</span></button></> : <><button className={teacherStyles.approve} onClick={() => aprobarCuenta(usuario)} title="Aprobar cuenta" aria-label={`Aprobar cuenta de ${usuario.nombre} ${usuario.apellido}`}><FiCheck /><span className={teacherStyles.mobileAction}>Aprobar</span></button><button className={teacherStyles.danger} onClick={() => rechazarCuenta(usuario.id)} title="Rechazar registro" aria-label={`Rechazar registro de ${usuario.nombre} ${usuario.apellido}`}><FiX /><span className={teacherStyles.mobileAction}>Rechazar</span></button></>}
+              </div>
+            </article>)}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {paginatedUsuarios.map((usuario) => {
-              const isAdmin = usuario.role === 'admin';
-              const activo = usuario.activo;
-
-              const avatarPalette = ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'];
-              const avatarColor = avatarPalette[usuario.id % avatarPalette.length];
-
-              return (
-                <div
-                  key={usuario.id}
-                  className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center ${!activo ? 'border-warning bg-warning bg-opacity-10' : ''}`}
-                  style={{ cursor: 'pointer', transition: 'border-color 0.2s, box-shadow 0.2s' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
-                  onClick={() => setSelectedUser(usuario)}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                      style={{ width: '46px', height: '46px', fontSize: '17px', backgroundColor: avatarColor }}
-                    >
-                      {usuario.nombre.charAt(0).toUpperCase()}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-900 text-truncate">
-                        {usuario.nombre} {usuario.apellido}
-                      </div>
-                      <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                        <span className={`category-chip d-inline-flex align-items-center gap-1 ${isAdmin ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
-                          {isAdmin ? <FiShield size={11} /> : <FiUser size={11} />}
-                          {isAdmin ? 'Admin' : 'Profesor'}
-                        </span>
-                        {activo ? (
-                          <StatusBadge value="disponible" />
-                        ) : (
-                          <span className="badge bg-warning text-dark d-inline-flex align-items-center gap-1">
-                            <FiClock size={11} /> Pendiente de Aprobación
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="d-flex flex-column gap-2 flex-md-row gap-md-3 flex-grow-1">
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiHash size={13} />
-                      </span>
-                      <span className="text-truncate">DNI: <strong className="text-slate-800">{usuario.email}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiMail size={13} />
-                      </span>
-                      <span className="text-truncate">{usuario.correo_personal || 'Sin correo'}</span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiPhone size={13} />
-                      </span>
-                      <span className="text-truncate">{usuario.telefono || 'Sin teléfono'}</span>
-                    </div>
-                  </div>
-
-                  <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center" onClick={(e) => e.stopPropagation()}>
-                    {!activo ? (
-                      <>
-                        <button className="btn btn-sm btn-success d-inline-flex align-items-center gap-1 font-bold" onClick={() => aprobarCuenta(usuario)}>
-                          <FiCheck size={14} /> Aprobar Cuenta
-                        </button>
-                        <button className="btn btn-sm btn-danger d-inline-flex align-items-center gap-1 font-bold" onClick={() => rechazarCuenta(usuario.id)}>
-                          <FiX size={14} /> Rechazar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" onClick={() => { setResetUser(usuario); setNewPasswordInput(''); }} title="Restablecer contraseña">
-                          <FiKey size={13} /> Clave
-                        </button>
-                        <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}>
-                          <FiEdit2 size={13} />Editar
-                        </button>
-                        <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}>
-                          {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        </>}
+        {!loading && <div className={teacherStyles.result} role="status">Mostrando {rangeStart}–{rangeEnd} de {filteredUsuarios.length} usuarios</div>}
 
         {filteredUsuarios.length > pageSize && (
           <div className="d-flex flex-column gap-2 flex-md-row align-items-md-center justify-content-md-between border-top border-slate-200 pt-3">
-            <span className="text-xs font-semibold text-slate-500">
-              Mostrando {rangeStart}-{rangeEnd} de {filteredUsuarios.length} usuarios
-            </span>
-            <div className="d-flex align-items-center gap-1">
+            <div className="d-flex align-items-center gap-1 flex-wrap">
               <button
                 className={`${secondaryButton} d-inline-flex align-items-center gap-1 ${currentPage === 1 ? 'disabled opacity-50' : ''}`}
                 disabled={currentPage === 1}
@@ -1068,6 +951,8 @@ export function AdminProfesoresView() {
                       key={p}
                       className={`d-inline-flex align-items-center justify-content-center rounded fw-bold ${currentPage === p ? 'teachers-page-active' : 'text-slate-600 bg-slate-100'}`}
                       style={{ width: '32px', height: '32px', border: 'none', transition: 'background-color 0.2s' }}
+                      aria-label={`Página ${p}`}
+                      aria-current={currentPage === p ? 'page' : undefined}
                       onClick={() => setPage(p)}
                     >
                       {p}
@@ -1085,7 +970,7 @@ export function AdminProfesoresView() {
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Modal Restablecer Contraseña por el Administrador */}
       {resetUser && (
@@ -1254,7 +1139,7 @@ export function AdminProfesoresView() {
               </div>
         </InventoryEditorContainer>
       )}
-    </PageShell>
+    </section>
   );
 }
 
