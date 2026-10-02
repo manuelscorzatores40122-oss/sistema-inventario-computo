@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import RequestListControls from './RequestListControls';
+import AdminQuickForm from './AdminQuickForm';
 import { compareRequests } from '@/app/lib/request-order';
 import RequestSubmittedNotice from './RequestSubmittedNotice';
 import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
@@ -230,6 +231,62 @@ function PageShell({ title, subtitle, backHref, children }: { title: string; sub
   );
 }
 
+function InventoryEditorContainer({ floating, saving, onClose, children, titleId = "inventory-editor-title" }: {
+  floating: boolean; saving: boolean; onClose: () => void; children: React.ReactNode; titleId?: string;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!floating) return;
+    const element = dialog.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    element?.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      element?.close();
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [floating]);
+
+  if (!floating) return <>{children}</>;
+  return <dialog ref={dialog} className="inventory-edit-dialog" aria-labelledby={titleId}
+    onCancel={event => { event.preventDefault(); if (!saving) onClose(); }}>
+    <button className="inventory-edit-close" type="button" onClick={onClose} disabled={saving} aria-label="Cerrar edición"><FiX size={21} /></button>
+    {children}
+  </dialog>;
+}
+
+function InventoryDeleteDialog({ name, deleting, error, onCancel, onConfirm }: {
+  name: string; deleting: boolean; error?: string; onCancel: () => void; onConfirm: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    element?.showModal();
+    return () => { element?.close(); previousFocus?.focus(); };
+  }, []);
+
+  return <dialog ref={dialog} className="inventory-delete-dialog" aria-labelledby="inventory-delete-title" aria-describedby="inventory-delete-description"
+    onCancel={event => { event.preventDefault(); if (!deleting) onCancel(); }}>
+    <div className="inventory-delete-dialog-header">
+      <span><FiTrash2 size={22} /></span>
+      <h2 id="inventory-delete-title">Eliminar artículo</h2>
+      <button type="button" onClick={onCancel} disabled={deleting} aria-label="Cerrar confirmación"><FiX size={20} /></button>
+    </div>
+    <div className="inventory-delete-dialog-body">
+      <p id="inventory-delete-description">¿Deseas eliminar <strong>«{name}»</strong> del inventario?</p>
+      <p>Esta acción no se puede deshacer.</p>
+      {error && <div role="alert" className="inventory-delete-dialog-error">{error}</div>}
+    </div>
+    <div className="inventory-delete-dialog-footer">
+      <button type="button" className={secondaryButton} onClick={onCancel} disabled={deleting} autoFocus>Cancelar</button>
+      <button type="button" className={dangerButton} onClick={onConfirm} disabled={deleting}><FiTrash2 size={15} />{deleting ? 'Eliminando…' : 'Sí, eliminar artículo'}</button>
+    </div>
+  </dialog>;
+}
+
 export function AdminInventarioView() {
   const empty = { nombre: '', descripcion: '', categoria: '', cantidad_total: 1, cantidad_disponible: 1, ubicacion: '', estado: 'disponible' };
   const [items, setItems] = useState<Item[]>([]);
@@ -239,7 +296,30 @@ export function AdminInventarioView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
   const [customCategorias, setCustomCategorias] = useState<string[]>([]);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
+
+  const addCategory = () => {
+    const name = categoryName.trim();
+    if (!name) return;
+    const existing = categoriasDisponibles.find(category => category.toLocaleLowerCase() === name.toLocaleLowerCase());
+    const categoria = existing || name;
+    setCustomCategorias(previous => Array.from(new Set([...previous, categoria])));
+    setForm(previous => ({ ...previous, categoria }));
+    setCategoryName('');
+    setCreatingCategory(false);
+  };
+
+  useEffect(() => {
+    setCreatingCategory(false);
+    setCategoryName('');
+  }, [editingId, showForm]);
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
@@ -247,6 +327,7 @@ export function AdminInventarioView() {
     if (showLoader) setLoading(true);
     try {
       const response = await fetch('/api/inventario?estado=todos');
+      if (!response.ok) throw new Error(await readError(response));
       const data = await response.json();
       setItems(data.items || []);
     } finally {
@@ -270,20 +351,23 @@ export function AdminInventarioView() {
         (item.descripcion && item.descripcion.toLowerCase().includes(search.toLowerCase())) ||
         (item.ubicacion && item.ubicacion.toLowerCase().includes(search.toLowerCase()));
       const matchCat = !selectedCategoria || item.categoria === selectedCategoria;
-      return matchSearch && matchCat;
+      return matchSearch && matchCat && (!statusFilter || item.estado === statusFilter);
     });
-  }, [items, search, selectedCategoria]);
+  }, [items, search, selectedCategoria, statusFilter]);
 
   const stats = useMemo(() => {
     const totalTipos = items.length;
-    const totalStock = items.reduce((acc, i) => acc + i.cantidad_total, 0);
-    const totalDisponible = items.reduce((acc, i) => acc + i.cantidad_disponible, 0);
+    const totalStock = items.reduce((acc, i) => acc + Number(i.cantidad_total), 0);
+    const totalDisponible = items.reduce((acc, i) => acc + (i.estado === 'disponible' ? Number(i.cantidad_disponible) : 0), 0);
     const mantenimientos = items.filter((i) => i.estado === 'mantenimiento' || i.estado === 'agotado').length;
     return { totalTipos, totalStock, totalDisponible, mantenimientos };
   }, [items]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving || deleting || confirmDelete) return;
+    setSaving(true);
+    try {
     const response = await fetch(editingId ? `/api/inventario/${editingId}` : '/api/inventario', {
       method: editingId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -300,6 +384,7 @@ export function AdminInventarioView() {
 
     setForm(empty);
     setEditingId(null);
+    setShowForm(false);
     setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
 
     if (savedItem) {
@@ -309,13 +394,18 @@ export function AdminInventarioView() {
           : [savedItem, ...prev]
       );
     } else {
-      fetchItems();
+      await fetchItems();
     }
+    } catch {
+      setMessage({ type: 'error', text: 'No se pudo guardar el artículo. Intenta nuevamente.' });
+    } finally { setSaving(false); }
   };
 
   const edit = (item: Item) => {
+    setShowForm(true);
+    setConfirmDelete(false);
     setEditingId(item.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMessage(null);
     setForm({
       nombre: item.nombre,
       descripcion: item.descripcion || '',
@@ -327,71 +417,55 @@ export function AdminInventarioView() {
     });
   };
 
-  const remove = async (id: number) => {
-    confirmDialog('¿Seguro que deseas eliminar este artículo del inventario?', async () => {
+  const deleteItem = async (id: number) => {
+    if (deleting || saving) return;
+    setDeleting(true);
+    try {
       const response = await fetch(`/api/inventario/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         setMessage({ type: 'error', text: await readError(response) });
         return;
       }
+      setItems(previous => previous.filter(item => item.id !== id));
       setMessage({ type: 'success', text: 'Artículo eliminado correctamente' });
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    });
+      if (editingId === id) {
+        setEditingId(null);
+        setForm(empty);
+        setShowForm(false);
+      }
+      setConfirmDelete(false);
+    } catch {
+      setMessage({ type: 'error', text: 'No se pudo eliminar el artículo. Intenta nuevamente.' });
+    } finally { setDeleting(false); }
+  };
+
+  const remove = (id: number) => {
+    confirmDialog('¿Seguro que deseas eliminar este artículo del inventario?', () => { void deleteItem(id); });
   };
 
   return (
-    <PageShell title="Gestión de Inventario" subtitle="Control de productos, stock en tiempo real, ubicaciones y estado operativo de equipos.">
+    <div className="inventory-manager">
+      <div className="inventory-manager-inner">
+      <header className="inventory-manager-header">
+        <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Inventario</Link><h1>Inventario de equipos</h1><p>Organiza tus artículos y consulta lo que está disponible para cada clase.</p></div>
+        <button type="button" className="inventory-add-button" aria-expanded={showForm} aria-controls="inventory-editor" onClick={() => { setShowForm(true); setEditingId(null); setForm(empty); }}><FiPlus size={18} /> Nuevo artículo</button>
+      </header>
       <Notice message={message} />
       <ConfirmComponent />
-
-      {/* KPI Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="inventory-panel p-4 flex flex-col justify-between">
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <div className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-              <FiTag size={17} />
-            </div>
-            <span className="text-xs font-bold uppercase text-slate-500">Categorías y Tipos</span>
-          </div>
-          <div className="mt-2 text-2xl font-black text-slate-900">{stats.totalTipos} <span className="text-xs font-normal text-slate-500">artículos</span></div>
-        </div>
-        <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-blue-600">
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <div className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-              <FiLayers size={17} />
-            </div>
-            <span className="text-xs font-bold uppercase text-slate-500">Stock Total</span>
-          </div>
-          <div className="mt-2 text-2xl font-black text-blue-600">{stats.totalStock} <span className="text-xs font-normal text-slate-500">unidades</span></div>
-        </div>
-        <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-green-600">
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <div className="rounded d-flex align-items-center justify-content-center bg-green-50 text-green-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-              <FiPackage size={17} />
-            </div>
-            <span className="text-xs font-bold uppercase text-slate-500">Disponibles</span>
-          </div>
-          <div className="mt-2 text-2xl font-black text-green-600">{stats.totalDisponible} <span className="text-xs font-normal text-slate-500 font-semibold">para préstamo</span></div>
-        </div>
-        <div className="inventory-panel p-4 flex flex-col justify-between border-l-4 border-l-amber-500">
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <div className="rounded d-flex align-items-center justify-content-center bg-amber-50 text-amber-600" style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-              <FiAlertTriangle size={17} />
-            </div>
-            <span className="text-xs font-bold uppercase text-slate-500">Mantenimiento / Agotados</span>
-          </div>
-          <div className="mt-2 text-2xl font-black text-amber-600">{stats.mantenimientos} <span className="text-xs font-normal text-slate-500 font-semibold">requieren atención</span></div>
-        </div>
+      <div className="inventory-summary">
+        {[{ label: 'Artículos registrados', value: stats.totalTipos, unit: 'tipos de equipo', icon: FiTag }, { label: 'Stock total', value: stats.totalStock, unit: 'unidades en inventario', icon: FiLayers }, { label: 'Disponibles', value: stats.totalDisponible, unit: 'unidades para préstamo', icon: FiPackage }, { label: 'Requieren atención', value: stats.mantenimientos, unit: 'en mantenimiento o agotados', icon: FiAlertTriangle }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
       </div>
 
       {/* Add / Edit Form */}
-      <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
+      <InventoryEditorContainer floating={showForm && editingId !== null} saving={saving || deleting} onClose={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); }}>
+      <form id="inventory-editor" hidden={!showForm} onSubmit={submit} className={`${panel} inventory-editor grid gap-4 p-6 md:grid-cols-4`}>
+        <fieldset disabled={saving || deleting} className="inventory-editor-fields">
         <div className="md:col-span-4 border-b border-slate-200 pb-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+          <h2 id="inventory-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
             <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '30px', height: '30px' }}>
               {editingId ? <FiEdit2 size={15} /> : <FiPlus size={15} />}
             </span>
-            {editingId ? 'Editar Artículo' : 'Agregar Nuevo Artículo'}
+            {editingId ? 'Editar Artículo' : 'Nuevo artículo'}
           </h2>
           {editingId && (
             <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
@@ -400,38 +474,29 @@ export function AdminInventarioView() {
           )}
         </div>
 
+        {editingId !== null && message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
         <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
         <div>
-          <label className={label}>Categoría</label>
-          <div className="d-flex gap-2">
-            <select
-              className={input}
-              value={form.categoria}
-              onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-              required
-            >
-              <option value="" disabled>Seleccione una categoría...</option>
-              {categoriasDisponibles.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn btn-outline-primary d-flex align-items-center justify-content-center"
-              style={{ width: '42px', flexShrink: 0, padding: 0 }}
-              onClick={() => {
-                const nueva = window.prompt('Ingrese el nombre de la nueva categoría:');
-                if (nueva && nueva.trim()) {
-                  const categoria = nueva.trim();
-                  setCustomCategorias((prev) => Array.from(new Set([...prev, categoria])));
-                  setForm({ ...form, categoria });
-                }
-              }}
-              title="Crear nueva categoría"
-            >
-              <FiPlus size={18} />
-            </button>
-          </div>
+          <label className={label} htmlFor="inventory-category">Categoría</label>
+          <select id="inventory-category" className={input} value={form.categoria}
+            onChange={event => setForm({ ...form, categoria: event.target.value })} required>
+            <option value="" disabled>Selecciona una categoría…</option>
+            {categoriasDisponibles.map(category => <option key={category} value={category}>{category}</option>)}
+          </select>
+          {!creatingCategory ? <button type="button" className="inventory-new-category" aria-expanded={false}
+            onClick={() => setCreatingCategory(true)}><FiPlus size={15} /> Nueva categoría</button> :
+            <div className="inventory-category-create">
+              <label htmlFor="inventory-category-name">Nombre de la nueva categoría</label>
+              <input id="inventory-category-name" className={input} value={categoryName} autoFocus
+                placeholder="Ej. Cargadores o controles" onChange={event => setCategoryName(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') { event.preventDefault(); addCategory(); }
+                  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setCreatingCategory(false); setCategoryName(''); }
+                }} />
+              <div><button type="button" className={primaryButton} disabled={!categoryName.trim()} onClick={addCategory}><FiPlus size={14} /> Crear y seleccionar</button>
+                <button type="button" className={secondaryButton} onClick={() => { setCreatingCategory(false); setCategoryName(''); }}>Cancelar</button></div>
+              <small>Se guardará en el inventario al guardar el artículo.</small>
+            </div>}
         </div>
         <div>
           <label className={label}>Cantidad Total</label>
@@ -469,28 +534,36 @@ export function AdminInventarioView() {
         <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Modelo del equipo " /></div>
 
         <div className="flex gap-2 md:col-span-4 pt-2">
-          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+          {editingId !== null && <button type="button" className={`${dangerButton} inventory-editor-delete d-inline-flex align-items-center gap-2`} onClick={() => { setMessage(null); setConfirmDelete(true); }}><FiTrash2 size={15} /> Eliminar artículo</button>}
+          <button disabled={confirmDelete} className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
             {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
-            {editingId ? 'Guardar Cambios' : 'Registrar Artículo'}
+            {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Registrar artículo'}
           </button>
-          {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
+          <button className={secondaryButton} type="button" onClick={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); }}>Cancelar</button>
         </div>
+        </fieldset>
       </form>
+      </InventoryEditorContainer>
+      {editingId !== null && confirmDelete && <InventoryDeleteDialog
+        name={items.find(item => item.id === editingId)?.nombre || form.nombre}
+        deleting={deleting} error={message?.type === 'error' ? message.text : undefined}
+        onCancel={() => { setConfirmDelete(false); setMessage(null); }}
+        onConfirm={() => void deleteItem(editingId)} />}
 
       {/* Filter and Table Panel */}
-      <div className={`${panel} p-4 space-y-4`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
+      <div className={`${panel} inventory-list-panel p-4 space-y-4`}>
+        <div className="inventory-list-toolbar">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
-            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">{filteredItems.length} registros</span>
+            <span className="text-sm font-bold text-slate-900">Tus equipos</span>
+            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">{filteredItems.length} de {items.length}</span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="inventory-list-filters">
             <div className="d-flex align-items-center gap-2">
               <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
               <input
                 className={`${input} md:w-64`}
-                placeholder="Buscar por nombre o ubicación..."
+                aria-label="Buscar artículos" placeholder="Buscar equipo, descripción o ubicación…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -499,7 +572,7 @@ export function AdminInventarioView() {
               <FiFilter className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
               <select
                 className={`${input} md:w-48`}
-                value={selectedCategoria}
+                aria-label="Filtrar por categoría" value={selectedCategoria}
                 onChange={(e) => setSelectedCategoria(e.target.value)}
               >
                 <option value="">Todas las categorías</option>
@@ -511,6 +584,10 @@ export function AdminInventarioView() {
           </div>
         </div>
 
+        <div className="inventory-state-tabs" role="group" aria-label="Filtrar por estado">
+          {[['', 'Todos'], ['disponible', 'Disponibles'], ['mantenimiento', 'Mantenimiento'], ['agotado', 'Agotados']].map(([value, name]) => <button key={value} type="button" aria-pressed={statusFilter === value} className={statusFilter === value ? 'active' : ''} onClick={() => setStatusFilter(value)}>{name}<span>{value ? items.filter(item => item.estado === value).length : items.length}</span></button>)}
+          {(search || selectedCategoria || statusFilter) && <button type="button" className="inventory-clear-filters" onClick={() => { setSearch(''); setSelectedCategoria(''); setStatusFilter(''); }}><FiX size={13} /> Limpiar filtros</button>}
+        </div>
         <div className="overflow-x-auto">
           <table className="inventory-table">
             <thead>
@@ -527,12 +604,12 @@ export function AdminInventarioView() {
               {loading ? (
                 <tr><td className="text-center py-6 text-slate-500" colSpan={6}>Cargando inventario...</td></tr>
               ) : filteredItems.length === 0 ? (
-                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>No se encontraron artículos que coincidan con la búsqueda.</td></tr>
+                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>{items.length ? 'No hay resultados con estos filtros. Prueba otra búsqueda.' : 'Aún no hay artículos. Usa «Nuevo artículo» para comenzar.'}</td></tr>
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <div className="font-bold text-slate-900">{item.nombre}</div>
+                      <div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{item.nombre}</strong><small>EQ-{String(item.id).padStart(3, '0')}</small></div></div>
                       {item.descripcion && <div className="text-xs text-slate-500 mt-0.5">{item.descripcion}</div>}
                     </td>
                     <td>
@@ -561,7 +638,9 @@ export function AdminInventarioView() {
           </table>
         </div>
       </div>
-    </PageShell>
+      <p className="inventory-list-footnote">El stock se actualiza al registrar préstamos y devoluciones.</p>
+      </div>
+    </div>
   );
 }
 
@@ -571,6 +650,12 @@ export function AdminProfesoresView() {
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<Message>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const pageSize = 10;
@@ -579,9 +664,12 @@ export function AdminProfesoresView() {
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchUsuarios = async () => {
-    const response = await fetch('/api/usuarios');
-    const data = await response.json();
-    setUsuarios(data.usuarios || []);
+    try {
+      const response = await fetch('/api/usuarios');
+      if (!response.ok) throw new Error(await readError(response));
+      const data = await response.json();
+      setUsuarios(data.usuarios || []);
+    } finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -590,10 +678,11 @@ export function AdminProfesoresView() {
 
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter((u) => {
-      const full = `${u.nombre} ${u.apellido} ${u.email} ${u.correo_personal || ''}`.toLowerCase();
-      return full.includes(search.toLowerCase());
+      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const full = normalize(`${u.nombre} ${u.apellido} ${u.email} ${u.correo_personal || ''} ${u.area || ''}`);
+      return full.includes(normalize(search.trim())) && (!statusFilter || u.activo === (statusFilter === 'activo')) && (!roleFilter || u.role === roleFilter);
     });
-  }, [usuarios, search]);
+  }, [usuarios, search, statusFilter, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -608,6 +697,9 @@ export function AdminProfesoresView() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
     const payload = editingId && !form.password ? { ...form, password: undefined } : form;
     const response = await fetch(editingId ? `/api/usuarios/${editingId}` : '/api/usuarios', {
       method: editingId ? 'PUT' : 'POST',
@@ -622,42 +714,62 @@ export function AdminProfesoresView() {
 
     setForm(empty);
     setEditingId(null);
+    setShowForm(false);
     setMessage({ type: 'success', text: editingId ? 'Usuario actualizado con éxito' : 'Usuario creado con éxito' });
-    fetchUsuarios();
+    await fetchUsuarios();
+    } catch { setMessage({ type: 'error', text: 'No se pudieron guardar o actualizar los datos. Intenta nuevamente.' }); }
+    finally { setSaving(false); }
   };
 
   const edit = (usuario: Usuario) => {
     setEditingId(usuario.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSelectedUser(null);
+    setMessage(null);
+    setShowForm(true);
     setForm({ email: usuario.email, nombre: usuario.nombre, apellido: usuario.apellido, password: '', role: usuario.role, telefono: usuario.telefono || '', correo_personal: usuario.correo_personal || '', activo: usuario.activo });
   };
 
-  const deactivate = async (id: number) => {
-    confirmDialog('¿Seguro que deseas desactivar o activar este usuario?', async () => {
-      const response = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        setMessage({ type: 'error', text: await readError(response) });
-        return;
-      }
-      setMessage({ type: 'success', text: 'Estado del usuario actualizado' });
-      fetchUsuarios();
-    });
+  const deactivate = (id: number) => {
+    const usuario = usuarios.find(user => user.id === id);
+    if (!usuario) return;
+    confirmDialog(`¿Deseas ${usuario.activo ? 'desactivar' : 'activar'} la cuenta de ${usuario.nombre} ${usuario.apellido}?`, async () => {
+      setUpdatingId(id);
+      try {
+        const response = await fetch(`/api/usuarios/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activo: !usuario.activo, telefono: usuario.telefono }),
+        });
+        if (!response.ok) throw new Error(await readError(response));
+        setUsuarios(previous => previous.map(user => user.id === id ? { ...user, activo: !usuario.activo } : user));
+        setMessage({ type: 'success', text: usuario.activo ? 'Cuenta desactivada' : 'Cuenta activada' });
+      } catch (error) { setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo actualizar la cuenta' }); }
+      finally { setUpdatingId(null); }
+    }, usuario.activo);
   };
 
   return (
-    <PageShell title="Gestión de Profesores" subtitle="Administra las cuentas y credenciales del personal docente.">
+    <div className="inventory-manager teachers-manager">
+      <div className="inventory-manager-inner">
+      <header className="inventory-manager-header">
+        <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Profesores</Link><h1>Profesores y usuarios</h1><p>Encuentra a tu equipo docente y administra sus cuentas en un solo lugar.</p></div>
+        <button type="button" className="inventory-add-button" onClick={() => { setForm(empty); setEditingId(null); setMessage(null); setShowForm(true); }}><FiPlus size={18} /> Nuevo usuario</button>
+      </header>
       <Notice message={message} />
       <ConfirmComponent />
-
-      <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
+      <div className="inventory-summary">
+        {[{ label: 'Profesores', value: usuarios.filter(user => user.role === 'profesor').length, unit: 'docentes registrados', icon: FiUsers }, { label: 'Cuentas activas', value: usuarios.filter(user => user.activo).length, unit: 'con acceso al sistema', icon: FiUserCheck }, { label: 'Cuentas inactivas', value: usuarios.filter(user => !user.activo).length, unit: 'con acceso desactivado', icon: FiUserX }, { label: 'Administradores', value: usuarios.filter(user => user.role === 'admin').length, unit: 'usuarios de administración', icon: FiShield }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
+      </div>
+      {showForm && <InventoryEditorContainer floating saving={saving} titleId="teacher-editor-title" onClose={() => setShowForm(false)}>
+      <form onSubmit={submit} className={`${panel} inventory-editor`}><fieldset disabled={saving} className="inventory-editor-fields">
         <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
-          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+          <h2 id="teacher-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
             <span className="rounded d-flex align-items-center justify-content-center bg-purple-50 text-purple-700" style={{ width: '30px', height: '30px' }}>
               {editingId ? <FiEdit2 size={15} /> : <FiUser size={15} />}
             </span>
             {editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
           </h2>
         </div>
+        {message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
         <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
         <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
         <div><label className={label}>DNI / Usuario</label><input className={input} type="text" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
@@ -665,120 +777,52 @@ export function AdminProfesoresView() {
         <div><label className={label}>Teléfono / WhatsApp</label><input className={input} value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+51999999999" /></div>
         <div><label className={label}>Contraseña</label><input className={input} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'Opcional (dejar vacío para mantener)' : 'DNI por defecto'} /></div>
         <div><label className={label}>Rol de Acceso</label><select className={input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as any })}><option value="profesor">Profesor</option><option value="admin">Administrador</option></select></div>
-        <div className="flex items-end mb-2">
+        {editingId !== null && <div className="flex items-end mb-2">
           <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Cuenta Activa
+            <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Cuenta activa
           </label>
-        </div>
+        </div>}
         <div className="flex items-end gap-2 md:col-span-4 pt-2">
           <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
             {editingId ? <FiSave size={15} /> : <FiUser size={15} />}
-            {editingId ? 'Guardar Cambios' : 'Crear Usuario'}
+            {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear usuario'}
           </button>
-          {editingId && <button className={secondaryButton} type="button" onClick={() => { setEditingId(null); setForm(empty); }}>Cancelar</button>}
+          <button className={secondaryButton} type="button" onClick={() => setShowForm(false)}>Cancelar</button>
         </div>
-      </form>
+      </fieldset></form>
+      </InventoryEditorContainer>}
 
-      <div className={`${panel} p-4 space-y-4`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
-          <h3 className="text-sm font-bold text-slate-900 d-flex align-items-center gap-2">
-            <FiUsers size={17} className="text-slate-500" />
-            Directorio de Usuarios ({filteredUsuarios.length})
-            {filteredUsuarios.length > 0 && (
-              <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                {rangeStart}-{rangeEnd}
-              </span>
-            )}
-          </h3>
-          <div className="d-flex align-items-center gap-2">
-            <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
-            <input className={`${input} md:w-72`} placeholder="Buscar por nombre, DNI o correo..." value={search} onChange={(e) => handleSearch(e.target.value)} />
-          </div>
+      <section className="inventory-panel inventory-list-panel">
+        <div className="inventory-list-toolbar">
+          <div><h2 className="loans-list-title">Directorio de usuarios</h2><span className="loans-count">{filteredUsuarios.length} usuarios</span></div>
+          <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar usuarios" placeholder="Buscar nombre, DNI, correo o área…" value={search} onChange={event => handleSearch(event.target.value)} />{search && <button type="button" aria-label="Limpiar búsqueda" onClick={() => handleSearch('')}><FiX size={15} /></button>}</label>
+        </div>
+        <div className="inventory-state-tabs" role="group" aria-label="Filtrar usuarios">
+          {[['', 'Todos'], ['activo', 'Activos'], ['inactivo', 'Inactivos']].map(([value, name]) => <button key={value} type="button" className={statusFilter === value ? 'active' : ''} aria-pressed={statusFilter === value} onClick={() => { setStatusFilter(value); setPage(1); }}>{name}<span>{usuarios.filter(user => !value || user.activo === (value === 'activo')).length}</span></button>)}
+          <select aria-label="Filtrar por rol" className="teachers-role-filter" value={roleFilter} onChange={event => { setRoleFilter(event.target.value); setPage(1); }}><option value="">Todos los roles</option><option value="profesor">Profesores</option><option value="admin">Administradores</option></select>
+          {(search || statusFilter || roleFilter) && <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setRoleFilter(''); setPage(1); }}><FiX size={13} /> Limpiar</button>}
         </div>
 
-        {filteredUsuarios.length === 0 ? (
+        {loading || filteredUsuarios.length === 0 ? (
           <div className="text-center py-8 text-slate-500 font-semibold">
             <FiUsers size={36} className="mx-auto mb-3 text-slate-300" />
-            No se encontraron usuarios que coincidan con la búsqueda.
+            {loading ? 'Cargando usuarios…' : 'No hay usuarios con estos filtros.'}
           </div>
         ) : (
-          <div className="space-y-3">
-            {paginatedUsuarios.map((usuario) => {
-              const isAdmin = usuario.role === 'admin';
-              const activo = usuario.activo;
-
-              const avatarPalette = ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'];
-              const avatarColor = avatarPalette[usuario.id % avatarPalette.length];
-
-              return (
-                <div
-                  key={usuario.id}
-                  className={`${panel} p-3 d-flex flex-column gap-3 flex-md-row align-items-md-center`}
-                  style={{ cursor: 'pointer', transition: 'border-color 0.2s, box-shadow 0.2s' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
-                  onClick={() => setSelectedUser(usuario)}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                      style={{ width: '46px', height: '46px', fontSize: '17px', backgroundColor: avatarColor }}
-                    >
-                      {usuario.nombre.charAt(0).toUpperCase()}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-900 text-truncate">
-                        {usuario.nombre} {usuario.apellido}
-                      </div>
-                      <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                        <span className={`category-chip d-inline-flex align-items-center gap-1 ${isAdmin ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
-                          {isAdmin ? <FiShield size={11} /> : <FiUser size={11} />}
-                          {isAdmin ? 'Admin' : 'Profesor'}
-                        </span>
-                        <StatusBadge value={activo ? 'disponible' : 'agotado'} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="d-flex flex-column gap-2 flex-md-row gap-md-3 flex-grow-1">
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiHash size={13} />
-                      </span>
-                      <span className="text-truncate">DNI: <strong className="text-slate-800">{usuario.email}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiMail size={13} />
-                      </span>
-                      <span className="text-truncate">{usuario.correo_personal || 'Sin correo'}</span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600 flex-md-fill" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '26px', height: '26px' }}>
-                        <FiPhone size={13} />
-                      </span>
-                      <span className="text-truncate">{usuario.telefono || 'Sin teléfono'}</span>
-                    </div>
-                  </div>
-
-                  <div className="d-flex gap-2 flex-shrink-0">
-                    <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(usuario)}>
-                      <FiEdit2 size={13} />Editar
-                    </button>
-                    <button className={`${activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => deactivate(usuario.id)}>
-                      {activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="teachers-table-scroll" role="region" aria-label="Directorio de usuarios" tabIndex={0}>
+            <table className="inventory-table teachers-table">
+              <thead><tr><th scope="col">Nombre y apellido</th><th scope="col">DNI / Usuario</th><th scope="col">Área / Cargo</th><th scope="col">Correo</th><th scope="col">Teléfono</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+              <tbody>{paginatedUsuarios.map(usuario => <tr key={usuario.id}>
+                <td><button type="button" className="teacher-directory-name" onClick={() => setSelectedUser(usuario)}>{usuario.nombre} {usuario.apellido}</button></td>
+                <td className="teachers-table-id">{usuario.dni || usuario.email}</td>
+                <td>{usuario.area || 'Sin asignar'}</td>
+                <td>{usuario.correo_personal || 'Sin correo'}</td>
+                <td>{usuario.telefono || 'Sin teléfono'}</td>
+                <td><span className="category-chip">{usuario.role === 'admin' ? 'Administrador' : 'Profesor'}</span></td>
+                <td><div className="teacher-directory-badges"><span className={usuario.activo ? 'is-active' : 'is-inactive'}>{usuario.activo ? <FiCheckCircle size={11} /> : <FiXCircle size={11} />}{usuario.activo ? 'Activa' : 'Inactiva'}</span></div></td>
+                <td><div className="teacher-directory-actions"><button type="button" className={secondaryButton} onClick={() => setSelectedUser(usuario)}><FiEye size={13} /> Ver ficha</button><button type="button" className={secondaryButton} onClick={() => edit(usuario)}><FiEdit2 size={13} /> Editar</button><button type="button" disabled={updatingId !== null} className={`teacher-account-action ${usuario.activo ? '' : 'activate'}`} onClick={() => deactivate(usuario.id)}>{usuario.activo ? <FiUserX size={13} /> : <FiUserCheck size={13} />}{updatingId === usuario.id ? 'Actualizando…' : usuario.activo ? 'Desactivar' : 'Activar'}</button></div></td>
+              </tr>)}</tbody>
+            </table>
           </div>
         )}
 
@@ -809,7 +853,7 @@ export function AdminProfesoresView() {
                   ) : (
                     <button
                       key={p}
-                      className={`d-inline-flex align-items-center justify-content-center rounded fw-bold ${currentPage === p ? 'text-white bg-primary' : 'text-slate-600 bg-slate-100'}`}
+                      className={`d-inline-flex align-items-center justify-content-center rounded fw-bold ${currentPage === p ? 'teachers-page-active' : 'text-slate-600 bg-slate-100'}`}
                       style={{ width: '32px', height: '32px', border: 'none', transition: 'background-color 0.2s' }}
                       onClick={() => setPage(p)}
                     >
@@ -828,21 +872,19 @@ export function AdminProfesoresView() {
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {selectedUser && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1} role="dialog">
-            <div className="modal-dialog" role="document">
-              <div className="modal-content border-0 shadow-lg">
+        <InventoryEditorContainer floating saving={false} titleId="teacher-profile-title" onClose={() => setSelectedUser(null)}>
+              <div className="teacher-profile-content">
                 <div className="modal-header border-b border-slate-200 p-4">
-                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <h5 id="teacher-profile-title" className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
                     <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
                       <FiEye size={15} />
                     </span>
                     Información del Usuario
                   </h5>
-                  <button type="button" className="btn-close" onClick={() => setSelectedUser(null)} />
+
                 </div>
 
                 <div className="modal-body p-4">
@@ -867,7 +909,7 @@ export function AdminProfesoresView() {
                           {selectedUser.role === 'admin' ? <FiShield size={11} /> : <FiUser size={11} />}
                           {selectedUser.role === 'admin' ? 'Administrador' : 'Profesor'}
                         </span>
-                        <StatusBadge value={selectedUser.activo ? 'disponible' : 'agotado'} />
+                        <span className="teacher-profile-status">{selectedUser.activo ? 'Cuenta activa' : 'Cuenta inactiva'}</span>
                       </div>
                     </div>
                   </div>
@@ -889,7 +931,7 @@ export function AdminProfesoresView() {
                       <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
                         <FiMail size={13} />
                       </span>
-                      <span><span className="font-semibold text-slate-500">Correo institucional:</span> <strong className="text-slate-800">{selectedUser.email}@colegio.edu.pe</strong></span>
+                      <span><span className="font-semibold text-slate-500">Usuario de acceso:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
                     </div>
                     <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
                       <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
@@ -941,12 +983,10 @@ export function AdminProfesoresView() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" />
-        </>
+        </InventoryEditorContainer>
       )}
-    </PageShell>
+      </div>
+    </div>
   );
 }
 
@@ -1446,88 +1486,32 @@ export function ProfesorSolicitudesView() {
 
 export function AdminPrestamosView() {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
-  const [profesores, setProfesores] = useState<{ id: number; nombre: string; apellido: string }[]>([]);
   const [tab, setTab] = useState<'pendiente' | 'prestado' | 'devuelto'>('pendiente');
-  const [form, setForm] = useState({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
   const [message, setMessage] = useState<Message>(null);
-  const [saving, setSaving] = useState(false);
+  const [showNewLoan, setShowNewLoan] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [procesando, setProcesando] = useState<number | null>(null);
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchData = async () => {
-    const [preRes, invRes, profRes] = await Promise.all([
-      fetch('/api/prestamos'),
-      fetch('/api/inventario?estado=disponible'),
-      fetch('/api/usuarios?role=profesor&activo=true'),
-    ]);
-    if (preRes.ok) {
-      const data = await preRes.json();
+    try {
+      const response = await fetch('/api/prestamos', { cache: 'no-store' });
+      if (!response.ok) throw new Error(await readError(response));
+      const data = await response.json();
       setPrestamos(data.prestamos || []);
-    }
-    if (invRes.ok) {
-      const data = await invRes.json();
-      setItems(data.items || []);
-    }
-    if (profRes.ok) {
-      const data = await profRes.json();
-      setProfesores(data.usuarios || []);
-    }
+    } catch {
+      setMessage({ type: 'error', text: 'No se pudieron actualizar los préstamos. Intenta nuevamente.' });
+    } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    fetchData().catch(() => setMessage({ type: 'error', text: 'Error al cargar préstamos' }));
+    void fetchData();
+    const refresh = () => { void fetchData(); };
+    window.addEventListener('admin-requests-updated', refresh);
+    return () => window.removeEventListener('admin-requests-updated', refresh);
   }, []);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!form.inventario_id || !form.profesor_id) {
-      setMessage({ type: 'error', text: 'Selecciona el equipo y el profesor' });
-      return;
-    }
-    setSaving(true);
-    try {
-      const response = await fetch('/api/prestamos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await response.json().catch(() => null);
-      if (response.ok) {
-        setMessage({ type: 'success', text: data?.message || 'Préstamo registrado' });
-        if (data?.prestamo) {
-          const itemOrigen = items.find((i) => i.id === data.prestamo.inventario_id);
-          const profe = profesores.find((p) => p.id === data.prestamo.profesor_id);
-          setPrestamos((prev) => [
-            {
-              ...data.prestamo,
-              item_nombre: itemOrigen?.nombre || null,
-              categoria: itemOrigen?.categoria || null,
-              profesor_nombre: profe?.nombre || null,
-              apellido: profe?.apellido || null,
-            },
-            ...prev,
-          ]);
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === data.prestamo.inventario_id
-                ? { ...i, cantidad_disponible: i.cantidad_disponible - data.prestamo.cantidad }
-                : i
-            )
-          );
-        }
-        setForm({ inventario_id: 0, profesor_id: 0, cantidad: 1, detalle: '' });
-      } else {
-        setMessage({ type: 'error', text: data?.error || 'No se pudo registrar el préstamo' });
-      }
-    } catch (error) {
-      console.error('Error al registrar préstamo:', error);
-      setMessage({ type: 'error', text: 'Error al registrar el préstamo' });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const marcarPrestado = async (id: number) => {
     setProcesando(id);
@@ -1546,6 +1530,8 @@ export function AdminPrestamosView() {
         const data = await response.json().catch(() => null);
         setMessage({ type: 'error', text: data?.error || 'Error' });
       }
+    } catch {
+      setMessage({ type: 'error', text: 'No se pudo registrar la entrega. Intenta nuevamente.' });
     } finally {
       setProcesando(null);
     }
@@ -1562,7 +1548,6 @@ export function AdminPrestamosView() {
         });
         if (response.ok) {
           setMessage({ type: 'success', text: 'Equipo devuelto al inventario' });
-          const prestamo = prestamos.find((p) => p.id === id);
           setPrestamos((prev) =>
             prev.map((p) =>
               p.id === id
@@ -1570,15 +1555,6 @@ export function AdminPrestamosView() {
                 : p
             )
           );
-          if (prestamo) {
-            setItems((prev) =>
-              prev.map((i) =>
-                i.id === prestamo.inventario_id
-                  ? { ...i, cantidad_disponible: i.cantidad_disponible + prestamo.cantidad }
-                  : i
-              )
-            );
-          }
         } else {
           const data = await response.json().catch(() => null);
           setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como devuelto' });
@@ -1588,106 +1564,54 @@ export function AdminPrestamosView() {
       } finally {
         setProcesando(null);
       }
-    });
+    }, false);
   };
 
-  const eliminar = async (id: number) => {
+  const eliminar = (id: number) => {
     confirmDialog('¿Seguro que deseas eliminar este registro de devolución?', async () => {
-      const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
-      if (response.ok) {
+      setProcesando(id);
+      try {
+        const response = await fetch(`/api/prestamos/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error(await readError(response));
         setMessage({ type: 'success', text: 'Registro eliminado' });
-        setPrestamos((prev) => prev.filter((p) => p.id !== id));
-      } else {
-        const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'No se pudo eliminar el registro' });
-      }
+        setPrestamos(previous => previous.filter(loan => loan.id !== id));
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo eliminar el registro' });
+      } finally { setProcesando(null); }
     }, true);
   };
 
   const pendientes = prestamos.filter((p) => p.estado === 'pendiente');
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
-  const list = tab === 'pendiente' ? pendientes : tab === 'prestado' ? activos : devueltos;
-  const itemsDisponibles = items.filter((i) => i.cantidad_disponible > 0);
+  const currentLoans = tab === 'pendiente' ? pendientes : tab === 'prestado' ? activos : devueltos;
+  const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const list = currentLoans.filter(loan => normalize(`${loan.item_nombre || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.detalle || ''} ${loan.id}`).includes(normalize(search.trim())));
+  const borrowedUnits = activos.reduce((sum, loan) => sum + Number(loan.cantidad), 0);
 
   return (
-    <PageShell title="Préstamos de Equipos" subtitle="Registra qué equipo se presta a cada profesor; al devolverlo queda Entregado y vuelve al inventario.">
+    <div className="inventory-manager loans-manager">
+      <div className="inventory-manager-inner">
+      <header className="inventory-manager-header">
+        <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Préstamos</Link><h1>Préstamos de equipos</h1><p>Controla las entregas, acompaña cada préstamo y registra las devoluciones.</p></div>
+        <div className="loans-header-actions"><Link href="/admin/historial" className="btn-secondary-custom"><FiUsers size={16} /> Historial por profesor</Link><button type="button" className="inventory-add-button" onClick={() => setShowNewLoan(true)}><FiPlus size={18} /> Nuevo préstamo</button></div>
+      </header>
       <Notice message={message} />
       <ConfirmComponent />
-
-      <form onSubmit={submit} className={`${panel} grid gap-4 p-6 md:grid-cols-4`}>
-        <div className="md:col-span-4 border-b border-slate-200 pb-2">
-          <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
-            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '30px', height: '30px' }}>
-              <FiPackage size={15} />
-            </span>
-            Registrar Préstamo a Profesor
-          </h2>
-        </div>
-        <div>
-          <label className={label}>Equipo / Artículo</label>
-          <select className={input} value={form.inventario_id} onChange={(e) => setForm({ ...form, inventario_id: Number(e.target.value) })}>
-            <option value="0">Seleccionar equipo...</option>
-            {itemsDisponibles.map((item) => (
-              <option key={item.id} value={item.id}>{item.nombre} (Disponibles: {item.cantidad_disponible})</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={label}>Profesor que recibe</label>
-          <select className={input} value={form.profesor_id} onChange={(e) => setForm({ ...form, profesor_id: Number(e.target.value) })}>
-            <option value="0">Seleccionar profesor...</option>
-            {profesores.map((profesor) => (
-              <option key={profesor.id} value={profesor.id}>{profesor.apellido}, {profesor.nombre}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={label}>Cantidad</label>
-          <input className={input} type="number" min="1" value={form.cantidad} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
-        </div>
-        <div className="flex items-end">
-          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit" disabled={saving}>
-            <FiCheckCircle size={15} />
-            {saving ? 'Registrando...' : 'Prestar Equipo'}
-          </button>
-        </div>
-        <div className="md:col-span-4">
-          <label className={label}>Detalle de la unidad (opcional)</label>
-          <input className={input} value={form.detalle} onChange={(e) => setForm({ ...form, detalle: e.target.value })} placeholder="Ej. Laptop P2, Control N° 3, Monitor del aula A..." />
-        </div>
-      </form>
-
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
-        <div className="d-flex gap-2">
-          <button
-            className={tab === 'pendiente' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('pendiente')}
-          >
-            Por Recoger ({pendientes.length})
-          </button>
-          <button
-            className={tab === 'prestado' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('prestado')}
-          >
-            Prestados ({activos.length})
-          </button>
-          <button
-            className={tab === 'devuelto' ? `${primaryButton}` : `${secondaryButton}`}
-            onClick={() => setTab('devuelto')}
-          >
-            Devueltos ({devueltos.length})
-          </button>
-        </div>
-        <div>
-          <Link href="/admin/historial" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-1">
-            <FiUser size={15} />
-            Historial por Profesor
-          </Link>
-        </div>
+      {showNewLoan && <AdminQuickForm type="loan" onClose={() => setShowNewLoan(false)} onSaved={() => { setTab('prestado'); setSearch(''); void fetchData(); }} />}
+      <div className="inventory-summary">
+        {[{ label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox }, { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock }, { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage }, { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
       </div>
-
-      <div className={`${panel} p-4 overflow-x-auto`}>
+      <section className="inventory-panel inventory-list-panel">
+        <div className="inventory-list-toolbar">
+          <div><h2 className="loans-list-title">Registro de préstamos</h2><span className="loans-count">{list.length} registros</span></div>
+          <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar préstamos" placeholder="Buscar profesor, equipo o detalle…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><FiX size={15} /></button>}</label>
+        </div>
+        <div className="inventory-state-tabs" role="group" aria-label="Estado del préstamo">
+          {([{ value: 'pendiente', label: 'Por recoger', count: pendientes.length }, { value: 'prestado', label: 'Prestados', count: activos.length }, { value: 'devuelto', label: 'Devueltos', count: devueltos.length }] as const).map(state => <button key={state.value} type="button" className={tab === state.value ? 'active' : ''} aria-pressed={tab === state.value} onClick={() => setTab(state.value)}>{state.label}<span>{state.count}</span></button>)}
+        </div>
+        <p className="loans-tab-hint">{tab === 'pendiente' ? 'Confirma la entrega cuando el profesor recoja sus equipos.' : tab === 'prestado' ? 'Registra la devolución cuando los equipos regresen al inventario.' : 'Consulta las entregas que ya fueron devueltas.'}</p>
+        <div className="overflow-x-auto">
         <table className="inventory-table">
           <thead>
             <tr>
@@ -1696,20 +1620,15 @@ export function AdminPrestamosView() {
               <th>Cant.</th>
               <th>Detalle</th>
               <th>Fecha de Préstamo</th>
-              {tab === 'devuelto' && <th>Fecha de Entrega</th>}
+              {tab === 'devuelto' && <th>Fecha de devolución</th>}
               <th>Estado</th>
               <th className="text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {list.map((prestamo) => (
+            {!loading && list.map((prestamo) => (
               <tr key={prestamo.id}>
-                <td className="font-bold text-slate-900 d-flex align-items-center gap-2">
-                  <span className="rounded d-inline-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '26px', height: '26px' }}>
-                    <FiPackage size={13} />
-                  </span>
-                  {prestamo.item_nombre}
-                </td>
+                <td><div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{prestamo.item_nombre || 'Equipo'}</strong><small>PR-{String(prestamo.id).padStart(3, '0')}</small></div></div></td>
                 <td>
                   <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
                     <FiUser size={12} className="text-slate-400" />
@@ -1717,23 +1636,23 @@ export function AdminPrestamosView() {
                   </span>
                 </td>
                 <td className="font-semibold">{prestamo.cantidad}</td>
-                <td className="text-xs text-slate-600">{prestamo.detalle || '-'}</td>
+                <td className="loans-detail">{prestamo.detalle || '-'}</td>
                 <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>}
                 <td><StatusBadge value={prestamo.estado} /></td>
                 <td className="text-right">
                   {prestamo.estado === 'pendiente' ? (
-                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarPrestado(prestamo.id)}>
+                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarPrestado(prestamo.id)}>
                       <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? '...' : 'Entregado'}
+                      {procesando === prestamo.id ? 'Guardando…' : 'Confirmar entrega'}
                     </button>
                   ) : prestamo.estado === 'prestado' ? (
-                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando === prestamo.id} onClick={() => marcarDevuelto(prestamo.id)}>
+                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarDevuelto(prestamo.id)}>
                       <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? '...' : 'Devuelto'}
+                      {procesando === prestamo.id ? 'Guardando…' : 'Registrar devolución'}
                     </button>
                   ) : (
-                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => eliminar(prestamo.id)}>
+                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => eliminar(prestamo.id)}>
                       <FiTrash2 size={13} />
                       Eliminar
                     </button>
@@ -1741,16 +1660,19 @@ export function AdminPrestamosView() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && (
+            {(loading || list.length === 0) && (
               <tr>
                 <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                  {tab === 'pendiente' ? 'No hay equipos por recoger' : tab === 'prestado' ? 'No hay equipos prestados actualmente' : 'No hay equipos devueltos aún'}
+                  {loading ? 'Cargando préstamos…' : search ? 'No se encontraron préstamos. Prueba otro nombre, equipo o detalle.' : tab === 'pendiente' ? 'Todo al día. No hay equipos pendientes de recoger.' : tab === 'prestado' ? 'No hay equipos prestados actualmente.' : 'Aún no hay devoluciones registradas.'}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
+      </section>
+      <p className="inventory-list-footnote">Cada devolución repone automáticamente las unidades disponibles.</p>
       </div>
-    </PageShell>
+    </div>
   );
 }
