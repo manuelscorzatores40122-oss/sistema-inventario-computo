@@ -241,6 +241,7 @@ export function AdminInventarioView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
+  const [selectedEstado, setSelectedEstado] = useState<string>('todos');
   const [customCategorias, setCustomCategorias] = useState<string[]>([]);
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
@@ -267,14 +268,19 @@ export function AdminInventarioView() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      const q = search.toLowerCase().trim();
       const matchSearch =
-        item.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        (item.descripcion && item.descripcion.toLowerCase().includes(search.toLowerCase())) ||
-        (item.ubicacion && item.ubicacion.toLowerCase().includes(search.toLowerCase()));
+        !q ||
+        item.nombre.toLowerCase().includes(q) ||
+        (item.descripcion && item.descripcion.toLowerCase().includes(q)) ||
+        (item.ubicacion && item.ubicacion.toLowerCase().includes(q)) ||
+        item.categoria.toLowerCase().includes(q) ||
+        item.estado.toLowerCase().includes(q);
       const matchCat = !selectedCategoria || item.categoria === selectedCategoria;
-      return matchSearch && matchCat;
+      const matchEstado = selectedEstado === 'todos' || item.estado === selectedEstado;
+      return matchSearch && matchCat && matchEstado;
     });
-  }, [items, search, selectedCategoria]);
+  }, [items, search, selectedCategoria, selectedEstado]);
 
   const stats = useMemo(() => {
     const totalTipos = items.length;
@@ -481,18 +487,44 @@ export function AdminInventarioView() {
 
       {/* Filter and Table Panel */}
       <div className={`${panel} p-4 space-y-4`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
-            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">{filteredItems.length} registros</span>
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
+              <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                Mostrando {filteredItems.length} de {items.length} artículos
+              </span>
+            </div>
+
+            {/* Chips de Estado */}
+            <div className="d-flex align-items-center gap-1 flex-wrap">
+              {[
+                { id: 'todos', label: 'Todos', count: items.length },
+                { id: 'disponible', label: 'Disponibles', count: items.filter((i) => i.estado === 'disponible').length },
+                { id: 'mantenimiento', label: 'Mantenimiento', count: items.filter((i) => i.estado === 'mantenimiento').length },
+                { id: 'agotado', label: 'Agotados', count: items.filter((i) => i.estado === 'agotado').length },
+              ].map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={`btn btn-sm rounded-pill fw-bold text-xs d-inline-flex align-items-center gap-1 ${selectedEstado === chip.id ? 'btn-primary' : 'btn-light border text-slate-600'}`}
+                  onClick={() => setSelectedEstado(chip.id)}
+                >
+                  {chip.label}
+                  <span className={`badge rounded-pill text-xs ${selectedEstado === chip.id ? 'bg-white text-primary' : 'bg-secondary bg-opacity-20 text-slate-700'}`}>
+                    {chip.count}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2">
+          <div className="flex flex-wrap gap-2 pt-2">
+            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: '240px' }}>
               <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
               <input
-                className={`${input} md:w-64`}
-                placeholder="Buscar por nombre o ubicación..."
+                className={`${input} w-full`}
+                placeholder="🔍 Buscar por equipo, modelo, ubicación o categoría..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -510,6 +542,15 @@ export function AdminInventarioView() {
                 ))}
               </select>
             </div>
+            {(search || selectedCategoria || selectedEstado !== 'todos') && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
+                onClick={() => { setSearch(''); setSelectedCategoria(''); setSelectedEstado('todos'); }}
+              >
+                <FiX size={14} /> Limpiar filtros
+              </button>
+            )}
           </div>
         </div>
 
@@ -1120,6 +1161,13 @@ export function AdminSolicitudesView() {
   const [comentarios, setComentarios] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<Message>(null);
   const [user, setUser] = useState<Usuario | null>(null);
+
+  // Buscador y Filtro Inteligente
+  const [search, setSearch] = useState('');
+  const [selectedEstado, setSelectedEstado] = useState<'todas' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'>('todas');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+
   useEffect(() => { setUser(getStoredUser()); }, []);
 
   const fetchSolicitudes = async () => {
@@ -1149,6 +1197,7 @@ export function AdminSolicitudesView() {
 
     setMessage({ type: 'success', text: `Solicitud marcada como ${estado}` });
     await fetchSolicitudes();
+    window.dispatchEvent(new Event('admin-requests-updated'));
 
     if (estado === 'aprobada') {
       const sol = solicitudes.find(s => s.id === id);
@@ -1164,10 +1213,123 @@ export function AdminSolicitudesView() {
     }
   };
 
+  const filteredSolicitudes = useMemo(() => {
+    return solicitudes.filter((s) => {
+      const matchEstado = selectedEstado === 'todas' ? true : s.estado === selectedEstado;
+      const q = search.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        (s.profesor_nombre && s.profesor_nombre.toLowerCase().includes(q)) ||
+        (s.apellido && s.apellido.toLowerCase().includes(q)) ||
+        (s.item_nombre && s.item_nombre.toLowerCase().includes(q)) ||
+        (s.motivo && s.motivo.toLowerCase().includes(q)) ||
+        (s.seccion && s.seccion.toLowerCase().includes(q)) ||
+        (s.numero_aula && s.numero_aula.toLowerCase().includes(q)) ||
+        (s.comentarios && s.comentarios.toLowerCase().includes(q));
+
+      let matchFecha = true;
+      if (s.fecha_solicitud) {
+        const fechaObj = new Date(s.fecha_solicitud).toISOString().split('T')[0];
+        if (fechaInicio && fechaObj < fechaInicio) matchFecha = false;
+        if (fechaFin && fechaObj > fechaFin) matchFecha = false;
+      }
+      return matchEstado && matchSearch && matchFecha;
+    }).sort(compareRequests);
+  }, [solicitudes, selectedEstado, search, fechaInicio, fechaFin]);
+
+  const counts = useMemo(() => {
+    return {
+      todas: solicitudes.length,
+      pendiente: solicitudes.filter(s => s.estado === 'pendiente').length,
+      aprobada: solicitudes.filter(s => s.estado === 'aprobada').length,
+      rechazada: solicitudes.filter(s => s.estado === 'rechazada').length,
+      cancelada: solicitudes.filter(s => s.estado === 'cancelada').length,
+    };
+  }, [solicitudes]);
+
   return (
     <PageShell title="Control de Solicitudes" subtitle="Revisa, aprueba o rechaza los préstamos de artículos de inventario solicitados por los profesores.">
       <Notice message={message} />
-      <SolicitudesTable solicitudes={solicitudes} comentarios={comentarios} setComentarios={setComentarios} onApprove={(id) => updateEstado(id, 'aprobada')} onReject={(id) => updateEstado(id, 'rechazada')} />
+
+      {/* Buscador y Filtro Global Inteligente */}
+      <div className={`${panel} p-4 space-y-4 mb-4`}>
+        <div className="flex flex-col gap-3">
+          {/* Pestañas / Chips de Estado */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+            <div className="d-flex align-items-center gap-1 flex-wrap">
+              {[
+                { id: 'todas', label: 'Todas', count: counts.todas },
+                { id: 'pendiente', label: 'Pendientes', count: counts.pendiente },
+                { id: 'aprobada', label: 'Aprobadas', count: counts.aprobada },
+                { id: 'rechazada', label: 'Rechazadas', count: counts.rechazada },
+                { id: 'cancelada', label: 'Canceladas', count: counts.cancelada },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`btn btn-sm rounded-pill fw-bold text-xs d-inline-flex align-items-center gap-1 ${selectedEstado === tab.id ? 'btn-primary' : 'btn-light border text-slate-700'}`}
+                  onClick={() => setSelectedEstado(tab.id as any)}
+                >
+                  {tab.label}
+                  <span className={`badge rounded-pill text-xs ${selectedEstado === tab.id ? 'bg-white text-primary' : 'bg-secondary bg-opacity-20 text-slate-800'}`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <span className="text-xs font-semibold text-slate-500">
+              Mostrando {filteredSolicitudes.length} de {solicitudes.length} solicitudes
+            </span>
+          </div>
+
+          {/* Buscador inteligente y Rango de Fechas */}
+          <div className="grid gap-3 md:grid-cols-12 items-center pt-2">
+            <div className="md:col-span-6 d-flex align-items-center gap-2">
+              <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+              <input
+                className={`${input} w-full`}
+                placeholder="🔍 Buscar por docente, DNI, equipo, sección o aula..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="md:col-span-4 d-flex align-items-center gap-1">
+              <FiCalendar className="text-slate-400" size={15} />
+              <input
+                type="date"
+                className={`${input} text-xs`}
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                title="Fecha inicio"
+              />
+              <span className="text-slate-400 text-xs">a</span>
+              <input
+                type="date"
+                className={`${input} text-xs`}
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                title="Fecha fin"
+              />
+            </div>
+
+            <div className="md:col-span-2 d-flex justify-content-end">
+              {(search || selectedEstado !== 'todas' || fechaInicio || fechaFin) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
+                  onClick={() => { setSearch(''); setSelectedEstado('todas'); setFechaInicio(''); setFechaFin(''); }}
+                >
+                  <FiX size={14} /> Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <SolicitudesTable solicitudes={filteredSolicitudes} comentarios={comentarios} setComentarios={setComentarios} onApprove={(id) => updateEstado(id, 'aprobada')} onReject={(id) => updateEstado(id, 'rechazada')} />
     </PageShell>
   );
 }
