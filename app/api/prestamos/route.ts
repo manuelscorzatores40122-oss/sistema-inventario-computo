@@ -61,14 +61,24 @@ export async function GET(request: NextRequest) {
 // POST - Registrar préstamo de equipo a un profesor
 export async function POST(request: NextRequest) {
   try {
-    const { inventario_id, profesor_id, cantidad, detalle } = await request.json();
-    const cantidadNum = Number(cantidad || 1);
-
-    if (!inventario_id || !profesor_id || !Number.isInteger(cantidadNum) || cantidadNum <= 0) {
-      return NextResponse.json(
-        { error: 'Selecciona un equipo, un profesor y una cantidad válida' },
-        { status: 400 }
-      );
+    const body = await request.json();
+    const profesor_id = Number(body.profesor_id);
+    const rawItems = body.articulos === undefined ? [body] : body.articulos;
+    if (!Number.isSafeInteger(profesor_id) || profesor_id <= 0 || !Array.isArray(rawItems) || !rawItems.length) {
+      return NextResponse.json({ error: 'Selecciona un profesor y al menos un artículo' }, { status: 400 });
+    }
+    const articulos: { inventario_id: number; cantidad: number; detalle: string }[] = [];
+    for (const item of rawItems) {
+      const id = Number(item?.inventario_id);
+      const cantidad = Number(item?.cantidad ?? 1);
+      if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(cantidad) || cantidad <= 0 ||
+          (item?.detalle != null && typeof item.detalle !== 'string')) {
+        return NextResponse.json({ error: 'Cada artículo debe tener un equipo y una cantidad entera mayor que cero' }, { status: 400 });
+      }
+      if (articulos.some(previous => previous.inventario_id === id)) {
+        return NextResponse.json({ error: 'El artículo está repetido. Agrupa su cantidad en una sola fila.' }, { status: 400 });
+      }
+      articulos.push({ inventario_id: id, cantidad, detalle: item.detalle?.trim() || '' });
     }
 
     const client = await getClient();
@@ -85,57 +95,59 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Profesor no disponible' }, { status: 400 });
       }
 
-      const inventario = await client.query(
-        'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
-        [inventario_id, 'disponible']
-      );
-
-      if (inventario.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return NextResponse.json(
-          { error: 'Equipo no disponible' },
-          { status: 404 }
+      // Bloqueo en orden estable para entregas concurrentes con varios equipos.
+      const stock = new Map<number, { nombre: string; cantidad_disponible: number }>();
+      for (const articulo of [...articulos].sort((a, b) => a.inventario_id - b.inventario_id)) {
+        const inventario = await client.query(
+          'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
+          [articulo.inventario_id, 'disponible']
         );
+        if (!inventario.rows.length) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'Uno de los equipos ya no está disponible' }, { status: 404 });
+        }
+        const item = inventario.rows[0];
+        if (item.cantidad_disponible < articulo.cantidad) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: `${item.nombre}: solo hay ${item.cantidad_disponible} unidades disponibles` }, { status: 400 });
+        }
+        stock.set(articulo.inventario_id, item);
       }
 
-      if (inventario.rows[0].cantidad_disponible < cantidadNum) {
-        await client.query('ROLLBACK');
-        return NextResponse.json(
-          { error: `Solo hay ${inventario.rows[0].cantidad_disponible} unidades disponibles` },
-          { status: 400 }
+      const prestamos = [];
+      const detalles: string[] = [];
+      for (const articulo of articulos) {
+        const { inventario_id, cantidad, detalle } = articulo;
+        const result = await client.query(
+          `INSERT INTO prestamos (inventario_id, profesor_id, cantidad, detalle, estado)
+           VALUES ($1, $2, $3, $4, 'prestado') RETURNING *`,
+          [inventario_id, profesor_id, cantidad, detalle || null]
         );
+        prestamos.push(result.rows[0]);
+        await client.query(
+          'UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [cantidad, inventario_id]
+        );
+        await client.query(
+          'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
+          [inventario_id, 'salida', cantidad, profesor_id, `Préstamo #${result.rows[0].id} a profesor`]
+        );
+        detalles.push(`#${result.rows[0].id}: ${stock.get(inventario_id)!.nombre}, ${cantidad} ${cantidad === 1 ? 'unidad' : 'unidades'}.${detalle ? ` Detalle: ${detalle}` : ''}`);
       }
-
-      const result = await client.query(
-        `INSERT INTO prestamos (inventario_id, profesor_id, cantidad, detalle, estado)
-         VALUES ($1, $2, $3, $4, 'prestado')
-         RETURNING *`,
-        [inventario_id, profesor_id, cantidadNum, detalle || null]
-      );
-
-      await client.query(
-        'UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [cantidadNum, inventario_id]
-      );
-
-      await client.query(
-        'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
-        [inventario_id, 'salida', cantidadNum, profesor_id, `Préstamo #${result.rows[0].id} a profesor`]
-      );
-
-      // El aviso interno se guarda junto al préstamo, incluso sin teléfono.
-      const mensaje = `La administración registró a tu nombre el préstamo #${result.rows[0].id}: ${inventario.rows[0].nombre}, ${cantidadNum} ${cantidadNum === 1 ? 'unidad' : 'unidades'}.${detalle ? ` Detalle: ${detalle}` : ''}`;
+      // Una sola notificación para toda la entrega, dentro de la misma transacción.
+      const mensaje = `La administración registró a tu nombre ${prestamos.length === 1 ? 'el préstamo' : 'los préstamos'} ${detalles.join(' | ')}`;
       await client.query(
         `INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [profesor_id, profesor.rows[0].telefono || '-', mensaje, 'prestamo_registrado', result.rows[0].id, 'pendiente']
+        [profesor_id, profesor.rows[0].telefono || '-', mensaje, 'prestamo_registrado', prestamos[0].id, 'pendiente']
       );
 
       await client.query('COMMIT');
 
       return NextResponse.json({
-        message: 'Préstamo registrado, el equipo queda en estado Prestado',
-        prestamo: result.rows[0],
+        message: prestamos.length === 1 ? 'Préstamo registrado' : 'Préstamos registrados correctamente',
+        prestamo: prestamos[0],
+        prestamos,
       });
     } catch (error) {
       await client.query('ROLLBACK');

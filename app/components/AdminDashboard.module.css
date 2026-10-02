@@ -110,3 +110,14 @@
 .teacherResults small { display: block; font-size: 10px; color: #777; margin-top: 3px; overflow-wrap: anywhere; }
 .teacherResults li > svg { color: #996022; flex-shrink: 0; }
 .teacherSearchStatus { font-size: 11px; color: #777; margin: 7px 0 0; }
+.loanItems { margin-top: 22px; }
+.loanItemsHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.loanItemsHeading strong { font-weight: 500; }
+.loanItemsHeading > span { color: #888; font-size: 11px; }
+.loanItem { background: #fafafa; border: 1px solid #e6e6e6; padding: 15px; margin-top: 12px; }
+.loanItemFields { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 12px; margin-top: 12px; }
+.loanItem label { display: block; }
+.loanItem input, .loanItem select { background: white; }
+.removeLoanItem { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 0; color: #8b5345; font-size: 11px; padding: 4px; }
+.addLoanItem { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #fff5e9; border: 1px dashed #dda668; color: #855218; padding: 12px; margin-top: 12px; font-size: 12px; }
+@media (max-width: 400px) { .loanItemFields { grid-template-columns: minmax(0, 1fr); } }

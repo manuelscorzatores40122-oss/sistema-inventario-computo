@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { FiCalendar, FiCheckCircle, FiPackage, FiSearch, FiX } from 'react-icons/fi';
+import { FiCalendar, FiCheckCircle, FiPackage, FiPlus, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
 import styles from './AdminDashboard.module.css';
 
 type Teacher = { id: number; nombre: string; apellido: string; dni?: string | null; area?: string | null };
@@ -25,10 +25,14 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
   const [teacherResultsOpen, setTeacherResultsOpen] = useState(false);
   const [activeTeacher, setActiveTeacher] = useState(-1);
   const [resource, setResource] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const nextRow = useRef(1);
+  const [loanItems, setLoanItems] = useState([{ key: 0, resource: '', quantity: 1, detail: '' }]);
+  const updateLoanItem = (key: number, patch: Partial<{ resource: string; quantity: number; detail: string }>) => {
+    setLoanItems(rows => rows.map(row => row.key === key ? { ...row, ...patch } : row));
+  };
   const [detail, setDetail] = useState('');
   const isLoan = type === 'loan';
-  const selected = equipment.find(item => item.id === Number(resource));
+
 
   const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const searchTerms = normalize(teacherSearch).trim().split(/\s+/).filter(Boolean);
@@ -83,9 +87,9 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
     event.preventDefault();
     if (submitting.current) return;
     setError('');
-    if (!teacher || !resource) { setError('Selecciona un profesor y el equipo o turno.'); return; }
-    if (isLoan && (!Number.isInteger(quantity) || quantity < 1 || quantity > (selected?.cantidad_disponible || 0))) {
-      setError('Ingresa una cantidad válida dentro del stock disponible.'); return;
+    if (!teacher || (!isLoan && !resource)) { setError('Selecciona un profesor y el equipo o turno.'); return; }
+    if (isLoan && (!loanItems.length || loanItems.some(row => !row.resource || !Number.isInteger(row.quantity) || row.quantity < 1 || row.quantity > (equipment.find(item => item.id === Number(row.resource))?.cantidad_disponible || 0)))) {
+      setError('Selecciona cada artículo e ingresa cantidades válidas dentro del stock disponible.'); return;
     }
     if (!isLoan && !detail.trim()) { setError('Escribe la materia o motivo de la reserva.'); return; }
     submitting.current = true;
@@ -105,12 +109,12 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
       const response = await fetch(isLoan ? '/api/prestamos' : `/api/disponibilidad/${resource}`, {
         method: isLoan ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isLoan
-          ? { inventario_id: Number(resource), profesor_id: Number(teacher), cantidad: quantity, detalle: detail.trim() }
+          ? { profesor_id: Number(teacher), articulos: loanItems.map(row => ({ inventario_id: Number(row.resource), cantidad: row.quantity, detalle: row.detail.trim() })) }
           : { estado: 'separado', reservado_por: Number(teacher), motivo_reserva: detail.trim() }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'No se pudo guardar. Intenta nuevamente.');
-      setSuccess(isLoan ? 'Préstamo registrado correctamente.' : 'Aula separada correctamente.');
+      setSuccess(isLoan ? `${loanItems.length === 1 ? 'Préstamo registrado' : `${loanItems.length} préstamos registrados`} correctamente.` : 'Aula separada correctamente.');
       onSaved();
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo conectar. Intenta nuevamente.'); }
     finally { submitting.current = false; setSaving(false); }
@@ -170,15 +174,31 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
               {loading ? 'Cargando profesores…' : teacher ? 'Profesor seleccionado.' : teacherResultsOpen ? matchingTeachers.length ? `${matchingTeachers.length} resultado${matchingTeachers.length === 1 ? '' : 's'}. Selecciona un profesor.` : 'No se encontraron profesores.' : 'Escribe y selecciona un profesor de los resultados.'}
             </p>
           </div>
-          <label htmlFor="quick-resource">{isLoan ? 'Equipo / artículo' : 'Aula y turno disponible'}</label>
-          <select id="quick-resource" value={resource} onChange={event => { setResource(event.target.value); setQuantity(1); }} required><option value="">{isLoan ? 'Seleccionar equipo' : 'Seleccionar turno'}</option>{isLoan ? equipment.map(item => <option key={item.id} value={item.id}>{item.nombre} · {item.cantidad_disponible} disponibles</option>) : slots.map(slot => <option key={slot.id} value={slot.id}>{slot.sala_nombre} · {slot.dia_semana} · {slot.hora_inicio.slice(0, 5)}–{slot.hora_fin.slice(0, 5)}</option>)}</select>
+          {isLoan ? <div className={styles.loanItems}>
+            <div className={styles.loanItemsHeading}><strong>Artículos de la entrega</strong><span>{loanItems.length} artículo{loanItems.length === 1 ? '' : 's'}</span></div>
+            {loanItems.map((row, index) => {
+              const selected = equipment.find(item => item.id === Number(row.resource));
+              return <div key={row.key} className={styles.loanItem}>
+                <div className={styles.loanItemsHeading}><strong>Artículo {index + 1}</strong>{loanItems.length > 1 && <button type="button" className={styles.removeLoanItem} aria-label={`Quitar artículo ${index + 1}`} onClick={() => setLoanItems(rows => rows.filter(item => item.key !== row.key))}><FiTrash2 /> Quitar</button>}</div>
+                <div className={styles.loanItemFields}>
+                  <div><label htmlFor={`loan-resource-${row.key}`}>Equipo / artículo</label><select id={`loan-resource-${row.key}`} value={row.resource} onChange={event => updateLoanItem(row.key, { resource: event.target.value, quantity: 1 })} required><option value="">Seleccionar equipo</option>{equipment.filter(item => String(item.id) === row.resource || !loanItems.some(other => other.resource === String(item.id))).map(item => <option key={item.id} value={item.id}>{item.nombre} · {item.cantidad_disponible} disponibles</option>)}</select></div>
+                  <div><label htmlFor={`loan-quantity-${row.key}`}>Cantidad</label><input id={`loan-quantity-${row.key}`} type="number" min="1" max={selected?.cantidad_disponible || 1} step="1" value={row.quantity} onChange={event => updateLoanItem(row.key, { quantity: Number(event.target.value) })} required /></div>
+                </div>
+                <label htmlFor={`loan-detail-${row.key}`}>Detalle / identificadores (opcional)</label><input id={`loan-detail-${row.key}`} value={row.detail} onChange={event => updateLoanItem(row.key, { detail: event.target.value })} placeholder="Ej. Laptops 01–12; controles de Primero B…" />
+              </div>;
+            })}
+            <button type="button" className={styles.addLoanItem} disabled={loanItems.length >= equipment.length} onClick={() => { const key = nextRow.current++; setLoanItems(rows => [...rows, { key, resource: '', quantity: 1, detail: '' }]); }}><FiPlus /> Agregar otro artículo</button>
+            <p className={styles.formHint}>Todos los artículos se prestarán al mismo profesor. Recibirá un aviso con el detalle completo.</p>
+          </div> : <>
+            <label htmlFor="quick-resource">Aula y turno disponible</label>
+            <select id="quick-resource" value={resource} onChange={event => setResource(event.target.value)} required><option value="">Seleccionar turno</option>{slots.map(slot => <option key={slot.id} value={slot.id}>{slot.sala_nombre} · {slot.dia_semana} · {slot.hora_inicio.slice(0, 5)}–{slot.hora_fin.slice(0, 5)}</option>)}</select>
+            <label htmlFor="quick-detail">Materia o motivo de la reserva</label>
+            <textarea id="quick-detail" rows={3} value={detail} onChange={event => setDetail(event.target.value)} required placeholder="Ej. Clase de computación de segundo grado" />
+          </>}
           {!loading && !(isLoan ? equipment.length : slots.length) && <p className={styles.formHint}>{isLoan ? 'No hay equipos con stock disponible.' : 'No hay turnos disponibles. Configura la disponibilidad desde Horario.'}</p>}
           {!loading && !teachers.length && <p className={styles.formHint}>No hay profesores activos para seleccionar.</p>}
-          {isLoan && <><label htmlFor="quick-quantity">Cantidad</label><input id="quick-quantity" type="number" min="1" max={selected?.cantidad_disponible || 1} step="1" value={quantity} onChange={event => setQuantity(Number(event.target.value))} required /></>}
-          <label htmlFor="quick-detail">{isLoan ? 'Detalle de la unidad (opcional)' : 'Materia o motivo de la reserva'}</label>
-          <textarea id="quick-detail" rows={3} value={detail} onChange={event => setDetail(event.target.value)} required={!isLoan} placeholder={isLoan ? 'Ej. Laptop P2, control N.º 3…' : 'Ej. Clase de computación de segundo grado'} />
         </fieldset>
-        <div className={styles.formFooter}><button type="button" className={styles.cancelForm} onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className={styles.shortcutButton} disabled={loading || saving || !teacher || !resource}>{saving ? 'Guardando…' : isLoan ? 'Registrar préstamo' : 'Confirmar reserva'}</button></div>
+        <div className={styles.formFooter}><button type="button" className={styles.cancelForm} onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className={styles.shortcutButton} disabled={loading || saving || !teacher || (isLoan ? loanItems.some(row => !row.resource) : !resource)}>{saving ? 'Guardando…' : isLoan ? loanItems.length > 1 ? 'Registrar préstamos' : 'Registrar préstamo' : 'Confirmar reserva'}</button></div>
       </form>}
     </dialog>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import styles from './HorarioTemplate.module.css';
 import {
   FiCalendar,
   FiCheckCircle,
@@ -90,6 +91,19 @@ export default function AdminHorarioView() {
 
   const [template, setTemplate] = useState<Bloque[]>(FORMATO_DEFECTO);
   const [showTemplate, setShowTemplate] = useState(false);
+  const [draftTemplate, setDraftTemplate] = useState<Bloque[]>(FORMATO_DEFECTO);
+  const [templateError, setTemplateError] = useState('');
+  const templateDialog = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!showTemplate) return;
+    setDraftTemplate(template.map((bloque) => ({ ...bloque })));
+    setTemplateError('');
+    templateDialog.current?.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [showTemplate, template]);
 
   const [weekStart, setWeekStart] = useState<Date>(() => weekStartOf(new Date()));
   const [autoFollow, setAutoFollow] = useState(true);
@@ -206,32 +220,56 @@ export default function AdminHorarioView() {
   const libres = DIAS.length * displayBlocks.length - total;
   const profesoresConClase = new Set(Array.from(claseMap.values()).map((c) => c.reservado_por)).size;
 
+  const minutes = (time: string) => {
+    const [hours, mins] = time.split(':').map(Number);
+    return hours * 60 + mins;
+  };
+
   const addBloque = () => {
-    setTemplate((prev) => {
-      const last = prev[prev.length - 1];
-      const inicio = last ? last.hora_fin : '09:00';
-      const [h, m] = inicio.split(':').map(Number);
-      const fin = `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    setDraftTemplate((prev) => {
+      const inicio = prev[prev.length - 1]?.hora_fin || '09:00';
+      const end = Math.min(minutes(inicio) + 60, 1439);
+      const fin = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
       return [...prev, { hora_inicio: inicio, hora_fin: fin }];
     });
+    setTemplateError('');
   };
 
   const updateBloque = (idx: number, campo: keyof Bloque, valor: string) => {
-    setTemplate((prev) => prev.map((b, i) => (i === idx ? { ...b, [campo]: valor } : b)));
+    setDraftTemplate((prev) => prev.map((b, i) => (i === idx ? { ...b, [campo]: valor } : b)));
+    setTemplateError('');
   };
 
   const removeBloque = (idx: number) => {
-    setTemplate((prev) => prev.filter((_, i) => i !== idx));
+    setDraftTemplate((prev) => prev.filter((_, i) => i !== idx));
+    setTemplateError('');
   };
 
   const guardarFormato = () => {
-    const clean = template
-      .map((b) => ({ hora_inicio: b.hora_inicio, hora_fin: b.hora_fin }))
-      .filter((b) => b.hora_inicio && b.hora_fin);
-    setTemplate(clean);
-    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(clean));
-    setShowTemplate(false);
-    setMessage({ type: 'success', text: 'Formato de horario guardado para todos los días y semanas' });
+    if (!draftTemplate.length) {
+      setTemplateError('Agrega al menos un turno para guardar el formato.');
+      return;
+    }
+    for (let i = 0; i < draftTemplate.length; i++) {
+      const b = draftTemplate[i];
+      if (!b.hora_inicio || !b.hora_fin || b.hora_fin <= b.hora_inicio) {
+        setTemplateError(`Turno ${i + 1}: la hora de fin debe ser posterior a la de inicio.`);
+        return;
+      }
+      if (draftTemplate.slice(0, i).some((other) => b.hora_inicio < other.hora_fin && b.hora_fin > other.hora_inicio)) {
+        setTemplateError(`Turno ${i + 1}: el horario se superpone con otro turno.`);
+        return;
+      }
+    }
+    const clean = [...draftTemplate].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+    try {
+      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(clean));
+      setTemplate(clean);
+      setShowTemplate(false);
+      setMessage({ type: 'success', text: 'Formato de horario guardado para todos los días y semanas' });
+    } catch {
+      setTemplateError('No se pudo guardar el formato. Inténtalo de nuevo.');
+    }
   };
 
   const openAssign = (diaNombre: string, hora_inicio: string) => {
@@ -366,7 +404,7 @@ export default function AdminHorarioView() {
           </Link>
           <button className="btn-primary-custom text-decoration-none d-inline-flex align-items-center gap-1" onClick={() => setShowTemplate(true)}>
             <FiSettings size={15} />
-            Agregar / Editar Horario
+            Configurar turnos
           </button>
         </div>
       </div>
@@ -476,70 +514,54 @@ export default function AdminHorarioView() {
       )}
 
       {showTemplate && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ zIndex: 1055 }}>
-            <div className="modal-dialog modal-lg" role="document">
-              <div className="modal-content border-0 shadow-lg">
-                <div className="modal-header border-b border-slate-200 p-4">
-                  <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
-                    <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
-                      <FiClock size={15} />
-                    </span>
-                    Agregar / Editar Formato de Horario
-                  </h5>
-                  <button type="button" className="btn-close" disabled={saving} onClick={() => setShowTemplate(false)} />
-                </div>
-
-                <div className="modal-body p-4 space-y-3">
-                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-900">
-                    Define el formato diario de turnos (ej. 1ª clase 09:00–10:00, 2ª clase 10:00–11:00...).
-                    Este formato se guarda y aplica a <strong>todos los días y semanas futuras</strong>.
-                  </div>
-
-                  {template.map((bloque, idx) => (
-                    <div key={idx} className="d-flex align-items-center gap-2">
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-600 fw-bold flex-shrink-0" style={{ width: '30px', height: '30px', fontSize: '0.7rem' }}>
-                        {idx + 1}ª
-                      </span>
-                      <input
-                        type="time"
-                        value={bloque.hora_inicio}
-                        onChange={(e) => updateBloque(idx, 'hora_inicio', e.target.value)}
-                        className="inventory-form-input"
-                      />
-                      <span className="text-slate-400 font-bold">—</span>
-                      <input
-                        type="time"
-                        value={bloque.hora_fin}
-                        onChange={(e) => updateBloque(idx, 'hora_fin', e.target.value)}
-                        className="inventory-form-input"
-                      />
-                      <button className="btn-icon text-danger" title="Quitar turno" onClick={() => removeBloque(idx)}>
-                        <FiTrash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-
-                  <button className="btn-secondary-custom w-100 d-inline-flex align-items-center justify-content-center gap-1" onClick={addBloque}>
-                    <FiPlus size={13} />
-                    Agregar turno
-                  </button>
-                </div>
-
-                <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
-                  <button className="btn-secondary-custom" onClick={() => setShowTemplate(false)}>
-                    Cancelar
-                  </button>
-                  <button className="btn-primary-custom d-inline-flex align-items-center gap-1" onClick={guardarFormato}>
-                    <FiSave size={13} />
-                    Guardar formato
-                  </button>
-                </div>
+        <dialog ref={templateDialog} className={styles.dialog} aria-labelledby="template-title" aria-describedby="template-description" onCancel={() => setShowTemplate(false)}>
+          <form onSubmit={(event) => { event.preventDefault(); guardarFormato(); }}>
+            <header className={styles.header}>
+              <span className={styles.icon}><FiClock size={24} /></span>
+              <div>
+                <p className={styles.eyebrow}>CONFIGURACIÓN DEL HORARIO</p>
+                <h2 id="template-title">Organiza tus turnos</h2>
+                <p id="template-description">Define a qué hora empieza y termina cada clase.</p>
               </div>
+              <button type="button" className={styles.close} aria-label="Cerrar editor de turnos" onClick={() => setShowTemplate(false)}>×</button>
+            </header>
+
+            <div className={styles.body}>
+              <div className={styles.notice}>
+                <FiCalendar size={20} aria-hidden="true" />
+                <div><strong>Un formato para toda la semana</strong><p>Se aplica de lunes a sábado y se repite en las siguientes semanas.</p></div>
+              </div>
+              <div className={styles.sectionTitle}><h3>Turnos de clase</h3><span>{draftTemplate.length} {draftTemplate.length === 1 ? 'turno' : 'turnos'}</span></div>
+              <div className={styles.rows}>
+                {draftTemplate.map((bloque, idx) => {
+                  const duration = minutes(bloque.hora_fin) - minutes(bloque.hora_inicio);
+                  return (
+                    <div key={idx} className={styles.row}>
+                      <div className={styles.turn}><span>{String(idx + 1).padStart(2, '0')}</span><strong>Turno {idx + 1}</strong></div>
+                      <label className={styles.field} htmlFor={`turn-start-${idx}`}>Inicio
+                        <input id={`turn-start-${idx}`} type="time" required value={bloque.hora_inicio} onChange={(e) => updateBloque(idx, 'hora_inicio', e.target.value)} />
+                      </label>
+                      <label className={styles.field} htmlFor={`turn-end-${idx}`}>Fin
+                        <input id={`turn-end-${idx}`} type="time" required value={bloque.hora_fin} onChange={(e) => updateBloque(idx, 'hora_fin', e.target.value)} />
+                      </label>
+                      <span className={styles.duration}><FiClock size={13} />{duration > 0 ? `${duration} min` : 'Revisar'}</span>
+                      <button type="button" className={styles.remove} aria-label={`Eliminar turno ${idx + 1}`} onClick={() => removeBloque(idx)}><FiTrash2 size={17} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+              {!draftTemplate.length && <p className={styles.empty}>Todavía no hay turnos. Agrega el primero para empezar.</p>}
+              <button type="button" className={styles.add} onClick={addBloque}><FiPlus size={18} /> Agregar turno</button>
+              {templateError && <p role="alert" className={styles.error}>{templateError}</p>}
             </div>
-          </div>
-          <div className="modal-backdrop fade show" />
-        </>
+
+            <footer className={styles.footer}>
+              <span>Los cambios se aplican al guardar.</span>
+              <div><button type="button" className="btn-secondary-custom" onClick={() => setShowTemplate(false)}>Cancelar</button>
+              <button type="submit" className="btn-primary-custom d-inline-flex align-items-center gap-2"><FiSave size={16} />Guardar formato</button></div>
+            </footer>
+          </form>
+        </dialog>
       )}
 
       {assign && (
