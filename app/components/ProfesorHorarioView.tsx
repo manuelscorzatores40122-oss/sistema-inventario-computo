@@ -15,6 +15,8 @@ import {
   FiX,
   FiPlus,
   FiArrowLeft,
+  FiGrid,
+  FiSliders,
 } from 'react-icons/fi';
 
 type Clase = {
@@ -35,7 +37,6 @@ type Message = { type: 'success' | 'error'; text: string } | null;
 type Bloque = { hora_inicio: string; hora_fin: string };
 
 const SALA_HORARIO = 'Horario de Clases';
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -64,11 +65,28 @@ export default function ProfesorHorarioView() {
   const [message, setMessage] = useState<Message>(null);
   const [template, setTemplate] = useState<Bloque[]>(FORMATO_DEFECTO);
 
+  // Modo de vista: 'semana' o 'mes'
+  const [viewMode, setViewMode] = useState<'semana' | 'mes'>('semana');
+
+  // Navegación Semanal
   const [weekStart, setWeekStart] = useState<Date>(() => weekStartOf(new Date()));
   const [autoFollow, setAutoFollow] = useState(true);
   const [now, setNow] = useState<Date>(() => new Date());
 
-  // Modal para solicitar reserva de aula en un turno libre
+  // Navegación Mensual
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(() => new Date());
+
+  // Modal para solicitar horario específico manualmente
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customFecha, setCustomFecha] = useState(() => {
+    const tzoffset = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzoffset).toISOString().split('T')[0];
+  });
+  const [customHoraInicio, setCustomHoraInicio] = useState('08:00');
+  const [customHoraFin, setCustomHoraFin] = useState('09:00');
+  const [customMotivo, setCustomMotivo] = useState('');
+
+  // Modal para solicitar reserva de turno desde la grilla
   const [requestSlot, setRequestSlot] = useState<{
     date: Date;
     diaNombre: string;
@@ -86,7 +104,10 @@ export default function ProfesorHorarioView() {
       try {
         const u = JSON.parse(rawUser);
         setUser(u);
-        if (u.area) setMotivo(u.area);
+        if (u.area) {
+          setMotivo(u.area);
+          setCustomMotivo(u.area);
+        }
       } catch (e) {}
     }
 
@@ -175,6 +196,23 @@ export default function ProfesorHorarioView() {
     return Array.from(blocksMap.values()).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
   }, [template, claseMap]);
 
+  // Cálculo de los días del mes para Vista Mensual
+  const monthDays = useMemo(() => {
+    const mYear = currentMonthDate.getFullYear();
+    const mMonth = currentMonthDate.getMonth();
+    const firstDayIndex = (new Date(mYear, mMonth, 1).getDay() + 6) % 7; // Lunes = 0
+    const totalDays = new Date(mYear, mMonth + 1, 0).getDate();
+
+    const daysArr: (Date | null)[] = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      daysArr.push(null);
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      daysArr.push(new Date(mYear, mMonth, d));
+    }
+    return daysArr;
+  }, [currentMonthDate]);
+
   const prevWeek = () => {
     setAutoFollow(false);
     setWeekStart(new Date(year, month, weekStart.getDate() - 7));
@@ -186,6 +224,13 @@ export default function ProfesorHorarioView() {
   const goCurrentWeek = () => {
     setWeekStart(weekStartOf(today));
     setAutoFollow(true);
+  };
+
+  const prevMonth = () => {
+    setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1));
+  };
+  const nextMonth = () => {
+    setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1));
   };
 
   const startD = weekDates[0];
@@ -240,8 +285,50 @@ export default function ProfesorHorarioView() {
     }
   };
 
+  const handleCustomRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id || !customFecha || !customHoraInicio || !customHoraFin || !customMotivo) return;
+
+    if (customHoraInicio >= customHoraFin) {
+      setMessage({ type: 'error', text: 'La hora de fin debe ser posterior a la hora de inicio.' });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/solicitudes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profesor_id: user.id,
+          tipo_solicitud: 'aula',
+          fecha_reserva: customFecha,
+          hora_inicio: customHoraInicio,
+          hora_fin: customHoraFin,
+          motivo: customMotivo.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage({ type: 'error', text: data.error || 'No se pudo enviar la solicitud.' });
+        setSubmitting(false);
+        return;
+      }
+
+      setMessage({ type: 'success', text: '¡Solicitud de horario específico enviada! El administrador la revisará pronto.' });
+      setShowCustomModal(false);
+      fetchData();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error al procesar la solicitud.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {message && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm font-semibold d-flex align-items-center justify-content-between gap-2 ${
@@ -256,32 +343,68 @@ export default function ProfesorHorarioView() {
         </div>
       )}
 
+      {/* Header Superior */}
       <div className="d-flex flex-column gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-4">
         <div className="d-flex align-items-center gap-3">
-          <Link href="/profesor/dashboard" className="btn-secondary-custom d-inline-flex align-items-center justify-content-center p-2" style={{ width: '40px', height: '40px' }} title="Volver al inicio">
+          <Link href="/profesor/dashboard" className="btn-secondary-custom d-inline-flex align-items-center justify-content-center p-2 rounded-circle shadow-sm" style={{ width: '42px', height: '42px' }} title="Volver al inicio">
             <FiArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2 mb-0">
-              <FiCalendar className="text-primary" size={26} />
+            <span className="badge bg-primary bg-opacity-10 text-primary fw-bold text-uppercase px-2.5 py-1 mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+              RESERVA Y DISPONIBILIDAD
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-950 tracking-tight d-flex align-items-center gap-2 mb-0">
               Horario del Aula de Cómputo
             </h1>
-            <p className="mt-1 text-sm text-slate-600 mb-0">
-              Consulta la disponibilidad semanal y solicita el aula de cómputo en los horarios libres.
-            </p>
           </div>
         </div>
 
-        <Link href="/profesor/solicitudes" className="btn-primary-custom text-decoration-none d-inline-flex align-items-center gap-2">
-          <FiBookOpen size={16} /> Mis Solicitudes
-        </Link>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-primary d-inline-flex align-items-center gap-2 font-bold shadow-sm"
+            onClick={() => setShowCustomModal(true)}
+          >
+            <FiPlus size={16} /> Solicitar Horario Específico
+          </button>
+          <Link href="/profesor/solicitudes" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-2">
+            <FiBookOpen size={16} /> Mis Solicitudes
+          </Link>
+        </div>
+      </div>
+
+      {/* Selector de Modo de Vista: Semanal vs Mensual */}
+      <div className="bg-white rounded-4 p-3 border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div className="btn-group p-1 bg-slate-100 rounded-3">
+          <button
+            type="button"
+            className={`btn btn-sm font-bold d-inline-flex align-items-center gap-1.5 ${viewMode === 'semana' ? 'btn-white shadow-sm text-primary' : 'text-slate-600'}`}
+            onClick={() => setViewMode('semana')}
+            style={{ borderRadius: '8px' }}
+          >
+            <FiGrid size={15} /> Vista Semanal
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm font-bold d-inline-flex align-items-center gap-1.5 ${viewMode === 'mes' ? 'btn-white shadow-sm text-primary' : 'text-slate-600'}`}
+            onClick={() => setViewMode('mes')}
+            style={{ borderRadius: '8px' }}
+          >
+            <FiCalendar size={15} /> Vista Mensual (Calendario)
+          </button>
+        </div>
+
+        <span className="text-xs font-semibold text-slate-500">
+          {viewMode === 'semana' ? 'Mostrando horarios por día y turnos de clase' : `Mostrando disponibilidad del mes de ${MESES[currentMonthDate.getMonth()]} ${currentMonthDate.getFullYear()}`}
+        </span>
       </div>
 
       {loading ? (
         <div className="inventory-panel p-8 text-center text-slate-500 font-semibold">
           Cargando disponibilidad del aula...
         </div>
-      ) : (
+      ) : viewMode === 'semana' ? (
+        /* VISTA SEMANAL */
         <div className="inventory-panel p-4 rounded-4 border-0 shadow-sm bg-white">
           <div className="d-flex flex-column gap-2 flex-md-row align-items-md-center justify-content-md-between border-b border-slate-200 pb-3">
             <div>
@@ -293,7 +416,7 @@ export default function ProfesorHorarioView() {
             </div>
             <div className="d-flex align-items-center gap-1">
               <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevWeek}>
-                <FiChevronLeft size={14} />Anterior
+                <FiChevronLeft size={14} />Semana anterior
               </button>
               <button className="btn-primary-custom text-xs" onClick={goCurrentWeek}>Semana actual</button>
               <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextWeek}>
@@ -352,7 +475,7 @@ export default function ProfesorHorarioView() {
             <div className="d-flex align-items-center gap-3">
               <span className="d-flex align-items-center gap-1">
                 <span className="rounded-circle bg-success d-inline-block" style={{ width: '10px', height: '10px' }} />
-                <strong>Disponible:</strong> Presiona para solicitar el aula
+                <strong>Disponible:</strong> Presiona para solicitar el turno
               </span>
               <span className="d-flex align-items-center gap-1">
                 <span className="rounded-circle bg-primary d-inline-block" style={{ width: '10px', height: '10px' }} />
@@ -361,9 +484,189 @@ export default function ProfesorHorarioView() {
             </div>
           </div>
         </div>
+      ) : (
+        /* VISTA MENSUAL (CALENDARIO COMPLETO) */
+        <div className="inventory-panel p-4 rounded-4 border-0 shadow-sm bg-white">
+          <div className="d-flex align-items-center justify-content-between border-b border-slate-200 pb-3">
+            <h2 className="font-extrabold text-slate-950 mb-0" style={{ fontSize: '1.2rem' }}>
+              {MESES[currentMonthDate.getMonth()]} del {currentMonthDate.getFullYear()}
+            </h2>
+            <div className="d-flex align-items-center gap-2">
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevMonth}>
+                <FiChevronLeft size={14} /> Mes Anterior
+              </button>
+              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextMonth}>
+                Mes Siguiente <FiChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Grilla del Mes */}
+          <div className="d-grid gap-2 mt-3" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
+              <div key={d} className="text-center font-bold text-xs uppercase text-slate-500 py-2 bg-slate-50 rounded">
+                {d}
+              </div>
+            ))}
+
+            {monthDays.map((dateObj, idx) => {
+              if (!dateObj) {
+                return <div key={`empty-${idx}`} className="bg-slate-50 rounded" style={{ minHeight: '90px' }} />;
+              }
+
+              const isToday = dateObj.toDateString() === today.toDateString();
+              const tzoffset = dateObj.getTimezoneOffset() * 60000;
+              const dateIso = new Date(dateObj.getTime() - tzoffset).toISOString().split('T')[0];
+
+              // Buscar clases/reservas que caen en esta fecha
+              const dayClases = clases.filter((c) => {
+                if (c.fecha_reserva) {
+                  return c.fecha_reserva.split('T')[0] === dateIso && (c.estado === 'separado' || c.estado === 'pendiente');
+                }
+                return false;
+              });
+
+              return (
+                <div
+                  key={dateIso}
+                  className="rounded-3 p-2 border d-flex flex-column justify-content-between"
+                  style={{
+                    minHeight: '100px',
+                    borderColor: isToday ? 'var(--color-primary)' : '#e2e8f0',
+                    backgroundColor: isToday ? '#eff6ff' : '#ffffff',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span
+                      className={`fw-bold text-xs px-2 py-0.5 rounded-circle ${
+                        isToday ? 'bg-primary text-white' : 'text-slate-700 bg-slate-100'
+                      }`}
+                    >
+                      {dateObj.getDate()}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0 text-primary font-semibold text-xs text-decoration-none"
+                      onClick={() => {
+                        setCustomFecha(dateIso);
+                        setShowCustomModal(true);
+                      }}
+                      title="Solicitar reserva este día"
+                    >
+                      + Solicitar
+                    </button>
+                  </div>
+
+                  <div className="mt-1 space-y-1 overflow-hidden" style={{ maxHeight: '60px' }}>
+                    {dayClases.slice(0, 2).map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded px-1.5 py-0.5 text-truncate"
+                        style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1e40af' }}
+                        title={`${c.hora_inicio}-${c.hora_fin}: ${c.motivo_reserva}`}
+                      >
+                        <strong>{c.hora_inicio}</strong> {c.motivo_reserva}
+                      </div>
+                    ))}
+                    {dayClases.length > 2 && (
+                      <span className="text-muted font-bold" style={{ fontSize: '0.65rem' }}>
+                        +{dayClases.length - 2} más
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Modal de Solicitud de Reserva para Turno Libre */}
+      {/* Modal 1: Solicitar Horario Específico Personalizado */}
+      {showCustomModal && (
+        <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-b p-4">
+                <h5 className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '34px', height: '34px' }}>
+                    <FiClock size={18} />
+                  </span>
+                  Solicitar Aula en Horario Específico
+                </h5>
+                <button type="button" className="btn-close" disabled={submitting} onClick={() => setShowCustomModal(false)} />
+              </div>
+              <form onSubmit={handleCustomRequestSubmit}>
+                <div className="modal-body p-4 space-y-3">
+                  <div>
+                    <label className="fw-bold text-slate-800 mb-1 text-sm">Fecha de Reserva</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      style={{ borderRadius: '10px', padding: '10px' }}
+                      value={customFecha}
+                      onChange={(e) => setCustomFecha(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="row g-2">
+                    <div className="col-6">
+                      <label className="fw-bold text-slate-800 mb-1 text-sm">Hora de Inicio</label>
+                      <input
+                        type="time"
+                        className="form-control"
+                        style={{ borderRadius: '10px', padding: '10px' }}
+                        value={customHoraInicio}
+                        onChange={(e) => setCustomHoraInicio(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="fw-bold text-slate-800 mb-1 text-sm">Hora de Fin</label>
+                      <input
+                        type="time"
+                        className="form-control"
+                        style={{ borderRadius: '10px', padding: '10px' }}
+                        value={customHoraFin}
+                        onChange={(e) => setCustomHoraFin(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="fw-bold text-slate-800 mb-1 text-sm">
+                      Materia / Asignatura o Motivo de la Clase
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      style={{ borderRadius: '10px', padding: '12px' }}
+                      value={customMotivo}
+                      onChange={(e) => setCustomMotivo(e.target.value)}
+                      placeholder="Ej. Examen de Informática / Taller de Robótica 6° B"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer border-top p-3 d-flex justify-between">
+                  <button type="button" className="btn-secondary-custom" disabled={submitting} onClick={() => setShowCustomModal(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary-custom d-inline-flex align-items-center gap-2" disabled={submitting || !customMotivo.trim()}>
+                    <FiSend size={15} />
+                    {submitting ? 'Enviando...' : 'Enviar Solicitud al Admin'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Solicitar Reserva de Turno Libre Seleccionado en la Grilla */}
       {requestSlot && (
         <div className="modal fade show d-block" tabIndex={-1} role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
           <div className="modal-dialog modal-dialog-centered" role="document">
@@ -390,7 +693,7 @@ export default function ProfesorHorarioView() {
                   </div>
 
                   <div>
-                    <label className="fw-bold text-slate-800 mb-1" style={{ fontSize: '0.9rem' }}>
+                    <label className="fw-bold text-slate-800 mb-1 text-sm">
                       Materia / Asignatura o Motivo de la Clase
                     </label>
                     <input
