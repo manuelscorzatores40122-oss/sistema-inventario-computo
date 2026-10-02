@@ -485,99 +485,105 @@ export default function ProfesorHorarioView() {
           </div>
         </div>
       ) : (
-        /* VISTA MENSUAL (CALENDARIO COMPLETO) */
+        /* VISTA MENSUAL (CALENDARIO COMPLETO TIPO AGENDA/MES) */
         <div className="inventory-panel p-4 rounded-4 border-0 shadow-sm bg-white">
-          <div className="d-flex align-items-center justify-content-between border-b border-slate-200 pb-3">
-            <h2 className="font-extrabold text-slate-950 mb-0" style={{ fontSize: '1.2rem' }}>
-              {MESES[currentMonthDate.getMonth()]} del {currentMonthDate.getFullYear()}
+          <div className="d-flex align-items-center justify-content-between border-b border-slate-200 pb-3 mb-3">
+            <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevMonth}>
+              <FiChevronLeft size={16} /> Mes Anterior
+            </button>
+            <h2 className="font-extrabold text-slate-950 mb-0 tracking-wide text-uppercase" style={{ fontSize: '1.4rem' }}>
+              {MESES[currentMonthDate.getMonth()]} {currentMonthDate.getFullYear()}
             </h2>
-            <div className="d-flex align-items-center gap-2">
-              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevMonth}>
-                <FiChevronLeft size={14} /> Mes Anterior
-              </button>
-              <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextMonth}>
-                Mes Siguiente <FiChevronRight size={14} />
-              </button>
-            </div>
+            <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={nextMonth}>
+              Mes Siguiente <FiChevronRight size={16} />
+            </button>
           </div>
 
-          {/* Grilla del Mes */}
-          <div className="d-grid gap-2 mt-3" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
-              <div key={d} className="text-center font-bold text-xs uppercase text-slate-500 py-2 bg-slate-50 rounded">
-                {d}
-              </div>
-            ))}
+          {/* Grilla de Calendario Tradicional */}
+          <div className="border rounded-3 overflow-hidden" style={{ borderColor: '#cbd5e1' }}>
+            <div className="d-grid text-center font-bold text-sm bg-slate-100 border-bottom" style={{ gridTemplateColumns: 'repeat(7, 1fr)', borderColor: '#cbd5e1' }}>
+              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((d) => (
+                <div key={d} className="py-2.5 text-slate-800 border-end" style={{ borderColor: '#cbd5e1' }}>
+                  {d}
+                </div>
+              ))}
+            </div>
 
-            {monthDays.map((dateObj, idx) => {
-              if (!dateObj) {
-                return <div key={`empty-${idx}`} className="bg-slate-50 rounded" style={{ minHeight: '90px' }} />;
-              }
+            <div className="d-grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+              {monthDays.map((dateObj, idx) => {
+                const isOutside = !dateObj;
+                const isToday = dateObj ? dateObj.toDateString() === today.toDateString() : false;
+                const tzoffset = dateObj ? dateObj.getTimezoneOffset() * 60000 : 0;
+                const dateIso = dateObj ? new Date(dateObj.getTime() - tzoffset).toISOString().split('T')[0] : '';
 
-              const isToday = dateObj.toDateString() === today.toDateString();
-              const tzoffset = dateObj.getTimezoneOffset() * 60000;
-              const dateIso = new Date(dateObj.getTime() - tzoffset).toISOString().split('T')[0];
+                // Buscar clases/reservas que caen en esta fecha
+                const dayClases = dateObj
+                  ? clases.filter((c) => {
+                      if (c.fecha_reserva) {
+                        return c.fecha_reserva.split('T')[0] === dateIso && (c.estado === 'separado' || c.estado === 'pendiente');
+                      }
+                      return false;
+                    })
+                  : [];
 
-              // Buscar clases/reservas que caen en esta fecha
-              const dayClases = clases.filter((c) => {
-                if (c.fecha_reserva) {
-                  return c.fecha_reserva.split('T')[0] === dateIso && (c.estado === 'separado' || c.estado === 'pendiente');
-                }
-                return false;
-              });
+                return (
+                  <div
+                    key={dateIso || `outside-${idx}`}
+                    className="p-2 border-end border-bottom d-flex flex-column justify-content-between position-relative"
+                    style={{
+                      minHeight: '110px',
+                      borderColor: '#cbd5e1',
+                      backgroundColor: isOutside ? '#edf7ed' : isToday ? '#eff6ff' : '#ffffff',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {!isOutside && dateObj && (
+                      <>
+                        <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                          <span
+                            className={`fw-bold text-xs rounded-circle d-inline-flex align-items-center justify-content-center ${
+                              isToday ? 'bg-primary text-white' : 'text-slate-900 bg-slate-100'
+                            }`}
+                            style={{ width: '24px', height: '24px' }}
+                          >
+                            {dateObj.getDate()}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-link p-0 text-primary font-semibold text-xs text-decoration-none opacity-75 hover-100"
+                            onClick={() => {
+                              setCustomFecha(dateIso);
+                              setShowCustomModal(true);
+                            }}
+                            title="Solicitar reserva en esta fecha"
+                          >
+                            + Solicitar
+                          </button>
+                        </div>
 
-              return (
-                <div
-                  key={dateIso}
-                  className="rounded-3 p-2 border d-flex flex-column justify-content-between"
-                  style={{
-                    minHeight: '100px',
-                    borderColor: isToday ? 'var(--color-primary)' : '#e2e8f0',
-                    backgroundColor: isToday ? '#eff6ff' : '#ffffff',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span
-                      className={`fw-bold text-xs px-2 py-0.5 rounded-circle ${
-                        isToday ? 'bg-primary text-white' : 'text-slate-700 bg-slate-100'
-                      }`}
-                    >
-                      {dateObj.getDate()}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-link p-0 text-primary font-semibold text-xs text-decoration-none"
-                      onClick={() => {
-                        setCustomFecha(dateIso);
-                        setShowCustomModal(true);
-                      }}
-                      title="Solicitar reserva este día"
-                    >
-                      + Solicitar
-                    </button>
-                  </div>
-
-                  <div className="mt-1 space-y-1 overflow-hidden" style={{ maxHeight: '60px' }}>
-                    {dayClases.slice(0, 2).map((c) => (
-                      <div
-                        key={c.id}
-                        className="rounded px-1.5 py-0.5 text-truncate"
-                        style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1e40af' }}
-                        title={`${c.hora_inicio}-${c.hora_fin}: ${c.motivo_reserva}`}
-                      >
-                        <strong>{c.hora_inicio}</strong> {c.motivo_reserva}
-                      </div>
-                    ))}
-                    {dayClases.length > 2 && (
-                      <span className="text-muted font-bold" style={{ fontSize: '0.65rem' }}>
-                        +{dayClases.length - 2} más
-                      </span>
+                        <div className="space-y-1 overflow-y-auto" style={{ maxHeight: '70px' }}>
+                          {dayClases.map((c) => (
+                            <div
+                              key={c.id}
+                              className="rounded px-1.5 py-0.5 text-truncate fw-semibold"
+                              style={{
+                                fontSize: '0.7rem',
+                                backgroundColor: c.estado === 'separado' ? '#dbeafe' : '#fef3c7',
+                                color: c.estado === 'separado' ? '#1e40af' : '#92400e',
+                                border: `1px solid ${c.estado === 'separado' ? '#bfdbfe' : '#fde68a'}`,
+                              }}
+                              title={`${c.hora_inicio}-${c.hora_fin}: ${c.motivo_reserva}`}
+                            >
+                              <strong>{c.hora_inicio}</strong> {c.motivo_reserva}
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
