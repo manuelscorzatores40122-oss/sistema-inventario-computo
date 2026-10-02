@@ -1235,88 +1235,125 @@ export function AdminSolicitudesView() {
   }, [solicitudes]);
 
   return (
-    <PageShell title="Control de Solicitudes" subtitle="Revisa, aprueba o rechaza los préstamos de artículos de inventario solicitados por los profesores.">
+    <PageShell title="Control de Solicitudes" subtitle="Supervisa, aprueba o rechaza los pedidos de equipos y reservas de aula realizados por los docentes.">
       <Notice message={message} />
 
-      {/* Buscador y Filtro Global Inteligente */}
-      <div className={`${panel} p-4 space-y-4 mb-4`}>
-        <div className="flex flex-col gap-3">
-          {/* Pestañas / Chips de Estado */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-            <div className="d-flex align-items-center gap-1 flex-wrap">
-              {[
-                { id: 'todas', label: 'Todas', count: counts.todas },
-                { id: 'pendiente', label: 'Pendientes', count: counts.pendiente },
-                { id: 'aprobada', label: 'Aprobadas', count: counts.aprobada },
-                { id: 'rechazada', label: 'Rechazadas', count: counts.rechazada },
-                { id: 'cancelada', label: 'Canceladas', count: counts.cancelada },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`btn btn-sm rounded-pill fw-bold text-xs d-inline-flex align-items-center gap-1 ${selectedEstado === tab.id ? 'btn-primary' : 'btn-light border text-slate-700'}`}
-                  onClick={() => setSelectedEstado(tab.id as any)}
-                >
-                  {tab.label}
-                  <span className={`badge rounded-pill text-xs ${selectedEstado === tab.id ? 'bg-white text-primary' : 'bg-secondary bg-opacity-20 text-slate-800'}`}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
+      {/* Métricas KPI Resumen */}
+      <div className="inventory-summary mb-4">
+        {[
+          { label: 'Pendientes por Revisar', value: counts.pendiente, unit: 'requieren tu atención', icon: FiClock, highlight: counts.pendiente > 0 },
+          { label: 'Solicitudes Aprobadas', value: counts.aprobada, unit: 'procesadas con éxito', icon: FiCheckCircle },
+          { label: 'Rechazadas / Canceladas', value: counts.rechazada + counts.cancelada, unit: 'desestimadas', icon: FiXCircle },
+          { label: 'Total Registradas', value: counts.todas, unit: 'historial de solicitudes', icon: FiInbox }
+        ].map(({ label, value, unit, icon: Icon, highlight }) => (
+          <div className={`inventory-summary-card ${highlight ? 'border border-amber-400 bg-amber-50/50' : ''}`} key={label}>
+            <div>
+              <span className={highlight ? 'text-amber-800 font-bold' : ''}>{label}</span>
+              <Icon size={20} className={highlight ? 'text-amber-600' : ''} />
             </div>
-
-            <span className="text-xs font-semibold text-slate-500">
-              Mostrando {filteredSolicitudes.length} de {solicitudes.length} solicitudes
-            </span>
+            <strong className={highlight ? 'text-amber-800' : ''}>{value}</strong>
+            <small>{unit}</small>
           </div>
+        ))}
+      </div>
 
-          {/* Buscador inteligente y Rango de Fechas */}
-          <div className="grid gap-3 md:grid-cols-12 items-center pt-2">
-            <div className="md:col-span-6 d-flex align-items-center gap-2">
-              <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+      {/* Buscador y Panel de Filtros Inteligentes */}
+      <div className="inventory-panel inventory-list-panel mb-4 p-3 p-md-4">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+          <div className="inventory-state-tabs m-0" role="group" aria-label="Filtrar por estado">
+            {([
+              { id: 'todas', label: 'Todas', count: counts.todas },
+              { id: 'pendiente', label: 'Pendientes', count: counts.pendiente },
+              { id: 'aprobada', label: 'Aprobadas', count: counts.aprobada },
+              { id: 'rechazada', label: 'Rechazadas', count: counts.rechazada },
+              { id: 'cancelada', label: 'Canceladas', count: counts.cancelada },
+            ] as const).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`${selectedEstado === t.id ? 'active' : ''} ${t.id === 'pendiente' && t.count > 0 ? 'text-amber-700 font-bold' : ''}`}
+                onClick={() => setSelectedEstado(t.id)}
+              >
+                {t.label} <span>{t.count}</span>
+              </button>
+            ))}
+          </div>
+          <span className="text-xs font-semibold text-slate-500">
+            Mostrando <strong className="text-slate-800">{filteredSolicitudes.length}</strong> de {solicitudes.length} solicitudes
+          </span>
+        </div>
+
+        {/* Buscador inteligente y Rango de Fechas */}
+        <div className="row g-2 align-items-center">
+          <div className="col-12 col-md-5">
+            <div className="position-relative">
+              <FiSearch size={16} className="position-absolute text-slate-400" style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
-                className={`${input} w-full`}
-                placeholder="🔍 Buscar por docente, DNI, equipo, sección o aula..."
+                type="text"
+                className="inventory-form-input ps-5 w-100"
+                placeholder="Buscar por docente, DNI, equipo, sección o aula..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search && (
+                <button
+                  type="button"
+                  className="position-absolute border-0 bg-transparent text-slate-400"
+                  style={{ right: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                  onClick={() => setSearch('')}
+                >
+                  <FiX size={14} />
+                </button>
+              )}
             </div>
+          </div>
 
-            <div className="md:col-span-4 d-flex align-items-center gap-1">
-              <FiCalendar className="text-slate-400" size={15} />
+          <div className="col-12 col-md-5">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 font-semibold d-flex align-items-center gap-1 me-1">
+                <FiCalendar size={14} className="text-primary" /> Fechas:
+              </span>
               <input
                 type="date"
-                className={`${input} text-xs`}
+                className="form-control form-control-sm"
+                style={{ width: '135px' }}
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
                 title="Fecha inicio"
               />
-              <span className="text-slate-400 text-xs">a</span>
+              <span className="text-xs text-slate-400">a</span>
               <input
                 type="date"
-                className={`${input} text-xs`}
+                className="form-control form-control-sm"
+                style={{ width: '135px' }}
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
                 title="Fecha fin"
               />
             </div>
+          </div>
 
-            <div className="md:col-span-2 d-flex justify-content-end">
-              {(search || selectedEstado !== 'todas' || fechaInicio || fechaFin) && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
-                  onClick={() => { setSearch(''); setSelectedEstado('todas'); setFechaInicio(''); setFechaFin(''); }}
-                >
-                  <FiX size={14} /> Limpiar
-                </button>
-              )}
-            </div>
+          <div className="col-12 col-md-2 text-md-end">
+            {(search || selectedEstado !== 'todas' || fechaInicio || fechaFin) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
+                onClick={() => { setSearch(''); setSelectedEstado('todas'); setFechaInicio(''); setFechaFin(''); }}
+              >
+                <FiX size={14} /> Limpiar
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <SolicitudesTable solicitudes={filteredSolicitudes} comentarios={comentarios} setComentarios={setComentarios} onApprove={(id) => updateEstado(id, 'aprobada')} onReject={(id) => updateEstado(id, 'rechazada')} />
+      <SolicitudesTable
+        solicitudes={filteredSolicitudes}
+        comentarios={comentarios}
+        setComentarios={setComentarios}
+        onApprove={(id) => updateEstado(id, 'aprobada')}
+        onReject={(id) => updateEstado(id, 'rechazada')}
+      />
     </PageShell>
   );
 }
@@ -1329,44 +1366,105 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
   onReject?: (id: number) => void;
   onCancel?: (id: number) => void;
 }) {
+  if (solicitudes.length === 0) {
+    return (
+      <div className="inventory-panel p-5 text-center bg-white rounded-3 border">
+        <FiInbox size={42} className="text-slate-300 mb-2" />
+        <h4 className="h6 font-bold text-slate-800 mb-1">Sin solicitudes registradas</h4>
+        <p className="text-xs text-slate-500 mb-0">No hay pedidos que coincidan con el filtro seleccionado.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className={`${panel} p-4 overflow-x-auto`}>
-      <table className="inventory-table">
-        <thead>
-          <tr>
-            <th>Profesor</th>
-            <th>Artículo Solicitado</th>
-            <th>Cant.</th>
-            <th>Motivo</th>
-            <th>Estado</th>
-            <th>Fecha</th>
-            <th className="text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {solicitudes.map((solicitud) => (
-            <tr key={solicitud.id}>
-              <td className="font-bold text-slate-900">{solicitud.profesor_nombre} {solicitud.apellido}</td>
-              <td>{solicitud.item_nombre ? <span className="font-semibold text-slate-800">{solicitud.item_nombre}</span> : <span className="text-slate-400">-</span>}</td>
-              <td className="font-semibold">{solicitud.item_nombre ? solicitud.cantidad_solicitada : '-'}</td>
-              <td className="text-xs text-slate-600">{solicitud.motivo || '-'}{formatRequestLocation(solicitud) && <div className="mt-1 fw-semibold">{formatRequestLocation(solicitud)}</div>}</td>
-              <td><StatusBadge value={solicitud.estado} /></td>
-              <td className="text-xs text-slate-500">{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</td>
-              <td className="text-right space-y-1">
-                {solicitud.estado === 'pendiente' && setComentarios && (
-                  <input className={`${input} text-xs py-1 px-2 mb-1 w-full`} placeholder="Añadir nota / observación..." value={comentarios?.[solicitud.id] || ''} onChange={(e) => setComentarios({ ...(comentarios || {}), [solicitud.id]: e.target.value })} />
-                )}
-                <div className="flex justify-end gap-1">
-                  {solicitud.estado === 'pendiente' && onApprove && <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} onClick={() => onApprove(solicitud.id)}><FiCheckCircle size={13} />Aprobar</button>}
-                  {solicitud.estado === 'pendiente' && onReject && <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => onReject(solicitud.id)}><FiXCircle size={13} />Rechazar</button>}
-                  {solicitud.estado === 'pendiente' && onCancel && <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => onCancel(solicitud.id)}><FiXCircle size={13} />Cancelar</button>}
-                </div>
-              </td>
+    <div className="inventory-panel inventory-list-panel p-3">
+      <div className="overflow-x-auto">
+        <table className="inventory-table">
+          <thead>
+            <tr>
+              <th>Docente</th>
+              <th>Artículo / Recurso</th>
+              <th>Cant.</th>
+              <th>Motivo y Ubicación</th>
+              <th>Fecha Solicitud</th>
+              <th>Estado</th>
+              <th className="text-right">Acciones</th>
             </tr>
-          ))}
-          {solicitudes.length === 0 && <tr><td className="text-center py-6 text-slate-500" colSpan={7}>Sin solicitudes registradas en la plataforma</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {solicitudes.map((solicitud) => {
+              const isClassroom = !solicitud.inventario_id;
+              return (
+                <tr key={solicitud.id}>
+                  <td>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="rounded-circle bg-slate-100 text-slate-700 font-bold d-inline-flex align-items-center justify-content-center border" style={{ width: '32px', height: '32px', fontSize: '13px' }}>
+                        {solicitud.profesor_nombre?.charAt(0).toUpperCase() || 'P'}
+                      </span>
+                      <div>
+                        <strong className="d-block text-slate-900 font-semibold text-sm">{solicitud.profesor_nombre} {solicitud.apellido}</strong>
+                        <small className="text-slate-500 text-xs">SOL-{String(solicitud.id).padStart(3, '0')}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="inventory-item-name">
+                      <span className="inventory-item-icon">
+                        {isClassroom ? <FiCalendar size={17} /> : <FiPackage size={17} />}
+                      </span>
+                      <div>
+                        <strong>{solicitud.item_nombre || 'Aula de Cómputo'}</strong>
+                        <small>{isClassroom ? 'Reserva de aula' : 'Préstamo de equipo'}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="font-semibold text-slate-800">{isClassroom ? '-' : solicitud.cantidad_solicitada}</td>
+                  <td className="loans-detail text-xs">
+                    <div className="font-medium text-slate-800">{solicitud.motivo || 'Uso docente en clase'}</div>
+                    {formatRequestLocation(solicitud) && (
+                      <span className="badge bg-slate-100 text-slate-600 border font-normal mt-1 d-inline-flex align-items-center gap-1">
+                        <FiMapPin size={10} /> {formatRequestLocation(solicitud)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-xs text-slate-500">
+                    {new Date(solicitud.fecha_solicitud).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td><StatusBadge value={solicitud.estado} /></td>
+                  <td className="text-right">
+                    {solicitud.estado === 'pendiente' && setComentarios && (
+                      <input
+                        className="form-control form-control-sm text-xs mb-2 ms-auto"
+                        style={{ maxWidth: '220px' }}
+                        placeholder="Nota u observación para el docente..."
+                        value={comentarios?.[solicitud.id] || ''}
+                        onChange={(e) => setComentarios({ ...(comentarios || {}), [solicitud.id]: e.target.value })}
+                      />
+                    )}
+                    <div className="d-flex justify-content-end gap-1 flex-wrap">
+                      {solicitud.estado === 'pendiente' && onApprove && (
+                        <button className={`${primaryButton} btn-sm d-inline-flex align-items-center gap-1`} onClick={() => onApprove(solicitud.id)}>
+                          <FiCheckCircle size={13} /> Aprobar
+                        </button>
+                      )}
+                      {solicitud.estado === 'pendiente' && onReject && (
+                        <button className={`${dangerButton} btn-sm d-inline-flex align-items-center gap-1`} onClick={() => onReject(solicitud.id)}>
+                          <FiXCircle size={13} /> Rechazar
+                        </button>
+                      )}
+                      {solicitud.estado === 'pendiente' && onCancel && (
+                        <button className={`${dangerButton} btn-sm d-inline-flex align-items-center gap-1`} onClick={() => onCancel(solicitud.id)}>
+                          <FiXCircle size={13} /> Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
