@@ -10,10 +10,12 @@ import {
   FiPackage,
   FiUser,
   FiLogOut,
+  FiCalendar,
 } from 'react-icons/fi';
 
 const menuItems = [
   { href: '/profesor/dashboard', title: 'Inicio', icon: FiHome },
+  { href: '/profesor/horario', title: 'Horario del Aula', icon: FiCalendar },
   { href: '/profesor/solicitar-articulo', title: 'Solicitar artículo', icon: FiPackage },
   { href: '/profesor/perfil', title: 'Mi Perfil', icon: FiUser },
 ];

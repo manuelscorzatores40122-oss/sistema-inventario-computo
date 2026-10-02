@@ -429,16 +429,16 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
           </div>
 
           <div className="col-12 col-md-4">
-            <button type="button" className="mobile-action-card dashboard-action-classroom w-100 text-start" onClick={() => { setSelectedCalendarDate(''); setShowCalendar(true); }}>
+            <Link href="/profesor/horario" className="mobile-action-card dashboard-action-classroom text-decoration-none">
               <div className="action-icon-wrap calendar-action-icon">
                 <FiCalendar size={22} />
               </div>
               <div className="flex-grow-1 min-w-0">
-                <h2 className="h6 fw-bold text-dark mb-0">Separar aula</h2>
-                <p className="mobile-action-description">Elige un horario y reserva el aula de cómputo</p>
+                <h2 className="h6 fw-bold text-dark mb-0">Horario del aula</h2>
+                <p className="mobile-action-description">Ver disponibilidad semanal y separar turno</p>
               </div>
               <FiArrowRight className="action-arrow flex-shrink-0" size={18} />
-            </button>
+            </Link>
           </div>
 
           <div className="col-12 col-md-4">
