@@ -8,6 +8,7 @@ import AdminQuickForm from './AdminQuickForm';
 import { compareRequests } from '@/app/lib/request-order';
 import RequestSubmittedNotice from './RequestSubmittedNotice';
 import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
+import { optimizeImage } from '@/app/lib/imageUtils';
 import {
   FiArrowLeft,
   FiArrowRight,
@@ -41,6 +42,7 @@ import {
   FiEye,
   FiKey,
   FiCheck,
+  FiImage,
 } from 'react-icons/fi';
 
 type Usuario = {
@@ -107,6 +109,8 @@ type Item = {
   cantidad_disponible: number;
   ubicacion: string | null;
   estado: string;
+  imagen_url?: string | null;
+  imagen_public_id?: string | null;
 };
 
 type Solicitud = {
@@ -297,6 +301,12 @@ export function AdminInventarioView() {
   const [items, setItems] = useState<Item[]>([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
+  
+  // Cloudinary image states
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removeImagen, setRemoveImagen] = useState(false);
+  
   const [message, setMessage] = useState<Message>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -310,6 +320,38 @@ export function AdminInventarioView() {
   const [customCategorias, setCustomCategorias] = useState<string[]>([]);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [categoryName, setCategoryName] = useState('');
+
+  const handleFileSelection = (file: File | undefined | null) => {
+    if (file && file.type.startsWith('image/')) {
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setRemoveImagen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showForm) return;
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            handleFileSelection(items[i].getAsFile());
+            e.preventDefault();
+            break;
+          }
+        }
+      }
+    };
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => document.removeEventListener('paste', handleGlobalPaste);
+  }, [showForm]);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    handleFileSelection(e.dataTransfer.files?.[0]);
+  };
 
   const addCategory = () => {
     const name = categoryName.trim();
@@ -379,10 +421,27 @@ export function AdminInventarioView() {
     if (saving || deleting || confirmDelete) return;
     setSaving(true);
     try {
+      let imagen_base64: string | undefined = undefined;
+      if (imageFile) {
+        try {
+          imagen_base64 = await optimizeImage(imageFile);
+        } catch (error: any) {
+          setMessage({ type: 'error', text: error.message || 'Error al procesar la imagen' });
+          setSaving(false);
+          return;
+        }
+      }
+
+      const payload = {
+        ...form,
+        imagen_base64,
+        remove_imagen: removeImagen
+      };
+
     const response = await fetch(editingId ? `/api/inventario/${editingId}` : '/api/inventario', {
       method: editingId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -396,6 +455,9 @@ export function AdminInventarioView() {
     setForm(empty);
     setEditingId(null);
     setShowForm(false);
+    setImageFile(null);
+    setPreviewUrl(null);
+    setRemoveImagen(false);
     setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
 
     if (savedItem) {
@@ -417,6 +479,9 @@ export function AdminInventarioView() {
     setConfirmDelete(false);
     setEditingId(item.id);
     setMessage(null);
+    setImageFile(null);
+    setRemoveImagen(false);
+    setPreviewUrl(item.imagen_url || null);
     setForm({
       nombre: item.nombre,
       descripcion: item.descripcion || '',
@@ -459,7 +524,7 @@ export function AdminInventarioView() {
       <div className="inventory-manager-inner">
       <header className="inventory-manager-header">
         <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Inventario</Link><h1>Inventario de equipos</h1><p>Organiza tus artículos y consulta lo que está disponible para cada clase.</p></div>
-        <button type="button" className="inventory-add-button" aria-expanded={showForm} aria-controls="inventory-editor" onClick={() => { setShowForm(true); setEditingId(null); setForm(empty); }}><FiPlus size={18} /> Nuevo artículo</button>
+        <button type="button" className="inventory-add-button" aria-expanded={showForm} aria-controls="inventory-editor" onClick={() => { setShowForm(true); setEditingId(null); setForm(empty); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}><FiPlus size={18} /> Nuevo artículo</button>
       </header>
       <Notice message={message} />
       <ConfirmComponent />
@@ -486,6 +551,53 @@ export function AdminInventarioView() {
         </div>
 
         {editingId !== null && message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
+        
+        <div className="md:col-span-4 mb-3">
+          <label className={`${label} mb-2 d-block`}>Imagen del equipo (Opcional)</label>
+          <div 
+            className={`d-flex flex-column align-items-center justify-content-center p-4 rounded-3 text-center transition-all ${previewUrl ? 'bg-light border' : 'bg-white'}`}
+            style={{ border: previewUrl ? '1px solid #e2e8f0' : '2px dashed #cbd5e1', cursor: 'pointer', position: 'relative' }}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onClick={() => document.getElementById('inventory-image-upload')?.click()}
+          >
+            <input 
+              id="inventory-image-upload"
+              type="file" 
+              accept="image/jpeg, image/png, image/webp"
+              className="d-none"
+              onChange={(e) => handleFileSelection(e.target.files?.[0])}
+            />
+            {previewUrl ? (
+              <div className="position-relative">
+                <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle rounded-circle p-1 shadow-sm d-flex align-items-center justify-content-center"
+                  style={{ width: '26px', height: '26px', zIndex: 10 }}
+                  title="Quitar imagen"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageFile(null);
+                    setPreviewUrl(null);
+                    setRemoveImagen(true);
+                  }}
+                >
+                  <FiX size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="py-2">
+                <div className="mb-2 p-3 rounded-circle bg-slate-50 text-slate-400 d-inline-block">
+                  <FiImage size={28} />
+                </div>
+                <p className="mb-1 fw-bold text-slate-700" style={{ fontSize: '0.95rem' }}>Arrastra y suelta o pega con Ctrl+V</p>
+                <p className="text-xs text-slate-500 mb-0">o haz clic para explorar en tus archivos (JPG, PNG, WEBP)</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
         <div>
           <label className={label} htmlFor="inventory-category">Categoría</label>
@@ -550,7 +662,7 @@ export function AdminInventarioView() {
             {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
             {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Registrar artículo'}
           </button>
-          <button className={secondaryButton} type="button" onClick={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); }}>Cancelar</button>
+          <button className={secondaryButton} type="button" onClick={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}>Cancelar</button>
         </div>
         </fieldset>
       </form>
@@ -651,7 +763,16 @@ export function AdminInventarioView() {
                 filteredItems.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{item.nombre}</strong><small>EQ-{String(item.id).padStart(3, '0')}</small></div></div>
+                      <div className="inventory-item-name">
+                        <span className="inventory-item-icon" style={{ overflow: 'hidden', padding: item.imagen_url ? 0 : undefined }}>
+                          {item.imagen_url ? (
+                            <img src={item.imagen_url} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <FiPackage size={17} />
+                          )}
+                        </span>
+                        <div><strong>{item.nombre}</strong><small>EQ-{String(item.id).padStart(3, '0')}</small></div>
+                      </div>
                       {item.descripcion && <div className="text-xs text-slate-500 mt-0.5">{item.descripcion}</div>}
                     </td>
                     <td>
