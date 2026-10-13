@@ -43,7 +43,10 @@ import {
   FiKey,
   FiCheck,
   FiImage,
+  FiDownload,
 } from 'react-icons/fi';
+import { exportToCsv } from '@/app/lib/exportCsv';
+import ExcelImportModal from './ExcelImportModal';
 
 type Usuario = {
   id: number;
@@ -111,6 +114,19 @@ type Item = {
   estado: string;
   imagen_url?: string | null;
   imagen_public_id?: string | null;
+  codigo_patrimonial?: string | null;
+  marca?: string | null;
+  modelo?: string | null;
+  condicion?: string | null;
+  numero_serie?: string | null;
+  color?: string | null;
+  nivel?: string | null;
+  observaciones?: string | null;
+  procedencia_entidad?: string | null;
+  documento_sustentatorio?: string | null;
+  fecha_documento?: string | null;
+  situacion_administrativa?: string | null;
+  situacion_detalle?: string | null;
 };
 
 type Solicitud = {
@@ -144,6 +160,9 @@ type Prestamo = {
   apellido: string | null;
   fecha_prestamo: string;
   fecha_devolucion: string | null;
+  solicitud_id?: number | null;
+  devolucion_observacion?: string | null;
+  devolucion_estado?: string | null;
 };
 
 const panel = 'inventory-panel';
@@ -184,13 +203,31 @@ export function StatusBadge({ value }: { value: string }) {
   const Icon =
     value === 'disponible' || value === 'aprobada' || value === 'devuelto'
       ? FiCheckCircle
-      : value === 'mantenimiento' || value === 'separado' || value === 'prestado'
-        ? FiClock
-        : value === 'vencido'
-          ? FiAlertTriangle
-          : value === 'agotado' || value === 'rechazada'
-            ? FiXCircle
-            : FiInbox;
+      : value === 'no_prestable'
+        ? FiShield
+        : value === 'mantenimiento' || value === 'separado' || value === 'prestado'
+          ? FiClock
+          : value === 'vencido'
+            ? FiAlertTriangle
+            : value === 'agotado' || value === 'rechazada'
+              ? FiXCircle
+              : FiInbox;
+
+  if (value === 'no_prestable') {
+    return (
+      <span
+        className="status-badge"
+        style={{
+          backgroundColor: '#f1f5f9',
+          color: '#475569',
+          border: '1px solid #cbd5e1',
+        }}
+      >
+        <Icon size={12} />
+        no prestable
+      </span>
+    );
+  }
 
   return (
     <span className={`status-badge ${value}`}>
@@ -297,22 +334,37 @@ function InventoryDeleteDialog({ name, deleting, error, onCancel, onConfirm }: {
 }
 
 export function AdminInventarioView() {
-  const empty = { nombre: '', descripcion: '', categoria: '', cantidad_total: 1, cantidad_disponible: 1, ubicacion: '', estado: 'disponible' };
+  const empty = {
+    nombre: '',
+    descripcion: '',
+    categoria: '',
+    cantidad_total: 1,
+    cantidad_disponible: 1,
+    ubicacion: '',
+    estado: 'disponible',
+    codigo_patrimonial: '',
+    marca: '',
+    modelo: '',
+    condicion: 'bueno',
+    numero_serie: '',
+    situacion_administrativa: 'activo',
+  };
   const [items, setItems] = useState<Item[]>([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
-  
+
   // Cloudinary image states
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeImagen, setRemoveImagen] = useState(false);
-  
+
   const [message, setMessage] = useState<Message>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedEstado, setSelectedEstado] = useState<string>('todos');
   const [showForm, setShowForm] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -438,37 +490,37 @@ export function AdminInventarioView() {
         remove_imagen: removeImagen
       };
 
-    const response = await fetch(editingId ? `/api/inventario/${editingId}` : '/api/inventario', {
-      method: editingId ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      const response = await fetch(editingId ? `/api/inventario/${editingId}` : '/api/inventario', {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      setMessage({ type: 'error', text: await readError(response) });
-      return;
-    }
+      if (!response.ok) {
+        setMessage({ type: 'error', text: await readError(response) });
+        return;
+      }
 
-    const data = await response.json();
-    const savedItem = data.item as Item | undefined;
+      const data = await response.json();
+      const savedItem = data.item as Item | undefined;
 
-    setForm(empty);
-    setEditingId(null);
-    setShowForm(false);
-    setImageFile(null);
-    setPreviewUrl(null);
-    setRemoveImagen(false);
-    setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
+      setForm(empty);
+      setEditingId(null);
+      setShowForm(false);
+      setImageFile(null);
+      setPreviewUrl(null);
+      setRemoveImagen(false);
+      setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
 
-    if (savedItem) {
-      setItems((prev) =>
-        editingId
-          ? prev.map((i) => (i.id === savedItem.id ? savedItem : i))
-          : [savedItem, ...prev]
-      );
-    } else {
-      await fetchItems();
-    }
+      if (savedItem) {
+        setItems((prev) =>
+          editingId
+            ? prev.map((i) => (i.id === savedItem.id ? savedItem : i))
+            : [savedItem, ...prev]
+        );
+      } else {
+        await fetchItems();
+      }
     } catch {
       setMessage({ type: 'error', text: 'No se pudo guardar el artículo. Intenta nuevamente.' });
     } finally { setSaving(false); }
@@ -490,7 +542,29 @@ export function AdminInventarioView() {
       cantidad_disponible: item.cantidad_disponible,
       ubicacion: item.ubicacion || '',
       estado: item.estado,
+      codigo_patrimonial: item.codigo_patrimonial || '',
+      marca: item.marca || '',
+      modelo: item.modelo || '',
+      condicion: item.condicion || 'bueno',
+      numero_serie: item.numero_serie || '',
+      situacion_administrativa: item.situacion_administrativa || 'activo',
     });
+  };
+
+  const handleExportInventario = () => {
+    exportToCsv('inventario_secundaria', [
+      { key: 'codigo_patrimonial', label: 'Código Patrimonial' },
+      { key: 'nombre', label: 'Equipo' },
+      { key: 'categoria', label: 'Categoría' },
+      { key: 'marca', label: 'Marca' },
+      { key: 'modelo', label: 'Modelo' },
+      { key: 'cantidad_total', label: 'Stock Total' },
+      { key: 'cantidad_disponible', label: 'Disponible' },
+      { key: 'condicion', label: 'Condición Física' },
+      { key: 'ubicacion', label: 'Ubicación' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'descripcion', label: 'Descripción / Notas' },
+    ], items);
   };
 
   const deleteItem = async (id: number) => {
@@ -522,286 +596,362 @@ export function AdminInventarioView() {
   return (
     <div className="inventory-manager">
       <div className="inventory-manager-inner">
-      <header className="inventory-manager-header">
-        <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Inventario</Link><h1>Inventario de equipos</h1><p>Organiza tus artículos y consulta lo que está disponible para cada clase.</p></div>
-        <button type="button" className="inventory-add-button" aria-expanded={showForm} aria-controls="inventory-editor" onClick={() => { setShowForm(true); setEditingId(null); setForm(empty); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}><FiPlus size={18} /> Nuevo artículo</button>
-      </header>
-      <Notice message={message} />
-      <ConfirmComponent />
-      <div className="inventory-summary">
-        {[{ label: 'Artículos registrados', value: stats.totalTipos, unit: 'tipos de equipo', icon: FiTag }, { label: 'Stock total', value: stats.totalStock, unit: 'unidades en inventario', icon: FiLayers }, { label: 'Disponibles', value: stats.totalDisponible, unit: 'unidades para préstamo', icon: FiPackage }, { label: 'Requieren atención', value: stats.mantenimientos, unit: 'en mantenimiento o agotados', icon: FiAlertTriangle }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
-      </div>
-
-      {/* Add / Edit Form */}
-      <InventoryEditorContainer floating={showForm && editingId !== null} saving={saving || deleting} onClose={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); }}>
-      <form id="inventory-editor" hidden={!showForm} onSubmit={submit} className={`${panel} inventory-editor grid gap-4 p-6 md:grid-cols-4`}>
-        <fieldset disabled={saving || deleting} className="inventory-editor-fields">
-        <div className="md:col-span-4 border-b border-slate-200 pb-3 flex items-center justify-between">
-          <h2 id="inventory-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
-            <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '30px', height: '30px' }}>
-              {editingId ? <FiEdit2 size={15} /> : <FiPlus size={15} />}
-            </span>
-            {editingId ? 'Editar Artículo' : 'Nuevo artículo'}
-          </h2>
-          {editingId && (
-            <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
-              Modificando ID #{editingId}
-            </span>
-          )}
-        </div>
-
-        {editingId !== null && message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
-        
-        <div className="md:col-span-4 mb-3">
-          <label className={`${label} mb-2 d-block`}>Imagen del equipo (Opcional)</label>
-          <div 
-            className={`d-flex flex-column align-items-center justify-content-center p-4 rounded-3 text-center transition-all ${previewUrl ? 'bg-light border' : 'bg-white'}`}
-            style={{ border: previewUrl ? '1px solid #e2e8f0' : '2px dashed #cbd5e1', cursor: 'pointer', position: 'relative' }}
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            onClick={() => document.getElementById('inventory-image-upload')?.click()}
-          >
-            <input 
-              id="inventory-image-upload"
-              type="file" 
-              accept="image/jpeg, image/png, image/webp"
-              className="d-none"
-              onChange={(e) => handleFileSelection(e.target.files?.[0])}
-            />
-            {previewUrl ? (
-              <div className="position-relative">
-                <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <button 
-                  type="button" 
-                  className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle rounded-circle p-1 shadow-sm d-flex align-items-center justify-content-center"
-                  style={{ width: '26px', height: '26px', zIndex: 10 }}
-                  title="Quitar imagen"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setImageFile(null);
-                    setPreviewUrl(null);
-                    setRemoveImagen(true);
-                  }}
-                >
-                  <FiX size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="py-2">
-                <div className="mb-2 p-3 rounded-circle bg-slate-50 text-slate-400 d-inline-block">
-                  <FiImage size={28} />
-                </div>
-                <p className="mb-1 fw-bold text-slate-700" style={{ fontSize: '0.95rem' }}>Arrastra y suelta o pega con Ctrl+V</p>
-                <p className="text-xs text-slate-500 mb-0">o haz clic para explorar en tus archivos (JPG, PNG, WEBP)</p>
-              </div>
-            )}
+        <header className="inventory-manager-header">
+          <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Inventario</Link><h1>Inventario de equipos</h1><p>Organiza tus artículos y consulta lo que está disponible para cada clase.</p></div>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-outline-primary d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
+              style={{ fontSize: '0.875rem' }}
+              onClick={() => setShowImportModal(true)}
+            >
+              <FiDownload size={16} style={{ transform: 'rotate(180deg)' }} /> Importar Excel
+            </button>
+            <button type="button" className="inventory-add-button" aria-expanded={showForm} aria-controls="inventory-editor" onClick={() => { setShowForm(true); setEditingId(null); setForm(empty); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}><FiPlus size={18} /> Nuevo artículo</button>
           </div>
+        </header>
+        <Notice message={message} />
+        <ConfirmComponent />
+        <ExcelImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            fetchItems(false);
+            setMessage({ type: 'success', text: 'Inventario actualizado tras la importación masiva.' });
+          }}
+        />
+        <div className="inventory-summary">
+          {[{ label: 'Artículos registrados', value: stats.totalTipos, unit: 'tipos de equipo', icon: FiTag }, { label: 'Stock total', value: stats.totalStock, unit: 'unidades en inventario', icon: FiLayers }, { label: 'Disponibles', value: stats.totalDisponible, unit: 'unidades para préstamo', icon: FiPackage }, { label: 'Requieren atención', value: stats.mantenimientos, unit: 'en mantenimiento o agotados', icon: FiAlertTriangle }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
         </div>
 
-        <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
-        <div>
-          <label className={label} htmlFor="inventory-category">Categoría</label>
-          <select id="inventory-category" className={input} value={form.categoria}
-            onChange={event => setForm({ ...form, categoria: event.target.value })} required>
-            <option value="" disabled>Selecciona una categoría…</option>
-            {categoriasDisponibles.map(category => <option key={category} value={category}>{category}</option>)}
-          </select>
-          {!creatingCategory ? <button type="button" className="inventory-new-category" aria-expanded={false}
-            onClick={() => setCreatingCategory(true)}><FiPlus size={15} /> Nueva categoría</button> :
-            <div className="inventory-category-create">
-              <label htmlFor="inventory-category-name">Nombre de la nueva categoría</label>
-              <input id="inventory-category-name" className={input} value={categoryName} autoFocus
-                placeholder="Ej. Cargadores o controles" onChange={event => setCategoryName(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') { event.preventDefault(); addCategory(); }
-                  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setCreatingCategory(false); setCategoryName(''); }
-                }} />
-              <div><button type="button" className={primaryButton} disabled={!categoryName.trim()} onClick={addCategory}><FiPlus size={14} /> Crear y seleccionar</button>
-                <button type="button" className={secondaryButton} onClick={() => { setCreatingCategory(false); setCategoryName(''); }}>Cancelar</button></div>
-              <small>Se guardará en el inventario al guardar el artículo.</small>
-            </div>}
-        </div>
-        <div>
-          <label className={label}>Cantidad Total</label>
-          <input className={input} type="number" min="0" value={form.cantidad_total} 
-            onChange={(e) => {
-              const newTotal = Number(e.target.value);
-              const diff = newTotal - form.cantidad_total;
-              setForm({ 
-                ...form, 
-                cantidad_total: newTotal,
-                cantidad_disponible: Math.max(0, form.cantidad_disponible + diff)
-              });
-            }} required />
-        </div>
-        <div>
-          <label className={label}>Cantidad Disponible</label>
-          <input className={input} type="number" min="0" value={form.cantidad_disponible} 
-            onChange={(e) => {
-              const newDisp = Number(e.target.value);
-              setForm({
-                ...form,
-                cantidad_disponible: Math.min(newDisp, form.cantidad_total)
-              });
-            }} required />
-        </div>
-        <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ubicación / Almacén" /></div>
-        <div>
-          <label className={label}>Estado</label>
-          <select className={input} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
-            <option value="disponible">Disponible</option>
-            <option value="mantenimiento">Mantenimiento</option>
-            <option value="agotado">Agotado</option>
-          </select>
-        </div>
-        <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Modelo del equipo " /></div>
-
-        <div className="flex gap-2 md:col-span-4 pt-2">
-          {editingId !== null && <button type="button" className={`${dangerButton} inventory-editor-delete d-inline-flex align-items-center gap-2`} onClick={() => { setMessage(null); setConfirmDelete(true); }}><FiTrash2 size={15} /> Eliminar artículo</button>}
-          <button disabled={confirmDelete} className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
-            {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
-            {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Registrar artículo'}
-          </button>
-          <button className={secondaryButton} type="button" onClick={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}>Cancelar</button>
-        </div>
-        </fieldset>
-      </form>
-      </InventoryEditorContainer>
-      {editingId !== null && confirmDelete && <InventoryDeleteDialog
-        name={items.find(item => item.id === editingId)?.nombre || form.nombre}
-        deleting={deleting} error={message?.type === 'error' ? message.text : undefined}
-        onCancel={() => { setConfirmDelete(false); setMessage(null); }}
-        onConfirm={() => void deleteItem(editingId)} />}
-
-      {/* Filter and Table Panel */}
-      <div className={`${panel} inventory-list-panel p-4 space-y-4`}>
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
-              <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                Mostrando {filteredItems.length} de {items.length} artículos
-              </span>
-            </div>
-
-            {/* Chips de Estado */}
-            <div className="d-flex align-items-center gap-1 flex-wrap">
-              {[
-                { id: 'todos', label: 'Todos', count: items.length },
-                { id: 'disponible', label: 'Disponibles', count: items.filter((i) => i.estado === 'disponible').length },
-                { id: 'mantenimiento', label: 'Mantenimiento', count: items.filter((i) => i.estado === 'mantenimiento').length },
-                { id: 'agotado', label: 'Agotados', count: items.filter((i) => i.estado === 'agotado').length },
-              ].map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className={`btn btn-sm rounded-pill fw-bold text-xs d-inline-flex align-items-center gap-1 ${selectedEstado === chip.id ? 'btn-primary' : 'btn-light border text-slate-600'}`}
-                  onClick={() => { setSelectedEstado(chip.id); setStatusFilter(chip.id === 'todos' ? '' : chip.id); }}
-                >
-                  {chip.label}
-                  <span className={`badge rounded-pill text-xs ${selectedEstado === chip.id ? 'bg-white text-primary' : 'bg-secondary bg-opacity-20 text-slate-700'}`}>
-                    {chip.count}
+        {/* Add / Edit Form */}
+        <InventoryEditorContainer floating={showForm && editingId !== null} saving={saving || deleting} onClose={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); }}>
+          <form id="inventory-editor" hidden={!showForm} onSubmit={submit} className={`${panel} inventory-editor grid gap-4 p-6 md:grid-cols-4`}>
+            <fieldset disabled={saving || deleting} className="inventory-editor-fields">
+              <div className="md:col-span-4 border-b border-slate-200 pb-3 flex items-center justify-between">
+                <h2 id="inventory-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+                  <span className="rounded d-flex align-items-center justify-content-center bg-blue-50 text-blue-600" style={{ width: '30px', height: '30px' }}>
+                    {editingId ? <FiEdit2 size={15} /> : <FiPlus size={15} />}
                   </span>
-                </button>
-              ))}
-            </div>
-          </div>
+                  {editingId ? 'Editar Artículo' : 'Nuevo artículo'}
+                </h2>
+                {editingId && (
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
+                    Modificando ID #{editingId}
+                  </span>
+                )}
+              </div>
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: '240px' }}>
-              <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
-              <input
-                className={`${input} w-full`}
-                placeholder="🔍 Buscar por equipo, modelo, ubicación o categoría..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              <FiFilter className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
-              <select
-                className={`${input} md:w-48`}
-                aria-label="Filtrar por categoría"
-                value={selectedCategoria}
-                onChange={(e) => setSelectedCategoria(e.target.value)}
-              >
-                <option value="">Todas las categorías</option>
-                {categoriasDisponibles.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
+              {editingId !== null && message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
+
+              <div className="md:col-span-4 mb-3">
+                <label className={`${label} mb-2 d-block`}>Imagen del equipo (Opcional)</label>
+                <div
+                  className={`d-flex flex-column align-items-center justify-content-center p-4 rounded-3 text-center transition-all ${previewUrl ? 'bg-light border' : 'bg-white'}`}
+                  style={{ border: previewUrl ? '1px solid #e2e8f0' : '2px dashed #cbd5e1', cursor: 'pointer', position: 'relative' }}
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => document.getElementById('inventory-image-upload')?.click()}
+                >
+                  <input
+                    id="inventory-image-upload"
+                    type="file"
+                    accept="image/jpeg, image/png, image/webp"
+                    className="d-none"
+                    onChange={(e) => handleFileSelection(e.target.files?.[0])}
+                  />
+                  {previewUrl ? (
+                    <div className="position-relative">
+                      <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle rounded-circle p-1 shadow-sm d-flex align-items-center justify-content-center"
+                        style={{ width: '26px', height: '26px', zIndex: 10 }}
+                        title="Quitar imagen"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImageFile(null);
+                          setPreviewUrl(null);
+                          setRemoveImagen(true);
+                        }}
+                      >
+                        <FiX size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-2">
+                      <div className="mb-2 p-3 rounded-circle bg-slate-50 text-slate-400 d-inline-block">
+                        <FiImage size={28} />
+                      </div>
+                      <p className="mb-1 fw-bold text-slate-700" style={{ fontSize: '0.95rem' }}>Arrastra y suelta o pega con Ctrl+V</p>
+                      <p className="text-xs text-slate-500 mb-0">o haz clic para explorar en tus archivos (JPG, PNG, WEBP)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div><label className={label}>Nombre del equipo</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Equipo" required /></div>
+              <div>
+                <label className={label} htmlFor="inventory-category">Categoría</label>
+                <select id="inventory-category" className={input} value={form.categoria}
+                  onChange={event => setForm({ ...form, categoria: event.target.value })} required>
+                  <option value="" disabled>Selecciona una categoría…</option>
+                  {categoriasDisponibles.map(category => <option key={category} value={category}>{category}</option>)}
+                </select>
+                {!creatingCategory ? <button type="button" className="inventory-new-category" aria-expanded={false}
+                  onClick={() => setCreatingCategory(true)}><FiPlus size={15} /> Nueva categoría</button> :
+                  <div className="inventory-category-create">
+                    <label htmlFor="inventory-category-name">Nombre de la nueva categoría</label>
+                    <input id="inventory-category-name" className={input} value={categoryName} autoFocus
+                      placeholder="Ej. Cargadores o controles" onChange={event => setCategoryName(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') { event.preventDefault(); addCategory(); }
+                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setCreatingCategory(false); setCategoryName(''); }
+                      }} />
+                    <div><button type="button" className={primaryButton} disabled={!categoryName.trim()} onClick={addCategory}><FiPlus size={14} /> Crear y seleccionar</button>
+                      <button type="button" className={secondaryButton} onClick={() => { setCreatingCategory(false); setCategoryName(''); }}>Cancelar</button></div>
+                    <small>Se guardará en el inventario al guardar el artículo.</small>
+                  </div>}
+              </div>
+              <div>
+                <label className={label}>Cantidad Total</label>
+                <input className={input} type="number" min="0" value={form.cantidad_total}
+                  onChange={(e) => {
+                    const newTotal = Number(e.target.value);
+                    const diff = newTotal - form.cantidad_total;
+                    setForm({
+                      ...form,
+                      cantidad_total: newTotal,
+                      cantidad_disponible: Math.max(0, form.cantidad_disponible + diff)
+                    });
+                  }} required />
+              </div>
+              <div>
+                <label className={label}>Cantidad Disponible</label>
+                <input className={input} type="number" min="0" value={form.cantidad_disponible}
+                  onChange={(e) => {
+                    const newDisp = Number(e.target.value);
+                    setForm({
+                      ...form,
+                      cantidad_disponible: Math.min(newDisp, form.cantidad_total)
+                    });
+                  }} required />
+              </div>
+              <div><label className={label}>Cód. Patrimonial / Etiqueta</label><input className={input} value={form.codigo_patrimonial} onChange={(e) => setForm({ ...form, codigo_patrimonial: e.target.value })} placeholder="Ej. CP-2024-001" /></div>
+              <div><label className={label}>N° de Serie (Fábrica)</label><input className={input} value={form.numero_serie} onChange={(e) => setForm({ ...form, numero_serie: e.target.value })} placeholder="Ej. 5CD1234XYZ" /></div>
+              <div><label className={label}>Marca</label><input className={input} value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Ej. Epson, HP, Samsung" /></div>
+              <div><label className={label}>Modelo</label><input className={input} value={form.modelo} onChange={(e) => setForm({ ...form, modelo: e.target.value })} placeholder="Ej. EB-X39, ProBook" /></div>
+              <div>
+                <label className={label}>Condición física</label>
+                <select className={input} value={form.condicion} onChange={(e) => setForm({ ...form, condicion: e.target.value })}>
+                  <option value="bueno">Bueno (Operativo)</option>
+                  <option value="regular">Regular (Desgaste leve)</option>
+                  <option value="malo">Malo / Requiere servicio</option>
+                </select>
+              </div>
+              <div>
+                <label className={label}>Situación administrativa</label>
+                <select className={input} value={form.situacion_administrativa} onChange={(e) => setForm({ ...form, situacion_administrativa: e.target.value })}>
+                  <option value="activo">Activo (En uso regular)</option>
+                  <option value="baja">Dado de baja</option>
+                  <option value="perdido">Perdido / Hurtado</option>
+                  <option value="pendiente_revision">Pendiente de revisión</option>
+                </select>
+              </div>
+              <div><label className={label}>Ubicación</label><input className={input} value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ubicación / Almacén" /></div>
+              <div>
+                <label className={label}>Estado</label>
+                <select className={input} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+                  <option value="disponible">Disponible</option>
+                  <option value="no_prestable">No prestable</option>
+                  <option value="mantenimiento">Mantenimiento</option>
+                  <option value="agotado">Agotado</option>
+                </select>
+              </div>
+              <div className="md:col-span-2"><label className={label}>Descripción / Notas</label><input className={input} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Detalles u observaciones del equipo" /></div>
+
+              <div className="flex gap-2 md:col-span-4 pt-2">
+                {editingId !== null && <button type="button" className={`${dangerButton} inventory-editor-delete d-inline-flex align-items-center gap-2`} onClick={() => { setMessage(null); setConfirmDelete(true); }}><FiTrash2 size={15} /> Eliminar artículo</button>}
+                <button disabled={confirmDelete} className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+                  {editingId ? <FiSave size={15} /> : <FiPlus size={15} />}
+                  {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Registrar artículo'}
+                </button>
+                <button className={secondaryButton} type="button" onClick={() => { setConfirmDelete(false); setEditingId(null); setForm(empty); setShowForm(false); setImageFile(null); setPreviewUrl(null); setRemoveImagen(false); }}>Cancelar</button>
+              </div>
+            </fieldset>
+          </form>
+        </InventoryEditorContainer>
+        {editingId !== null && confirmDelete && <InventoryDeleteDialog
+          name={items.find(item => item.id === editingId)?.nombre || form.nombre}
+          deleting={deleting} error={message?.type === 'error' ? message.text : undefined}
+          onCancel={() => { setConfirmDelete(false); setMessage(null); }}
+          onConfirm={() => void deleteItem(editingId)} />}
+
+        {/* Filter and Table Panel */}
+        <div className={`${panel} inventory-list-panel p-4 space-y-4`}>
+          <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
+                <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                  Mostrando {filteredItems.length} de {items.length} artículos
+                </span>
+              </div>
+
+              {/* Chips de Estado */}
+              <div className="d-flex align-items-center gap-1 flex-wrap">
+                {[
+                  { id: 'todos', label: 'Todos', count: items.length },
+                  { id: 'disponible', label: 'Disponibles', count: items.filter((i) => i.estado === 'disponible').length },
+                  { id: 'no_prestable', label: 'No prestables', count: items.filter((i) => i.estado === 'no_prestable').length },
+                  { id: 'mantenimiento', label: 'Mantenimiento', count: items.filter((i) => i.estado === 'mantenimiento').length },
+                  { id: 'agotado', label: 'Agotados', count: items.filter((i) => i.estado === 'agotado').length },
+                ].map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className={`btn btn-sm rounded-pill fw-bold text-xs d-inline-flex align-items-center gap-1 ${selectedEstado === chip.id ? 'btn-primary' : 'btn-light border text-slate-600'}`}
+                    onClick={() => { setSelectedEstado(chip.id); setStatusFilter(chip.id === 'todos' ? '' : chip.id); }}
+                  >
+                    {chip.label}
+                    <span className={`badge rounded-pill text-xs ${selectedEstado === chip.id ? 'bg-white text-primary' : 'bg-secondary bg-opacity-20 text-slate-700'}`}>
+                      {chip.count}
+                    </span>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-            {(search || selectedCategoria || selectedEstado !== 'todos' || statusFilter) && (
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: '240px' }}>
+                <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+                <input
+                  className={`${input} w-full`}
+                  placeholder="Buscar"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <FiFilter className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
+                <select
+                  className={`${input} md:w-48`}
+                  aria-label="Filtrar por categoría"
+                  value={selectedCategoria}
+                  onChange={(e) => setSelectedCategoria(e.target.value)}
+                >
+                  <option value="">Todas las categorías</option>
+                  {categoriasDisponibles.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              {(search || selectedCategoria || selectedEstado !== 'todos' || statusFilter) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
+                  onClick={() => { setSearch(''); setSelectedCategoria(''); setSelectedEstado('todos'); setStatusFilter(''); }}
+                >
+                  <FiX size={14} /> Limpiar filtros
+                </button>
+              )}
               <button
                 type="button"
-                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
-                onClick={() => { setSearch(''); setSelectedCategoria(''); setSelectedEstado('todos'); setStatusFilter(''); }}
+                className="btn btn-sm btn-outline-success ms-auto d-inline-flex align-items-center gap-1 fw-bold text-xs"
+                onClick={handleExportInventario}
+                title="Descargar lista completa en Excel/CSV"
               >
-                <FiX size={14} /> Limpiar filtros
+                <FiDownload size={14} /> Exportar Excel
               </button>
-            )}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="inventory-table">
+              <thead>
+                <tr>
+                  <th>Artículo / Código</th>
+                  <th>Categoría / Marca</th>
+                  <th>Condición</th>
+                  <th>Stock / Nivel</th>
+                  <th>Ubicación</th>
+                  <th>Estado</th>
+                  <th className="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td className="text-center py-6 text-slate-500" colSpan={7}>Cargando inventario...</td></tr>
+                ) : filteredItems.length === 0 ? (
+                  <tr><td className="text-center py-6 text-slate-500" colSpan={7}>{items.length ? 'No hay resultados con estos filtros. Prueba otra búsqueda.' : 'Aún no hay artículos. Usa «Nuevo artículo» para comenzar.'}</td></tr>
+                ) : (
+                  filteredItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="inventory-item-name">
+                          <span className="inventory-item-icon" style={{ overflow: 'hidden', padding: item.imagen_url ? 0 : undefined }}>
+                            {item.imagen_url ? (
+                              <img src={item.imagen_url} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <FiPackage size={17} />
+                            )}
+                          </span>
+                          <div>
+                            <strong>{item.nombre}</strong>
+                            <small className="d-block text-slate-500">
+                              {[
+                                item.codigo_patrimonial ? `Patr: ${item.codigo_patrimonial}` : null,
+                                item.numero_serie ? `S/N: ${item.numero_serie}` : null,
+                                !item.codigo_patrimonial && !item.numero_serie ? `EQ-${String(item.id).padStart(3, '0')}` : null,
+                              ].filter(Boolean).join(' • ')}
+                            </small>
+                            {item.situacion_administrativa && item.situacion_administrativa !== 'activo' && (
+                              <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle text-xs px-1.5 py-0 mt-1 d-inline-block">
+                                {item.situacion_administrativa.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {item.descripcion && <div className="text-xs text-slate-500 mt-0.5">{item.descripcion}</div>}
+                      </td>
+                      <td>
+                        <span className="category-chip">{item.categoria}</span>
+                        {(item.marca || item.modelo) && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            {[item.marca, item.modelo].filter(Boolean).join(' - ')}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge rounded-pill text-xs px-2 py-1 ${
+                          item.condicion === 'malo' ? 'bg-danger text-white' : item.condicion === 'regular' ? 'bg-warning text-dark' : 'bg-success text-white'
+                        }`}>
+                          {item.condicion === 'malo' ? 'Malo / Reparar' : item.condicion === 'regular' ? 'Regular' : 'Bueno (Operativo)'}
+                        </span>
+                      </td>
+                      <td>
+                        <StockMeter disponible={item.cantidad_disponible} total={item.cantidad_total} />
+                      </td>
+                      <td className="text-sm text-slate-700 font-medium">
+                        <span className="d-inline-flex align-items-center gap-1">
+                          <FiMapPin size={13} className="text-slate-400" />
+                          {item.ubicacion || 'Sin especificar'}
+                        </span>
+                      </td>
+                      <td>
+                        <StatusBadge value={item.estado} />
+                      </td>
+                      <td className="text-right space-x-2">
+                        <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(item)}><FiEdit2 size={13} />Editar</button>
+                        <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => remove(item.id)}><FiTrash2 size={13} />Eliminar</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="inventory-table">
-            <thead>
-              <tr>
-                <th>Artículo / Descripción</th>
-                <th>Categoría</th>
-                <th>Stock / Nivel</th>
-                <th>Ubicación</th>
-                <th>Estado</th>
-                <th className="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>Cargando inventario...</td></tr>
-              ) : filteredItems.length === 0 ? (
-                <tr><td className="text-center py-6 text-slate-500" colSpan={6}>{items.length ? 'No hay resultados con estos filtros. Prueba otra búsqueda.' : 'Aún no hay artículos. Usa «Nuevo artículo» para comenzar.'}</td></tr>
-              ) : (
-                filteredItems.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <div className="inventory-item-name">
-                        <span className="inventory-item-icon" style={{ overflow: 'hidden', padding: item.imagen_url ? 0 : undefined }}>
-                          {item.imagen_url ? (
-                            <img src={item.imagen_url} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <FiPackage size={17} />
-                          )}
-                        </span>
-                        <div><strong>{item.nombre}</strong><small>EQ-{String(item.id).padStart(3, '0')}</small></div>
-                      </div>
-                      {item.descripcion && <div className="text-xs text-slate-500 mt-0.5">{item.descripcion}</div>}
-                    </td>
-                    <td>
-                      <span className="category-chip">{item.categoria}</span>
-                    </td>
-                    <td>
-                      <StockMeter disponible={item.cantidad_disponible} total={item.cantidad_total} />
-                    </td>
-                    <td className="text-sm text-slate-700 font-medium">
-                      <span className="d-inline-flex align-items-center gap-1">
-                        <FiMapPin size={13} className="text-slate-400" />
-                        {item.ubicacion || 'Sin especificar'}
-                      </span>
-                    </td>
-                    <td>
-                      <StatusBadge value={item.estado} />
-                    </td>
-                    <td className="text-right space-x-2">
-                      <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(item)}><FiEdit2 size={13} />Editar</button>
-                      <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => remove(item.id)}><FiTrash2 size={13} />Eliminar</button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <p className="inventory-list-footnote">El stock se actualiza al registrar préstamos y devoluciones.</p>
+        <p className="inventory-list-footnote">El stock se actualiza al registrar préstamos y devoluciones.</p>
       </div>
     </div>
   );
@@ -829,7 +979,7 @@ export function AdminProfesoresView() {
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
-  
+
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchUsuarios = async () => {
@@ -874,23 +1024,23 @@ export function AdminProfesoresView() {
     if (saving) return;
     setSaving(true);
     try {
-    const payload = editingId && !form.password ? { ...form, password: undefined } : form;
-    const response = await fetch(editingId ? `/api/usuarios/${editingId}` : '/api/usuarios', {
-      method: editingId ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      const payload = editingId && !form.password ? { ...form, password: undefined } : form;
+      const response = await fetch(editingId ? `/api/usuarios/${editingId}` : '/api/usuarios', {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      setMessage({ type: 'error', text: await readError(response) });
-      return;
-    }
+      if (!response.ok) {
+        setMessage({ type: 'error', text: await readError(response) });
+        return;
+      }
 
-    setForm(empty);
-    setEditingId(null);
-    setShowForm(false);
-    setMessage({ type: 'success', text: editingId ? 'Usuario actualizado con éxito' : 'Usuario creado con éxito' });
-    await fetchUsuarios();
+      setForm(empty);
+      setEditingId(null);
+      setShowForm(false);
+      setMessage({ type: 'success', text: editingId ? 'Usuario actualizado con éxito' : 'Usuario creado con éxito' });
+      await fetchUsuarios();
     } catch { setMessage({ type: 'error', text: 'No se pudieron guardar o actualizar los datos. Intenta nuevamente.' }); }
     finally { setSaving(false); }
   };
@@ -987,36 +1137,36 @@ export function AdminProfesoresView() {
         {[{ label: 'Profesores', value: usuarios.filter(user => user.role === 'profesor').length, unit: 'docentes registrados', icon: FiUsers }, { label: 'Cuentas activas', value: usuarios.filter(user => user.activo).length, unit: 'con acceso al sistema', icon: FiUserCheck }, { label: 'Cuentas inactivas', value: usuarios.filter(user => !user.activo).length, unit: 'con acceso desactivado', icon: FiUserX }, { label: 'Administradores', value: usuarios.filter(user => user.role === 'admin').length, unit: 'usuarios de administración', icon: FiShield }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
       </div>
       {showForm && <InventoryEditorContainer floating saving={saving} titleId="teacher-editor-title" onClose={() => setShowForm(false)}>
-      <form onSubmit={submit} className={`${panel} inventory-editor`}><fieldset disabled={saving} className="inventory-editor-fields">
-        <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
-          <h2 id="teacher-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
-            <span className="rounded d-flex align-items-center justify-content-center bg-purple-50 text-purple-700" style={{ width: '30px', height: '30px' }}>
-              {editingId ? <FiEdit2 size={15} /> : <FiUser size={15} />}
-            </span>
-            {editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
-          </h2>
-        </div>
-        {message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
-        <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
-        <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
-        <div><label className={label}>DNI / Usuario</label><input className={input} type="text" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
-        <div><label className={label}>Correo Personal Contacto</label><input className={input} type="email" value={form.correo_personal} onChange={(e) => setForm({ ...form, correo_personal: e.target.value })} placeholder="contacto@email.com" /></div>
-        <div><label className={label}>Teléfono / WhatsApp</label><input className={input} value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+51999999999" /></div>
-        <div><label className={label}>Contraseña</label><input className={input} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'Opcional (dejar vacío para mantener)' : 'DNI por defecto'} /></div>
-        <div><label className={label}>Rol de Acceso</label><select className={input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as any })}><option value="profesor">Profesor</option><option value="admin">Administrador</option></select></div>
-        {editingId !== null && <div className="flex items-end mb-2">
-          <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Cuenta activa
-          </label>
-        </div>}
-        <div className="flex items-end gap-2 md:col-span-4 pt-2">
-          <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
-            {editingId ? <FiSave size={15} /> : <FiUser size={15} />}
-            {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear usuario'}
-          </button>
-          <button className={secondaryButton} type="button" onClick={() => setShowForm(false)}>Cancelar</button>
-        </div>
-      </fieldset></form>
+        <form onSubmit={submit} className={`${panel} inventory-editor`}><fieldset disabled={saving} className="inventory-editor-fields">
+          <div className="md:col-span-4 border-b border-slate-200 pb-2 flex justify-between items-center">
+            <h2 id="teacher-editor-title" className="text-base font-bold text-slate-900 d-flex align-items-center gap-2">
+              <span className="rounded d-flex align-items-center justify-content-center bg-purple-50 text-purple-700" style={{ width: '30px', height: '30px' }}>
+                {editingId ? <FiEdit2 size={15} /> : <FiUser size={15} />}
+              </span>
+              {editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+            </h2>
+          </div>
+          {message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
+          <div><label className={label}>Nombre</label><input className={input} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
+          <div><label className={label}>Apellido</label><input className={input} value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required /></div>
+          <div><label className={label}>DNI / Usuario</label><input className={input} type="text" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
+          <div><label className={label}>Correo Personal Contacto</label><input className={input} type="email" value={form.correo_personal} onChange={(e) => setForm({ ...form, correo_personal: e.target.value })} placeholder="contacto@email.com" /></div>
+          <div><label className={label}>Teléfono / WhatsApp</label><input className={input} value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+51999999999" /></div>
+          <div><label className={label}>Contraseña</label><input className={input} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'Opcional (dejar vacío para mantener)' : 'DNI por defecto'} /></div>
+          <div><label className={label}>Rol de Acceso</label><select className={input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as any })}><option value="profesor">Profesor</option><option value="admin">Administrador</option></select></div>
+          {editingId !== null && <div className="flex items-end mb-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Cuenta activa
+            </label>
+          </div>}
+          <div className="flex items-end gap-2 md:col-span-4 pt-2">
+            <button className={`${primaryButton} d-inline-flex align-items-center gap-2`} type="submit">
+              {editingId ? <FiSave size={15} /> : <FiUser size={15} />}
+              {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear usuario'}
+            </button>
+            <button className={secondaryButton} type="button" onClick={() => setShowForm(false)}>Cancelar</button>
+          </div>
+        </fieldset></form>
       </InventoryEditorContainer>}
 
       <section className={teacherStyles.directory} aria-label="Directorio de usuarios">
@@ -1151,113 +1301,113 @@ export function AdminProfesoresView() {
 
       {selectedUser && (
         <InventoryEditorContainer floating saving={false} titleId="teacher-profile-title" onClose={() => setSelectedUser(null)}>
-              <div className="teacher-profile-content">
-                <div className="modal-header border-b border-slate-200 p-4">
-                  <h5 id="teacher-profile-title" className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
-                    <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
-                      <FiEye size={15} />
+          <div className="teacher-profile-content">
+            <div className="modal-header border-b border-slate-200 p-4">
+              <h5 id="teacher-profile-title" className="modal-title font-bold text-slate-900 d-flex align-items-center gap-2">
+                <span className="rounded d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style={{ width: '30px', height: '30px' }}>
+                  <FiEye size={15} />
+                </span>
+                Información del Usuario
+              </h5>
+
+            </div>
+
+            <div className="modal-body p-4">
+              <div className="d-flex align-items-center gap-3 mb-4">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    fontSize: '20px',
+                    backgroundColor: ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'][selectedUser.id % 8],
+                  }}
+                >
+                  {selectedUser.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-900" style={{ fontSize: '1.05rem' }}>
+                    {selectedUser.nombre} {selectedUser.apellido}
+                  </div>
+                  <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                    <span className={`category-chip d-inline-flex align-items-center gap-1 ${selectedUser.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
+                      {selectedUser.role === 'admin' ? <FiShield size={11} /> : <FiUser size={11} />}
+                      {selectedUser.role === 'admin' ? 'Administrador' : 'Profesor'}
                     </span>
-                    Información del Usuario
-                  </h5>
-
-                </div>
-
-                <div className="modal-body p-4">
-                  <div className="d-flex align-items-center gap-3 mb-4">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                      style={{
-                        width: '56px',
-                        height: '56px',
-                        fontSize: '20px',
-                        backgroundColor: ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'][selectedUser.id % 8],
-                      }}
-                    >
-                      {selectedUser.nombre.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-900" style={{ fontSize: '1.05rem' }}>
-                        {selectedUser.nombre} {selectedUser.apellido}
-                      </div>
-                      <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                        <span className={`category-chip d-inline-flex align-items-center gap-1 ${selectedUser.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}`}>
-                          {selectedUser.role === 'admin' ? <FiShield size={11} /> : <FiUser size={11} />}
-                          {selectedUser.role === 'admin' ? 'Administrador' : 'Profesor'}
-                        </span>
-                        <span className="teacher-profile-status">{selectedUser.activo ? 'Cuenta activa' : 'Cuenta inactiva'}</span>
-                      </div>
-                    </div>
+                    <span className="teacher-profile-status">{selectedUser.activo ? 'Cuenta activa' : 'Cuenta inactiva'}</span>
                   </div>
-
-                  <div className="d-flex flex-column gap-2">
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiHash size={13} />
-                      </span>
-                      <span><span className="font-semibold text-slate-500">DNI:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiBookOpen size={13} />
-                      </span>
-                      <span><span className="font-semibold text-slate-500">Área / Cargo:</span> <strong className="text-slate-800">{selectedUser.area || 'Sin asignar'}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiMail size={13} />
-                      </span>
-                      <span><span className="font-semibold text-slate-500">Usuario de acceso:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiUser size={13} />
-                      </span>
-                      <span><span className="font-semibold text-slate-500">Correo de contacto:</span> <strong className="text-slate-800">{selectedUser.correo_personal || 'Sin correo'}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiPhone size={13} />
-                      </span>
-                      <span><span className="font-semibold text-slate-500">Teléfono / WhatsApp:</span> <strong className="text-slate-800">{selectedUser.telefono || 'Sin teléfono'}</strong></span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
-                      <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
-                        <FiCalendar size={13} />
-                      </span>
-                      <span>
-                        <span className="font-semibold text-slate-500">Registrado el:</span>{' '}
-                        <strong className="text-slate-800">
-                          {selectedUser.fecha_creacion ? new Date(selectedUser.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Fecha no disponible'}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
-                  <button
-                    className={`${secondaryButton} d-inline-flex align-items-center gap-1`}
-                    onClick={() => {
-                      setSelectedUser(null);
-                      edit(selectedUser);
-                    }}
-                  >
-                    <FiEdit2 size={13} />Editar
-                  </button>
-                  <button
-                    className={`${selectedUser.activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`}
-                    onClick={() => {
-                      setSelectedUser(null);
-                      deactivate(selectedUser.id);
-                    }}
-                  >
-                    {selectedUser.activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
-                  </button>
-                  <button className={secondaryButton} onClick={() => setSelectedUser(null)}>
-                    Cerrar
-                  </button>
                 </div>
               </div>
+
+              <div className="d-flex flex-column gap-2">
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiHash size={13} />
+                  </span>
+                  <span><span className="font-semibold text-slate-500">DNI:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiBookOpen size={13} />
+                  </span>
+                  <span><span className="font-semibold text-slate-500">Área / Cargo:</span> <strong className="text-slate-800">{selectedUser.area || 'Sin asignar'}</strong></span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiMail size={13} />
+                  </span>
+                  <span><span className="font-semibold text-slate-500">Usuario de acceso:</span> <strong className="text-slate-800">{selectedUser.email}</strong></span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiUser size={13} />
+                  </span>
+                  <span><span className="font-semibold text-slate-500">Correo de contacto:</span> <strong className="text-slate-800">{selectedUser.correo_personal || 'Sin correo'}</strong></span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiPhone size={13} />
+                  </span>
+                  <span><span className="font-semibold text-slate-500">Teléfono / WhatsApp:</span> <strong className="text-slate-800">{selectedUser.telefono || 'Sin teléfono'}</strong></span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-slate-600" style={{ fontSize: '0.85rem' }}>
+                  <span className="rounded d-flex align-items-center justify-content-center bg-slate-100 text-slate-500 flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FiCalendar size={13} />
+                  </span>
+                  <span>
+                    <span className="font-semibold text-slate-500">Registrado el:</span>{' '}
+                    <strong className="text-slate-800">
+                      {selectedUser.fecha_creacion ? new Date(selectedUser.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Fecha no disponible'}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer border-t border-slate-200 p-3 flex justify-end gap-2">
+              <button
+                className={`${secondaryButton} d-inline-flex align-items-center gap-1`}
+                onClick={() => {
+                  setSelectedUser(null);
+                  edit(selectedUser);
+                }}
+              >
+                <FiEdit2 size={13} />Editar
+              </button>
+              <button
+                className={`${selectedUser.activo ? dangerButton : primaryButton} d-inline-flex align-items-center gap-1`}
+                onClick={() => {
+                  setSelectedUser(null);
+                  deactivate(selectedUser.id);
+                }}
+              >
+                {selectedUser.activo ? <><FiUserX size={13} />Desactivar</> : <><FiUserCheck size={13} />Activar</>}
+              </button>
+              <button className={secondaryButton} onClick={() => setSelectedUser(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
         </InventoryEditorContainer>
       )}
     </section>
@@ -1354,6 +1504,22 @@ export function AdminSolicitudesView() {
       cancelada: solicitudes.filter(s => s.estado === 'cancelada').length,
     };
   }, [solicitudes]);
+
+  const handleExportSolicitudes = () => {
+    exportToCsv('solicitudes_secundaria', [
+      { key: 'id', label: 'ID Solicitud' },
+      { key: 'profesor_nombre', label: 'Nombre Docente' },
+      { key: 'apellido', label: 'Apellidos' },
+      { key: 'item_nombre', label: 'Artículo / Aula' },
+      { key: 'cantidad_solicitada', label: 'Cantidad' },
+      { key: 'seccion', label: 'Sección' },
+      { key: 'numero_aula', label: 'Aula' },
+      { key: 'motivo', label: 'Motivo' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'fecha_solicitud', label: 'Fecha Solicitud' },
+      { key: 'comentarios', label: 'Comentarios' },
+    ], solicitudes);
+  };
 
   return (
     <PageShell title="Control de Solicitudes" subtitle="Supervisa, aprueba o rechaza los pedidos de equipos y reservas de aula realizados por los docentes.">
@@ -1454,7 +1620,7 @@ export function AdminSolicitudesView() {
             </div>
           </div>
 
-          <div className="col-12 col-md-2 text-md-end">
+          <div className="col-12 col-md-2 text-md-end d-flex justify-content-md-end align-items-center gap-1">
             {(search || selectedEstado !== 'todas' || fechaInicio || fechaFin) && (
               <button
                 type="button"
@@ -1464,6 +1630,14 @@ export function AdminSolicitudesView() {
                 <FiX size={14} /> Limpiar
               </button>
             )}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 fw-bold text-xs"
+              onClick={handleExportSolicitudes}
+              title="Descargar solicitudes en Excel"
+            >
+              <FiDownload size={14} /> Excel
+            </button>
           </div>
         </div>
       </div>
@@ -1674,7 +1848,7 @@ export function ProfesorSolicitudesView() {
       return;
     }
     setSubmitting(true);
-    
+
     const bodyPayload: any = {
       profesor_id: user?.id,
       ...(solicitudType === 'equipo' ? requestLocation : {}),
@@ -1758,344 +1932,344 @@ export function ProfesorSolicitudesView() {
   return (
     <PageShell title="Mis solicitudes y préstamos" subtitle="Todo lo que necesitas para tu próxima clase.">
       <div className="teacher-requests">
-      <ConfirmComponent />
-      {showSubmittedNotice && <RequestSubmittedNotice onAccept={() => setShowSubmittedNotice(false)} />}
-      
-      {/* SELECTOR DE VISTA: SOLICITUDES vs PRÉSTAMOS */}
-      <div className="d-flex align-items-center gap-2 mb-3 bg-white p-2 rounded-3 border shadow-sm">
-        <button
-          type="button"
-          className={`btn btn-sm ${viewMode === 'solicitudes' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
-          onClick={() => setViewMode('solicitudes')}
-        >
-          <FiInbox size={15} className="me-1" /> Mis Solicitudes ({solicitudes.length})
-        </button>
-        <button
-          type="button"
-          className={`btn btn-sm ${viewMode === 'prestamos' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
-          onClick={() => setViewMode('prestamos')}
-        >
-          <FiPackage size={15} className="me-1" /> Mis Préstamos de Equipos ({prestamos.length})
-        </button>
-      </div>
+        <ConfirmComponent />
+        {showSubmittedNotice && <RequestSubmittedNotice onAccept={() => setShowSubmittedNotice(false)} />}
 
-      <div className="teacher-requests-intro">
-        <span className="teacher-requests-intro-icon"><FiInbox size={24} /></span>
-        <div>
-          <span className="teacher-requests-eyebrow">TU ACTIVIDAD</span>
-          <h2>{viewMode === 'prestamos' ? 'Historial de Préstamos' : 'Tus clases, en marcha'}</h2>
-          <p>{viewMode === 'prestamos' ? 'Consulta los equipos entregados por administración y el estado de su devolución.' : counts.pendiente ? `${counts.pendiente} solicitud${counts.pendiente > 1 ? 'es' : ''} en espera de revisión.` : 'Solicita equipos o reserva el aula de cómputo.'}</p>
-        </div>
-      </div>
-      <Notice message={message} />
-
-      {viewMode === 'prestamos' ? (
-        <div className="inventory-panel inventory-list-panel mt-3 p-3">
-          <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-            <div>
-              <h3 className="h6 font-bold text-slate-900 mb-0 d-flex align-items-center gap-2">
-                <FiPackage className="text-primary" size={18} /> Equipos Prestados a mi Nombre
-              </h3>
-              <p className="text-xs text-slate-500 mb-0">Control de entregas, fechas de inicio y registro de devoluciones.</p>
-            </div>
-            <span className="badge bg-primary text-white font-semibold px-3 py-2 rounded-pill">
-              {prestamos.length} registro(s)
-            </span>
-          </div>
-
-          {prestamos.length === 0 ? (
-            <div className="text-center py-5 text-slate-500 bg-slate-50 rounded-3 border">
-              <FiPackage size={38} className="text-slate-300 mb-2" />
-              <p className="fw-semibold mb-0">No tienes registros de préstamos de equipos.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="inventory-table">
-                <thead>
-                  <tr>
-                    <th>Equipo / Código</th>
-                    <th>Cant.</th>
-                    <th>Detalle</th>
-                    <th>Fecha Préstamo</th>
-                    <th>Fecha Devolución</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prestamos.map((prestamo) => {
-                    const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
-                    return (
-                      <tr key={prestamo.id} className={overdue ? 'bg-red-50/50' : ''}>
-                        <td>
-                          <div className="inventory-item-name">
-                            <span className="inventory-item-icon"><FiPackage size={17} /></span>
-                            <div>
-                              <strong>{prestamo.item_nombre || 'Equipo'}</strong>
-                              <small>PR-{String(prestamo.id).padStart(3, '0')}</small>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="font-semibold text-slate-800">{prestamo.cantidad}</td>
-                        <td className="loans-detail text-xs">{prestamo.detalle || '-'}</td>
-                        <td className="text-xs text-slate-500">
-                          {new Date(prestamo.fecha_prestamo).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="text-xs text-slate-500">
-                          {prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td>
-                          {overdue ? (
-                            <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
-                              <FiAlertTriangle size={12} /> Vencido
-                            </span>
-                          ) : (
-                            <StatusBadge value={prestamo.estado} />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
-      <div className="teacher-requests-toolbar">
-        <div className="d-flex align-items-center gap-2">
+        {/* SELECTOR DE VISTA: SOLICITUDES vs PRÉSTAMOS */}
+        <div className="d-flex align-items-center gap-2 mb-3 bg-white p-2 rounded-3 border shadow-sm">
           <button
             type="button"
-            onClick={() => setShowNewForm(!showNewForm)}
-            className="teacher-requests-create"
-            aria-expanded={showNewForm}
-            aria-controls="teacher-request-form"
+            className={`btn btn-sm ${viewMode === 'solicitudes' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
+            onClick={() => setViewMode('solicitudes')}
           >
-            {showNewForm ? <FiX size={16} /> : <FiPlus size={16} />}
-            {showNewForm ? 'Ocultar Formulario' : 'Nueva Solicitud'}
+            <FiInbox size={15} className="me-1" /> Mis Solicitudes ({solicitudes.length})
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${viewMode === 'prestamos' ? 'btn-primary font-bold shadow-sm' : 'btn-light text-slate-700'}`}
+            onClick={() => setViewMode('prestamos')}
+          >
+            <FiPackage size={15} className="me-1" /> Mis Préstamos de Equipos ({prestamos.length})
           </button>
         </div>
 
-        {/* SEARCH BAR */}
-        <div className="position-relative" style={{ minWidth: '240px' }}>
-          <FiSearch className="position-absolute text-secondary" size={15} style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            type="search"
-            aria-label="Buscar solicitudes por artículo o motivo"
-            className="inventory-form-input ps-5"
-            placeholder="Buscar por artículo o motivo..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* NEW REQUEST FORM (COLLAPSIBLE / ACCORDION) */}
-      {showNewForm && (
-        <form id="teacher-request-form" onSubmit={handleSubmit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
-          <div className="border-b border-slate-200 pb-2 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-            <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-0">
-              <span className="rounded-3 d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '32px', height: '32px' }}>
-                <FiSend size={16} />
-              </span>
-              Registrar Nueva Solicitud
-            </h2>
-            <div className="btn-group" role="group">
-              <button type="button" className={`btn btn-sm ${solicitudType === 'equipo' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('equipo')}>
-                Solicitar Equipo
-              </button>
-              <button type="button" className={`btn btn-sm ${solicitudType === 'aula' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('aula')}>
-                Solicitar Aula
-              </button>
-            </div>
+        <div className="teacher-requests-intro">
+          <span className="teacher-requests-intro-icon"><FiInbox size={24} /></span>
+          <div>
+            <span className="teacher-requests-eyebrow">TU ACTIVIDAD</span>
+            <h2>{viewMode === 'prestamos' ? 'Historial de Préstamos' : 'Tus clases, en marcha'}</h2>
+            <p>{viewMode === 'prestamos' ? 'Consulta los equipos entregados por administración y el estado de su devolución.' : counts.pendiente ? `${counts.pendiente} solicitud${counts.pendiente > 1 ? 'es' : ''} en espera de revisión.` : 'Solicita equipos o reserva el aula de cómputo.'}</p>
           </div>
+        </div>
+        <Notice message={message} />
 
-          <div className="row g-3">
-            {solicitudType === 'equipo' ? (
-              <>
-                <div className="col-12 col-md-6">
-                  <label className={label}>Artículo de Inventario</label>
-                  <select
-                    className={`${input} fw-semibold`}
-                    value={form.inventario_id}
-                    onChange={(e) => {
-                      setForm({ ...form, inventario_id: Number(e.target.value), cantidad_solicitada: 1 });
-                    }}
-                    required
-                  >
-                    <option value="0">-- Seleccionar artículo --</option>
-                    {items.map((item) => (
-                      <option key={item.id} value={item.id} disabled={item.cantidad_disponible <= 0}>
-                        {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        {viewMode === 'prestamos' ? (
+          <div className="inventory-panel inventory-list-panel mt-3 p-3">
+            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+              <div>
+                <h3 className="h6 font-bold text-slate-900 mb-0 d-flex align-items-center gap-2">
+                  <FiPackage className="text-primary" size={18} /> Equipos Prestados a mi Nombre
+                </h3>
+                <p className="text-xs text-slate-500 mb-0">Control de entregas, fechas de inicio y registro de devoluciones.</p>
+              </div>
+              <span className="badge bg-primary text-white font-semibold px-3 py-2 rounded-pill">
+                {prestamos.length} registro(s)
+              </span>
+            </div>
 
-                <div className="col-12 col-md-6">
-                  <label className={label}>Cantidad a solicitar</label>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="mobile-stepper">
-                      <button
-                        type="button"
-                        className="mobile-stepper-btn"
-                        onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.max(1, prev.cantidad_solicitada - 1) }))}
-                        disabled={form.cantidad_solicitada <= 1 || !form.inventario_id}
-                      >
-                        -
-                      </button>
-                      <span className="mobile-stepper-val">{form.cantidad_solicitada}</span>
-                      <button
-                        type="button"
-                        className="mobile-stepper-btn"
-                        onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.min(maxStock, prev.cantidad_solicitada + 1) }))}
-                        disabled={form.cantidad_solicitada >= maxStock || !form.inventario_id}
-                      >
-                        +
-                      </button>
-                    </div>
-                    <span className="text-secondary small">
-                      {selectedItemData ? `(De ${selectedItemData.cantidad_disponible} en stock)` : 'Selecciona un artículo primero'}
+            {prestamos.length === 0 ? (
+              <div className="text-center py-5 text-slate-500 bg-slate-50 rounded-3 border">
+                <FiPackage size={38} className="text-slate-300 mb-2" />
+                <p className="fw-semibold mb-0">No tienes registros de préstamos de equipos.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="inventory-table">
+                  <thead>
+                    <tr>
+                      <th>Equipo / Código</th>
+                      <th>Cant.</th>
+                      <th>Detalle</th>
+                      <th>Fecha Préstamo</th>
+                      <th>Fecha Devolución</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prestamos.map((prestamo) => {
+                      const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
+                      return (
+                        <tr key={prestamo.id} className={overdue ? 'bg-red-50/50' : ''}>
+                          <td>
+                            <div className="inventory-item-name">
+                              <span className="inventory-item-icon"><FiPackage size={17} /></span>
+                              <div>
+                                <strong>{prestamo.item_nombre || 'Equipo'}</strong>
+                                <small>PR-{String(prestamo.id).padStart(3, '0')}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="font-semibold text-slate-800">{prestamo.cantidad}</td>
+                          <td className="loans-detail text-xs">{prestamo.detalle || '-'}</td>
+                          <td className="text-xs text-slate-500">
+                            {new Date(prestamo.fecha_prestamo).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="text-xs text-slate-500">
+                            {prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </td>
+                          <td>
+                            {overdue ? (
+                              <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
+                                <FiAlertTriangle size={12} /> Vencido
+                              </span>
+                            ) : (
+                              <StatusBadge value={prestamo.estado} />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* TOP ACTIONS & NEW REQUEST TOGGLE */}
+            <div className="teacher-requests-toolbar">
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewForm(!showNewForm)}
+                  className="teacher-requests-create"
+                  aria-expanded={showNewForm}
+                  aria-controls="teacher-request-form"
+                >
+                  {showNewForm ? <FiX size={16} /> : <FiPlus size={16} />}
+                  {showNewForm ? 'Ocultar Formulario' : 'Nueva Solicitud'}
+                </button>
+              </div>
+
+              {/* SEARCH BAR */}
+              <div className="position-relative" style={{ minWidth: '240px' }}>
+                <FiSearch className="position-absolute text-secondary" size={15} style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="search"
+                  aria-label="Buscar solicitudes por artículo o motivo"
+                  className="inventory-form-input ps-5"
+                  placeholder="Buscar por artículo o motivo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* NEW REQUEST FORM (COLLAPSIBLE / ACCORDION) */}
+            {showNewForm && (
+              <form id="teacher-request-form" onSubmit={handleSubmit} className={`${panel} p-3 p-md-4 mb-4 border-2 border-primary`}>
+                <div className="border-b border-slate-200 pb-2 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                  <h2 className="text-base font-bold text-slate-900 d-flex align-items-center gap-2 mb-0">
+                    <span className="rounded-3 d-flex align-items-center justify-content-center bg-blue-50 text-blue-700" style={{ width: '32px', height: '32px' }}>
+                      <FiSend size={16} />
                     </span>
+                    Registrar Nueva Solicitud
+                  </h2>
+                  <div className="btn-group" role="group">
+                    <button type="button" className={`btn btn-sm ${solicitudType === 'equipo' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('equipo')}>
+                      Solicitar Equipo
+                    </button>
+                    <button type="button" className={`btn btn-sm ${solicitudType === 'aula' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setSolicitudType('aula')}>
+                      Solicitar Aula
+                    </button>
                   </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="col-12 col-md-4">
-                  <label className={label}>Fecha de reserva</label>
-                  <input
-                    type="date"
-                    className={input}
-                    value={aulaForm.fecha_reserva}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setAulaForm({ ...aulaForm, fecha_reserva: e.target.value })}
-                    required
-                  />
+
+                <div className="row g-3">
+                  {solicitudType === 'equipo' ? (
+                    <>
+                      <div className="col-12 col-md-6">
+                        <label className={label}>Artículo de Inventario</label>
+                        <select
+                          className={`${input} fw-semibold`}
+                          value={form.inventario_id}
+                          onChange={(e) => {
+                            setForm({ ...form, inventario_id: Number(e.target.value), cantidad_solicitada: 1 });
+                          }}
+                          required
+                        >
+                          <option value="0">-- Seleccionar artículo --</option>
+                          {items.map((item) => (
+                            <option key={item.id} value={item.id} disabled={item.cantidad_disponible <= 0}>
+                              {item.nombre} ({item.cantidad_disponible} disponibles) {item.categoria ? `• ${item.categoria}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className={label}>Cantidad a solicitar</label>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="mobile-stepper">
+                            <button
+                              type="button"
+                              className="mobile-stepper-btn"
+                              onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.max(1, prev.cantidad_solicitada - 1) }))}
+                              disabled={form.cantidad_solicitada <= 1 || !form.inventario_id}
+                            >
+                              -
+                            </button>
+                            <span className="mobile-stepper-val">{form.cantidad_solicitada}</span>
+                            <button
+                              type="button"
+                              className="mobile-stepper-btn"
+                              onClick={() => setForm((prev) => ({ ...prev, cantidad_solicitada: Math.min(maxStock, prev.cantidad_solicitada + 1) }))}
+                              disabled={form.cantidad_solicitada >= maxStock || !form.inventario_id}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <span className="text-secondary small">
+                            {selectedItemData ? `(De ${selectedItemData.cantidad_disponible} en stock)` : 'Selecciona un artículo primero'}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="col-12 col-md-4">
+                        <label className={label}>Fecha de reserva</label>
+                        <input
+                          type="date"
+                          className={input}
+                          value={aulaForm.fecha_reserva}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setAulaForm({ ...aulaForm, fecha_reserva: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="col-6 col-md-4">
+                        <label className={label}>Hora inicio</label>
+                        <input
+                          type="time"
+                          className={input}
+                          value={aulaForm.hora_inicio}
+                          onChange={(e) => setAulaForm({ ...aulaForm, hora_inicio: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-6 col-md-4">
+                        <label className={label}>Hora fin</label>
+                        <input
+                          type="time"
+                          className={input}
+                          value={aulaForm.hora_fin}
+                          onChange={(e) => setAulaForm({ ...aulaForm, hora_fin: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {solicitudType === 'equipo' && <div className="col-12"><RequestLocationFields value={requestLocation} onChange={setRequestLocation} /></div>}
+                  <div className="col-12">
+                    <label className={label}>Motivo o justificación de la clase</label>
+                    <div className="d-flex flex-wrap gap-1 mb-2">
+                      {motivosPredefinidos.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setForm({ ...form, motivo: preset })}
+                          className={`reason-preset-chip ${form.motivo === preset ? 'active' : ''}`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      className={input}
+                      value={form.motivo}
+                      onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                      placeholder="Ej. Clase de Computación 2do Grado o Examen Final"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12 d-flex gap-2 pt-2">
+                    <button
+                      className={`${primaryButton} d-inline-flex align-items-center gap-2`}
+                      type="submit"
+                      disabled={submitting || (solicitudType === 'equipo' && !form.inventario_id)}
+                    >
+                      <FiSend size={15} />
+                      {submitting ? 'Enviando...' : 'Enviar Solicitud'}
+                    </button>
+                    <button
+                      type="button"
+                      className={secondaryButton}
+                      onClick={() => setShowNewForm(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                <div className="col-6 col-md-4">
-                  <label className={label}>Hora inicio</label>
-                  <input
-                    type="time"
-                    className={input}
-                    value={aulaForm.hora_inicio}
-                    onChange={(e) => setAulaForm({ ...aulaForm, hora_inicio: e.target.value })}
-                  />
-                </div>
-                <div className="col-6 col-md-4">
-                  <label className={label}>Hora fin</label>
-                  <input
-                    type="time"
-                    className={input}
-                    value={aulaForm.hora_fin}
-                    onChange={(e) => setAulaForm({ ...aulaForm, hora_fin: e.target.value })}
-                  />
-                </div>
-              </>
+              </form>
             )}
 
-            {solicitudType === 'equipo' && <div className="col-12"><RequestLocationFields value={requestLocation} onChange={setRequestLocation} /></div>}
-            <div className="col-12">
-              <label className={label}>Motivo o justificación de la clase</label>
-              <div className="d-flex flex-wrap gap-1 mb-2">
-                {motivosPredefinidos.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setForm({ ...form, motivo: preset })}
-                    className={`reason-preset-chip ${form.motivo === preset ? 'active' : ''}`}
-                  >
-                    {preset}
-                  </button>
-                ))}
+            <div className="teacher-requests-filters" role="group" aria-label="Filtrar solicitudes por estado">
+              {([
+                ['todas', 'Todas'], ['pendiente', 'Pendientes'], ['aprobada', 'Aprobadas'],
+                ['rechazada', 'Rechazadas'], ['cancelada', 'Canceladas'],
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" aria-pressed={activeTab === value}
+                  onClick={() => setActiveTab(value)} className={activeTab === value ? 'active' : ''}>
+                  {label}<span>{counts[value]}</span>
+                </button>
+              ))}
+            </div>
+            <p className="teacher-requests-results" aria-live="polite">{filteredSolicitudes.length} solicitud{filteredSolicitudes.length !== 1 ? 'es' : ''}{activeTab === 'todas' ? ' en tu historial' : ' en este estado'}</p>
+            {filteredSolicitudes.length === 0 ? (
+              <div className="teacher-requests-empty">
+                <FiInbox size={36} aria-hidden="true" />
+                <h3>{solicitudes.length ? 'No hay coincidencias' : 'Prepara tu próxima clase'}</h3>
+                <p>{solicitudes.length ? 'Prueba otro estado o busca con otras palabras.' : 'Tus solicitudes de equipos y aula aparecerán aquí.'}</p>
+                <button type="button" className="teacher-requests-create" onClick={() => {
+                  if (solicitudes.length) { setActiveTab('todas'); setSearchQuery(''); }
+                  else { setShowNewForm(true); }
+                }}>{solicitudes.length ? 'Ver todas las solicitudes' : 'Crear mi primera solicitud'}</button>
               </div>
-              <input
-                className={input}
-                value={form.motivo}
-                onChange={(e) => setForm({ ...form, motivo: e.target.value })}
-                placeholder="Ej. Clase de Computación 2do Grado o Examen Final"
-                required
-              />
-            </div>
-
-            <div className="col-12 d-flex gap-2 pt-2">
-              <button
-                className={`${primaryButton} d-inline-flex align-items-center gap-2`}
-                type="submit"
-                disabled={submitting || (solicitudType === 'equipo' && !form.inventario_id)}
-              >
-                <FiSend size={15} />
-                {submitting ? 'Enviando...' : 'Enviar Solicitud'}
-              </button>
-              <button
-                type="button"
-                className={secondaryButton}
-                onClick={() => setShowNewForm(false)}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
-
-      <div className="teacher-requests-filters" role="group" aria-label="Filtrar solicitudes por estado">
-        {([
-          ['todas', 'Todas'], ['pendiente', 'Pendientes'], ['aprobada', 'Aprobadas'],
-          ['rechazada', 'Rechazadas'], ['cancelada', 'Canceladas'],
-        ] as const).map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={activeTab === value}
-            onClick={() => setActiveTab(value)} className={activeTab === value ? 'active' : ''}>
-            {label}<span>{counts[value]}</span>
-          </button>
-        ))}
-      </div>
-      <p className="teacher-requests-results" aria-live="polite">{filteredSolicitudes.length} solicitud{filteredSolicitudes.length !== 1 ? 'es' : ''}{activeTab === 'todas' ? ' en tu historial' : ' en este estado'}</p>
-      {filteredSolicitudes.length === 0 ? (
-        <div className="teacher-requests-empty">
-          <FiInbox size={36} aria-hidden="true" />
-          <h3>{solicitudes.length ? 'No hay coincidencias' : 'Prepara tu próxima clase'}</h3>
-          <p>{solicitudes.length ? 'Prueba otro estado o busca con otras palabras.' : 'Tus solicitudes de equipos y aula aparecerán aquí.'}</p>
-          <button type="button" className="teacher-requests-create" onClick={() => {
-            if (solicitudes.length) { setActiveTab('todas'); setSearchQuery(''); }
-            else { setShowNewForm(true); }
-          }}>{solicitudes.length ? 'Ver todas las solicitudes' : 'Crear mi primera solicitud'}</button>
-        </div>
-      ) : (
-        <div className="teacher-requests-grid">
-          {filteredSolicitudes.slice(0, visibleRequestCount).map((sol) => {
-            const schedule = !sol.inventario_id ? sol.item_nombre?.match(/^(.*?) \((.*?)\)$/) : null;
-            const title = schedule?.[1] || sol.item_nombre || 'Artículo sin especificar';
-            const isClassroom = !sol.inventario_id;
-            return (
-              <article key={sol.id} className={`teacher-request-card is-${sol.estado}`}>
-                <div className="teacher-request-card-top">
-                  <span className={`teacher-request-icon ${isClassroom ? 'classroom' : ''}`}>
-                    {isClassroom ? <FiCalendar size={21} /> : <FiPackage size={21} />}
-                  </span>
-                  <StatusBadge value={sol.estado} />
-                </div>
-                <span className="teacher-requests-eyebrow">{isClassroom ? 'RESERVA DE AULA' : 'PRÉSTAMO DE EQUIPO'}</span>
-                <h3>{title}</h3>
-                {schedule && <div className="teacher-request-schedule"><FiClock size={16} /><span>{schedule[2]}</span></div>}
-                {!isClassroom && <div className="teacher-request-schedule"><FiLayers size={16} /><span>{sol.cantidad_solicitada} unidad{sol.cantidad_solicitada !== 1 ? 'es' : ''}</span></div>}
-                <div className="teacher-request-reason"><span>Para tu clase</span><p>{sol.motivo || 'Sin motivo especificado'}</p></div>
-                {formatRequestLocation(sol) && <div className="teacher-request-schedule"><FiMapPin size={16} /><span>{formatRequestLocation(sol)}</span></div>}
-                {sol.comentarios && <div className="teacher-request-note"><FiMail size={16} /><div><strong>Administración</strong><p>{sol.comentarios}</p></div></div>}
-                <footer>
-                  <span>Enviada el <time dateTime={sol.fecha_solicitud}>{new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</time></span>
-                  {sol.estado === 'pendiente' && <button type="button" onClick={() => handleCancel(sol.id)} aria-label={`Cancelar solicitud de ${title}`}><FiX size={16} />Cancelar solicitud</button>}
-                </footer>
-              </article>
-            );
-          })}
-        </div>
-      )}
-      <RequestListControls total={filteredSolicitudes.length} visible={visibleRequestCount}
-        onMore={() => setVisibleRequestCount(count => count + 2)} onLess={() => setVisibleRequestCount(2)} />
-      </>
-      )}
+            ) : (
+              <div className="teacher-requests-grid">
+                {filteredSolicitudes.slice(0, visibleRequestCount).map((sol) => {
+                  const schedule = !sol.inventario_id ? sol.item_nombre?.match(/^(.*?) \((.*?)\)$/) : null;
+                  const title = schedule?.[1] || sol.item_nombre || 'Artículo sin especificar';
+                  const isClassroom = !sol.inventario_id;
+                  return (
+                    <article key={sol.id} className={`teacher-request-card is-${sol.estado}`}>
+                      <div className="teacher-request-card-top">
+                        <span className={`teacher-request-icon ${isClassroom ? 'classroom' : ''}`}>
+                          {isClassroom ? <FiCalendar size={21} /> : <FiPackage size={21} />}
+                        </span>
+                        <StatusBadge value={sol.estado} />
+                      </div>
+                      <span className="teacher-requests-eyebrow">{isClassroom ? 'RESERVA DE AULA' : 'PRÉSTAMO DE EQUIPO'}</span>
+                      <h3>{title}</h3>
+                      {schedule && <div className="teacher-request-schedule"><FiClock size={16} /><span>{schedule[2]}</span></div>}
+                      {!isClassroom && <div className="teacher-request-schedule"><FiLayers size={16} /><span>{sol.cantidad_solicitada} unidad{sol.cantidad_solicitada !== 1 ? 'es' : ''}</span></div>}
+                      <div className="teacher-request-reason"><span>Para tu clase</span><p>{sol.motivo || 'Sin motivo especificado'}</p></div>
+                      {formatRequestLocation(sol) && <div className="teacher-request-schedule"><FiMapPin size={16} /><span>{formatRequestLocation(sol)}</span></div>}
+                      {sol.comentarios && <div className="teacher-request-note"><FiMail size={16} /><div><strong>Administración</strong><p>{sol.comentarios}</p></div></div>}
+                      <footer>
+                        <span>Enviada el <time dateTime={sol.fecha_solicitud}>{new Date(sol.fecha_solicitud).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</time></span>
+                        {sol.estado === 'pendiente' && <button type="button" onClick={() => handleCancel(sol.id)} aria-label={`Cancelar solicitud de ${title}`}><FiX size={16} />Cancelar solicitud</button>}
+                      </footer>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+            <RequestListControls total={filteredSolicitudes.length} visible={visibleRequestCount}
+              onMore={() => setVisibleRequestCount(count => count + 2)} onLess={() => setVisibleRequestCount(2)} />
+          </>
+        )}
       </div>
     </PageShell>
   );
@@ -2103,7 +2277,7 @@ export function ProfesorSolicitudesView() {
 
 export function AdminPrestamosView() {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
-  const [tab, setTab] = useState<'pendiente' | 'prestado' | 'vencido' | 'devuelto'>('pendiente');
+  const [tab, setTab] = useState<'pendiente' | 'prestado' | 'vencido' | 'devuelto' | 'cancelado'>('pendiente');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [message, setMessage] = useState<Message>(null);
@@ -2111,6 +2285,11 @@ export function AdminPrestamosView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [procesando, setProcesando] = useState<number | null>(null);
+
+  // Modal para registrar devolución con observaciones y condición física
+  const [devolutionModal, setDevolutionModal] = useState<{ id: number; equipo: string; profesor: string } | null>(null);
+  const [devolutionObservacion, setDevolutionObservacion] = useState('');
+  const [devolutionEstado, setDevolutionEstado] = useState('bueno');
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
@@ -2147,13 +2326,13 @@ export function AdminPrestamosView() {
         body: JSON.stringify({ estado: 'prestado' }),
       });
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Equipo entregado al profesor' });
+        setMessage({ type: 'success', text: 'Equipo entregado al profesor exitosamente' });
         setPrestamos((prev) =>
           prev.map((p) => (p.id === id ? { ...p, estado: 'prestado' } : p))
         );
       } else {
         const data = await response.json().catch(() => null);
-        setMessage({ type: 'error', text: data?.error || 'Error' });
+        setMessage({ type: 'error', text: data?.error || 'Error al confirmar entrega' });
       }
     } catch {
       setMessage({ type: 'error', text: 'No se pudo registrar la entrega. Intenta nuevamente.' });
@@ -2162,34 +2341,99 @@ export function AdminPrestamosView() {
     }
   };
 
-  const marcarDevuelto = async (id: number) => {
-    confirmDialog('¿Confirmas que el/la profesor(a) devolvió el equipo?', async () => {
+  const cancelarPrestamoPendiente = (id: number) => {
+    confirmDialog('¿Deseas cancelar este préstamo pendiente? El registro se anulará y las unidades volverán automáticamente al stock disponible.', async () => {
       setProcesando(id);
       try {
         const response = await fetch(`/api/prestamos/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ estado: 'devuelto' }),
+          body: JSON.stringify({ estado: 'cancelado' }),
         });
         if (response.ok) {
-          setMessage({ type: 'success', text: 'Equipo devuelto al inventario' });
+          setMessage({ type: 'success', text: 'Préstamo cancelado y stock restablecido al inventario' });
           setPrestamos((prev) =>
-            prev.map((p) =>
-              p.id === id
-                ? { ...p, estado: 'devuelto', fecha_devolucion: new Date().toISOString() }
-                : p
-            )
+            prev.map((p) => (p.id === id ? { ...p, estado: 'cancelado' } : p))
           );
         } else {
           const data = await response.json().catch(() => null);
-          setMessage({ type: 'error', text: data?.error || 'No se pudo marcar como devuelto' });
+          setMessage({ type: 'error', text: data?.error || 'No se pudo cancelar el préstamo' });
         }
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Error al marcar como devuelto' });
+      } catch {
+        setMessage({ type: 'error', text: 'Error de conexión al cancelar préstamo' });
       } finally {
         setProcesando(null);
       }
-    }, false);
+    }, true);
+  };
+
+  const abrirModalDevolucion = (p: Prestamo) => {
+    setDevolutionModal({
+      id: p.id,
+      equipo: p.item_nombre || 'Equipo',
+      profesor: `${p.profesor_nombre || ''} ${p.apellido || ''}`.trim(),
+    });
+    setDevolutionObservacion('');
+    setDevolutionEstado('bueno');
+  };
+
+  const confirmarDevolucionConDetalle = async () => {
+    if (!devolutionModal) return;
+    setProcesando(devolutionModal.id);
+    try {
+      const response = await fetch(`/api/prestamos/${devolutionModal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estado: 'devuelto',
+          devolucion_observacion: devolutionObservacion.trim() || null,
+          devolucion_estado: devolutionEstado,
+        }),
+      });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Equipo devuelto e ingresado al inventario con éxito' });
+        setPrestamos((prev) =>
+          prev.map((p) =>
+            p.id === devolutionModal.id
+              ? {
+                  ...p,
+                  estado: 'devuelto',
+                  fecha_devolucion: new Date().toISOString(),
+                  devolucion_observacion: devolutionObservacion.trim() || null,
+                  devolucion_estado: devolutionEstado,
+                }
+              : p
+          )
+        );
+        setDevolutionModal(null);
+        setDevolutionObservacion('');
+        setDevolutionEstado('bueno');
+      } else {
+        const data = await response.json().catch(() => null);
+        setMessage({ type: 'error', text: data?.error || 'No se pudo registrar la devolución' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Error al registrar devolución' });
+    } finally {
+      setProcesando(null);
+    }
+  };
+
+  const handleExportPrestamos = () => {
+    exportToCsv('prestamos_secundaria', [
+      { key: 'id', label: 'ID Préstamo' },
+      { key: 'item_nombre', label: 'Equipo' },
+      { key: 'categoria', label: 'Categoría' },
+      { key: 'profesor_nombre', label: 'Docente' },
+      { key: 'apellido', label: 'Apellidos' },
+      { key: 'cantidad', label: 'Cantidad' },
+      { key: 'detalle', label: 'Detalle' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'fecha_prestamo', label: 'Fecha Préstamo' },
+      { key: 'fecha_devolucion', label: 'Fecha Devolución' },
+      { key: 'devolucion_estado', label: 'Condición al Devolver' },
+      { key: 'devolucion_observacion', label: 'Observaciones Devolución' },
+    ], prestamos);
   };
 
   const eliminar = (id: number) => {
@@ -2219,7 +2463,8 @@ export function AdminPrestamosView() {
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const vencidos = prestamos.filter((p) => isLoanOverdue(p.fecha_prestamo, p.estado));
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
-  const currentLoans = tab === 'pendiente' ? pendientes : tab === 'vencido' ? vencidos : tab === 'prestado' ? activos : devueltos;
+  const cancelados = prestamos.filter((p) => p.estado === 'cancelado');
+  const currentLoans = tab === 'pendiente' ? pendientes : tab === 'vencido' ? vencidos : tab === 'prestado' ? activos : tab === 'cancelado' ? cancelados : devueltos;
   const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const list = currentLoans.filter(loan => normalize(`${loan.item_nombre || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.detalle || ''} ${loan.id}`).includes(normalize(search.trim())));
   const borrowedUnits = activos.reduce((sum, loan) => sum + Number(loan.cantidad), 0);
@@ -2227,175 +2472,262 @@ export function AdminPrestamosView() {
   return (
     <div className="inventory-manager loans-manager">
       <div className="inventory-manager-inner">
-      <header className="inventory-manager-header">
-        <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Préstamos</Link><h1>Préstamos de equipos</h1><p>Controla las entregas, acompaña cada préstamo y registra las devoluciones.</p></div>
-        <div className="loans-header-actions"><Link href="/admin/historial" className="btn-secondary-custom"><FiUsers size={16} /> Historial por profesor</Link><button type="button" className="inventory-add-button" onClick={() => setShowNewLoan(true)}><FiPlus size={18} /> Nuevo préstamo</button></div>
-      </header>
-      <Notice message={message} />
-      <ConfirmComponent />
-      {showNewLoan && <AdminQuickForm type="loan" onClose={() => setShowNewLoan(false)} onSaved={() => { setTab('prestado'); setSearch(''); void fetchData(); }} />}
-      
-      {/* Filtro por Rango de Fechas */}
-      <div className={`${panel} p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3`}>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="fw-bold text-slate-800 d-flex align-items-center gap-1 me-2">
-            <FiCalendar size={16} className="text-primary" /> Filtrar por fechas:
-          </span>
-          <div className="d-flex align-items-center gap-1">
-            <span className="text-xs text-slate-500 font-semibold">Desde:</span>
-            <input
-              type="date"
-              className="form-control form-control-sm"
-              style={{ width: '150px' }}
-              value={fechaInicio}
-              onChange={(e) => setFechaInicio(e.target.value)}
-            />
-          </div>
-          <div className="d-flex align-items-center gap-1">
-            <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
-            <input
-              type="date"
-              className="form-control form-control-sm"
-              style={{ width: '150px' }}
-              value={fechaFin}
-              onChange={(e) => setFechaFin(e.target.value)}
-            />
-          </div>
-          {(fechaInicio || fechaFin) && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
-              onClick={() => { setFechaInicio(''); setFechaFin(''); }}
-            >
-              <FiX size={14} /> Limpiar fechas
+        <header className="inventory-manager-header">
+          <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Préstamos</Link><h1>Préstamos de equipos</h1><p>Controla las entregas, acompaña cada préstamo y registra las devoluciones.</p></div>
+          <div className="loans-header-actions">
+            <button type="button" className="btn-secondary-custom d-inline-flex align-items-center gap-1" onClick={handleExportPrestamos}>
+              <FiDownload size={15} /> Exportar Excel
             </button>
-          )}
-        </div>
-        <Link href="/admin/historial" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-1 text-xs">
-          <FiUsers size={15} /> Historial por Profesor
-        </Link>
-      </div>
+            <Link href="/admin/historial" className="btn-secondary-custom"><FiUsers size={16} /> Historial por profesor</Link>
+            <button type="button" className="inventory-add-button" onClick={() => setShowNewLoan(true)}><FiPlus size={18} /> Nuevo préstamo</button>
+          </div>
+        </header>
+        <Notice message={message} />
+        <ConfirmComponent />
+        {showNewLoan && <AdminQuickForm type="loan" onClose={() => setShowNewLoan(false)} onSaved={() => { setTab('prestado'); setSearch(''); void fetchData(); }} />}
 
-      <div className="inventory-summary">
-        {[
-          { label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox },
-          { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock },
-          { label: '⚠️ Vencidos', value: vencidos.length, unit: 'sin devolver a tiempo', icon: FiAlertTriangle, highlight: vencidos.length > 0 },
-          { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage },
-          { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle }
-        ].map(({ label, value, unit, icon: Icon, highlight }) => (
-          <div className={`inventory-summary-card ${highlight ? 'border border-danger bg-rose-50/50' : ''}`} key={label}>
-            <div>
-              <span className={highlight ? 'text-danger font-bold' : ''}>{label}</span>
-              <Icon size={20} className={highlight ? 'text-danger' : ''} />
+        {/* Modal de Registro de Devolución con Observaciones */}
+        {devolutionModal && (
+          <div className="position-fixed w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 9999, backdropFilter: 'blur(3px)' }}>
+            <div className="bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp" style={{ maxWidth: '480px', width: '92%' }}>
+              <div className="p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="p-2 rounded-circle bg-primary bg-opacity-10 text-primary">
+                    <FiCheckCircle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="h6 fw-bold text-slate-900 mb-0">Registrar Devolución de Equipo</h3>
+                    <small className="text-slate-500">Ingreso de artículo nuevamente al inventario</small>
+                  </div>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setDevolutionModal(null)}></button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="p-3 bg-light rounded-3 border mb-3">
+                  <div className="text-xs text-slate-500 font-semibold mb-1">EQUIPO Y DOCENTE</div>
+                  <div className="fw-bold text-slate-800">{devolutionModal.equipo}</div>
+                  <div className="text-sm text-slate-600 d-flex align-items-center gap-1 mt-1">
+                    <FiUser size={13} className="text-slate-400" /> {devolutionModal.profesor}
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="inventory-form-label fw-bold">Condición física del equipo devuelto</label>
+                  <select className="inventory-form-input w-100" value={devolutionEstado} onChange={e => setDevolutionEstado(e.target.value)}>
+                    <option value="bueno">Buen estado (Completo y operativo)</option>
+                    <option value="regular">Regular (Desgaste menor o rayones)</option>
+                    <option value="malo">Malo / Requiere reparación o faltan piezas</option>
+                  </select>
+                </div>
+
+                <div className="mb-2">
+                  <label className="inventory-form-label fw-bold">Observaciones / Incidencias (Opcional)</label>
+                  <textarea
+                    className="inventory-form-input w-100"
+                    rows={3}
+                    placeholder="Ej. Devuelto con control y cable HDMI completos; o falta adaptador..."
+                    value={devolutionObservacion}
+                    onChange={e => setDevolutionObservacion(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="p-3 bg-light border-top d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-light border btn-sm px-3" onClick={() => setDevolutionModal(null)} disabled={procesando !== null}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-primary btn-sm px-4 fw-bold d-inline-flex align-items-center gap-1" onClick={confirmarDevolucionConDetalle} disabled={procesando !== null}>
+                  <FiCheckCircle size={15} />
+                  {procesando !== null ? 'Guardando…' : 'Confirmar devolución'}
+                </button>
+              </div>
             </div>
-            <strong className={highlight ? 'text-danger' : ''}>{loading ? '—' : value}</strong>
-            <small>{unit}</small>
           </div>
-        ))}
-      </div>
-      <div className="inventory-panel inventory-list-panel">
-        <div className="inventory-list-toolbar">
-          <div><h2 className="loans-list-title">Registro de préstamos</h2><span className="loans-count">{list.length} registros</span></div>
-          <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar préstamos" placeholder="Buscar profesor, equipo o detalle…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><FiX size={15} /></button>}</label>
+        )}
+
+        {/* Filtro por Rango de Fechas */}
+        <div className={`${panel} p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3`}>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="fw-bold text-slate-800 d-flex align-items-center gap-1 me-2">
+              <FiCalendar size={16} className="text-primary" /> Filtrar por fechas:
+            </span>
+            <div className="d-flex align-items-center gap-1">
+              <span className="text-xs text-slate-500 font-semibold">Desde:</span>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                style={{ width: '150px' }}
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-1">
+              <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                style={{ width: '150px' }}
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+              />
+            </div>
+            {(fechaInicio || fechaFin) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
+                onClick={() => { setFechaInicio(''); setFechaFin(''); }}
+              >
+                <FiX size={14} /> Limpiar fechas
+              </button>
+            )}
+          </div>
+          <Link href="/admin/historial" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-1 text-xs">
+            <FiUsers size={15} /> Historial por Profesor
+          </Link>
         </div>
-        <div className="inventory-state-tabs" role="group" aria-label="Estado del préstamo">
-          {([
-            { value: 'pendiente', label: 'Por recoger', count: pendientes.length },
-            { value: 'prestado', label: 'Prestados', count: activos.length },
-            { value: 'vencido', label: '⚠️ Vencidos', count: vencidos.length },
-            { value: 'devuelto', label: 'Devueltos', count: devueltos.length }
-          ] as const).map(state => (
-            <button
-              key={state.value}
-              type="button"
-              className={`${tab === state.value ? 'active' : ''} ${state.value === 'vencido' && state.count > 0 ? 'text-danger font-bold' : ''}`}
-              aria-pressed={tab === state.value}
-              onClick={() => setTab(state.value)}
-            >
-              {state.label}<span>{state.count}</span>
-            </button>
+
+        <div className="inventory-summary">
+          {[
+            { label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox },
+            { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock },
+            { label: '⚠️ Vencidos', value: vencidos.length, unit: 'sin devolver a tiempo', icon: FiAlertTriangle, highlight: vencidos.length > 0 },
+            { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage },
+            { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle },
+            { label: 'Cancelados', value: cancelados.length, unit: 'entregas anuladas', icon: FiXCircle }
+          ].map(({ label, value, unit, icon: Icon, highlight }) => (
+            <div className={`inventory-summary-card ${highlight ? 'border border-danger bg-rose-50/50' : ''}`} key={label}>
+              <div>
+                <span className={highlight ? 'text-danger font-bold' : ''}>{label}</span>
+                <Icon size={20} className={highlight ? 'text-danger' : ''} />
+              </div>
+              <strong className={highlight ? 'text-danger' : ''}>{loading ? '—' : value}</strong>
+              <small>{unit}</small>
+            </div>
           ))}
         </div>
-        <p className="loans-tab-hint">
-          {tab === 'pendiente'
-            ? 'Confirma la entrega cuando el profesor recoja sus equipos.'
-            : tab === 'vencido'
-              ? 'Préstamos activos que superan las 24 horas sin devolución registrada.'
-              : tab === 'prestado'
-                ? 'Registra la devolución cuando los equipos regresen al inventario.'
-                : 'Consulta las entregas que ya fueron devueltas.'}
-        </p>
-        <div className="overflow-x-auto">
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>Equipo</th>
-              <th>Profesor</th>
-              <th>Cant.</th>
-              <th>Detalle</th>
-              <th>Fecha de Préstamo</th>
-              {tab === 'devuelto' && <th>Fecha de devolución</th>}
-              <th>Estado</th>
-              <th className="text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!loading && list.map((prestamo) => {
-              const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
-              return (
-              <tr key={prestamo.id} className={overdue ? 'bg-red-50/40' : ''}>
-                <td><div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{prestamo.item_nombre || 'Equipo'}</strong><small>PR-{String(prestamo.id).padStart(3, '0')}</small></div></div></td>
-                <td>
-                  <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
-                    <FiUser size={12} className="text-slate-400" />
-                    {prestamo.profesor_nombre} {prestamo.apellido}
-                  </span>
-                </td>
-                <td className="font-semibold">{prestamo.cantidad}</td>
-                <td className="loans-detail">{prestamo.detalle || '-'}</td>
-                <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                {tab === 'devuelto' && <td className="text-xs text-slate-500">{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>}
-                <td>
-                  {overdue ? (
-                    <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
-                      <FiAlertTriangle size={12} /> Vencido
-                    </span>
-                  ) : (
-                    <StatusBadge value={prestamo.estado} />
-                  )}
-                </td>
-                <td className="text-right">
-                  {prestamo.estado === 'pendiente' ? (
-                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarPrestado(prestamo.id)}>
-                      <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? 'Guardando…' : 'Confirmar entrega'}
-                    </button>
-                  ) : prestamo.estado === 'prestado' ? (
-                    <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarDevuelto(prestamo.id)}>
-                      <FiCheckCircle size={13} />
-                      {procesando === prestamo.id ? 'Guardando…' : 'Registrar devolución'}
-                    </button>
-                  ) : (
-                    <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => eliminar(prestamo.id)}>
-                      <FiTrash2 size={13} />
-                      Eliminar
-                    </button>
-                  )}
-                </td>
-              </tr>
-            );})}
-            {(loading || list.length === 0) && (
-              <tr>
-                <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                  {loading ? 'Cargando préstamos…' : search ? 'No se encontraron préstamos. Prueba otro nombre, equipo o detalle.' : tab === 'pendiente' ? 'Todo al día. No hay equipos pendientes de recoger.' : tab === 'prestado' ? 'No hay equipos prestados actualmente.' : 'Aún no hay devoluciones registradas.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <div className="inventory-panel inventory-list-panel">
+          <div className="inventory-list-toolbar">
+            <div><h2 className="loans-list-title">Registro de préstamos</h2><span className="loans-count">{list.length} registros</span></div>
+            <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar préstamos" placeholder="Buscar profesor, equipo o detalle…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><FiX size={15} /></button>}</label>
+          </div>
+          <div className="inventory-state-tabs" role="group" aria-label="Estado del préstamo">
+            {([
+              { value: 'pendiente', label: 'Por recoger', count: pendientes.length },
+              { value: 'prestado', label: 'Prestados', count: activos.length },
+              { value: 'vencido', label: '⚠️ Vencidos', count: vencidos.length },
+              { value: 'devuelto', label: 'Devueltos', count: devueltos.length },
+              { value: 'cancelado', label: 'Cancelados', count: cancelados.length }
+            ] as const).map(state => (
+              <button
+                key={state.value}
+                type="button"
+                className={`${tab === state.value ? 'active' : ''} ${state.value === 'vencido' && state.count > 0 ? 'text-danger font-bold' : ''}`}
+                aria-pressed={tab === state.value}
+                onClick={() => setTab(state.value)}
+              >
+                {state.label}<span>{state.count}</span>
+              </button>
+            ))}
+          </div>
+          <p className="loans-tab-hint">
+            {tab === 'pendiente'
+              ? 'Confirma la entrega cuando el profesor recoja sus equipos o cancela si no se retiró.'
+              : tab === 'vencido'
+                ? 'Préstamos activos que superan las 24 horas sin devolución registrada.'
+                : tab === 'prestado'
+                  ? 'Registra la devolución e inspecciona el estado al momento que regresen al inventario.'
+                  : tab === 'cancelado'
+                    ? 'Préstamos anulados antes del retiro (su stock fue restituido al inventario).'
+                    : 'Consulta las entregas que ya fueron devueltas y sus observaciones.'}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="inventory-table">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Profesor</th>
+                  <th>Cant.</th>
+                  <th>Detalle / Nota</th>
+                  <th>Fecha de Préstamo</th>
+                  {tab === 'devuelto' && <th>Devolución y Estado</th>}
+                  <th>Estado</th>
+                  <th className="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!loading && list.map((prestamo) => {
+                  const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
+                  return (
+                    <tr key={prestamo.id} className={overdue ? 'bg-red-50/40' : ''}>
+                      <td><div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{prestamo.item_nombre || 'Equipo'}</strong><small>PR-{String(prestamo.id).padStart(3, '0')}</small></div></div></td>
+                      <td>
+                        <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
+                          <FiUser size={12} className="text-slate-400" />
+                          {prestamo.profesor_nombre} {prestamo.apellido}
+                        </span>
+                      </td>
+                      <td className="font-semibold">{prestamo.cantidad}</td>
+                      <td className="loans-detail">{prestamo.detalle || '-'}</td>
+                      <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      {tab === 'devuelto' && (
+                        <td className="text-xs text-slate-600">
+                          <div>{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</div>
+                          {prestamo.devolucion_estado && (
+                            <span className={`badge rounded-pill text-xs mt-1 ${
+                              prestamo.devolucion_estado === 'malo' ? 'bg-danger text-white' : prestamo.devolucion_estado === 'regular' ? 'bg-warning text-dark' : 'bg-success text-white'
+                            }`}>
+                              {prestamo.devolucion_estado === 'malo' ? 'Con daño' : prestamo.devolucion_estado === 'regular' ? 'Regular' : 'Buen estado'}
+                            </span>
+                          )}
+                          {prestamo.devolucion_observacion && <div className="text-xs text-slate-500 italic mt-0.5">{prestamo.devolucion_observacion}</div>}
+                        </td>
+                      )}
+                      <td>
+                        {overdue ? (
+                          <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
+                            <FiAlertTriangle size={12} /> Vencido
+                          </span>
+                        ) : (
+                          <StatusBadge value={prestamo.estado} />
+                        )}
+                      </td>
+                      <td className="text-right">
+                        {prestamo.estado === 'pendiente' ? (
+                          <div className="d-flex justify-content-end gap-1">
+                            <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarPrestado(prestamo.id)}>
+                              <FiCheckCircle size={13} />
+                              {procesando === prestamo.id ? 'Guardando…' : 'Entregar'}
+                            </button>
+                            <button className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" disabled={procesando !== null} onClick={() => cancelarPrestamoPendiente(prestamo.id)} title="Cancelar entrega y reponer stock">
+                              <FiX size={13} />
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : prestamo.estado === 'prestado' ? (
+                          <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => abrirModalDevolucion(prestamo)}>
+                            <FiCheckCircle size={13} />
+                            {procesando === prestamo.id ? 'Guardando…' : 'Devolver'}
+                          </button>
+                        ) : (
+                          <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => eliminar(prestamo.id)}>
+                            <FiTrash2 size={13} />
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(loading || list.length === 0) && (
+                  <tr>
+                    <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
+                      {loading ? 'Cargando préstamos…' : search ? 'No se encontraron préstamos. Prueba otro nombre, equipo o detalle.' : tab === 'pendiente' ? 'Todo al día. No hay equipos pendientes de recoger.' : tab === 'prestado' ? 'No hay equipos prestados actualmente.' : tab === 'cancelado' ? 'No hay préstamos cancelados.' : 'Aún no hay devoluciones registradas.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

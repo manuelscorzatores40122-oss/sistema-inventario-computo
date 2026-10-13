@@ -14,27 +14,18 @@ type NotificacionItem = {
   link: string;
 };
 
-export function isLoanOverdue(fechaPrestamo: string | Date, estado: string): boolean {
-  if (estado !== 'prestado') return false;
-  const loanDate = new Date(fechaPrestamo);
-  const now = new Date();
-  const diffHours = (now.getTime() - loanDate.getTime()) / (1000 * 60 * 60);
-  return diffHours >= 24 || (now.getDate() !== loanDate.getDate() && diffHours >= 12);
-}
+import { useNotificationCenter, isLoanOverdue, getDaysOverdue } from '@/app/lib/useNotificationCenter';
 
-export function getDaysOverdue(fechaPrestamo: string | Date): number {
-  const loanDate = new Date(fechaPrestamo);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.max(1, diffDays);
-}
+export { isLoanOverdue, getDaysOverdue };
 
 export default function NotificacionesBell() {
   const [user, setUser] = useState<any>(null);
-  const [dbNotifs, setDbNotifs] = useState<any[]>([]);
-  const [overdueLoans, setOverdueLoans] = useState<any[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const {
+    notificaciones: dbNotifs,
+    solicitudes: pendingRequests,
+    usuarios: pendingUsers,
+    overdueLoans,
+  } = useNotificationCenter();
   const [open, setOpen] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
@@ -57,65 +48,6 @@ export default function NotificacionesBell() {
       if (Array.isArray(saved)) setReadIds(new Set(saved));
     } catch {}
   }, [user?.id]);
-
-  // Polling de datos
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-
-    const poll = async () => {
-      clearTimeout(timer);
-      try {
-        if (user.role === 'admin') {
-          const [nRes, rRes, uRes, pRes] = await Promise.all([
-            fetch('/api/notificaciones/whatsapp', { cache: 'no-store', signal: controller.signal }),
-            fetch('/api/solicitudes?estado=pendiente', { cache: 'no-store', signal: controller.signal }),
-            fetch('/api/usuarios?activo=false', { cache: 'no-store', signal: controller.signal }),
-            fetch('/api/prestamos?estado=prestado', { cache: 'no-store', signal: controller.signal }),
-          ]);
-          if (nRes.ok) { const d = await nRes.json(); setDbNotifs(d.notificaciones || []); }
-          if (rRes.ok) { const d = await rRes.json(); setPendingRequests(d.solicitudes || []); }
-          if (uRes.ok) { const d = await uRes.json(); setPendingUsers(d.usuarios || []); }
-          if (pRes.ok) {
-            const d = await pRes.json();
-            setOverdueLoans((d.prestamos || []).filter((p: any) => isLoanOverdue(p.fecha_prestamo, p.estado)));
-          }
-        } else {
-          // Profesor
-          const [nRes, sRes, pRes] = await Promise.all([
-            fetch('/api/notificaciones/whatsapp', { cache: 'no-store', signal: controller.signal }),
-            fetch(`/api/solicitudes?profesor_id=${user.id}`, { cache: 'no-store', signal: controller.signal }),
-            fetch(`/api/prestamos?profesor_id=${user.id}&estado=prestado`, { cache: 'no-store', signal: controller.signal }),
-          ]);
-          if (nRes.ok) { const d = await nRes.json(); setDbNotifs(d.notificaciones || []); }
-          if (sRes.ok) { const d = await sRes.json(); setPendingRequests(d.solicitudes || []); }
-          if (pRes.ok) {
-            const d = await pRes.json();
-            setOverdueLoans((d.prestamos || []).filter((p: any) => isLoanOverdue(p.fecha_prestamo, p.estado)));
-          }
-        }
-      } catch {}
-      finally {
-        timer = setTimeout(poll, 4000);
-      }
-    };
-
-    void poll();
-    const handleUpdate = () => { void poll(); };
-    window.addEventListener('admin-requests-updated', handleUpdate);
-    window.addEventListener('admin-users-updated', handleUpdate);
-    window.addEventListener('teacher-requests-updated', handleUpdate);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-      window.removeEventListener('admin-requests-updated', handleUpdate);
-      window.removeEventListener('admin-users-updated', handleUpdate);
-      window.removeEventListener('teacher-requests-updated', handleUpdate);
-    };
-  }, [user]);
 
   // Cerrar al hacer clic afuera
   useEffect(() => {

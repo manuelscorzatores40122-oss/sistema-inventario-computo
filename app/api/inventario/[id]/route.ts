@@ -37,9 +37,33 @@ export async function PUT(
 ) {
   let uploadedPublicId: string | null = null;
   try {
-    const { nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado, imagen_base64, remove_imagen } = await request.json();
+    const {
+      nombre,
+      descripcion,
+      categoria,
+      cantidad_total,
+      cantidad_disponible,
+      ubicacion,
+      estado,
+      imagen_base64,
+      remove_imagen,
+      codigo_patrimonial,
+      marca,
+      modelo,
+      condicion,
+      numero_serie,
+      color,
+      nivel,
+      observaciones,
+      procedencia_entidad,
+      documento_sustentatorio,
+      fecha_documento,
+      situacion_administrativa,
+      situacion_detalle
+    } = await request.json();
+
     const total = cantidad_total === undefined || cantidad_total === '' ? undefined : Number(cantidad_total);
-    const disponible = cantidad_disponible === undefined || cantidad_disponible === '' ? undefined : Number(cantidad_disponible);
+    let disponible = cantidad_disponible === undefined || cantidad_disponible === '' ? undefined : Number(cantidad_disponible);
 
     if (total !== undefined && (!Number.isInteger(total) || total < 0)) {
       return NextResponse.json(
@@ -55,9 +79,38 @@ export async function PUT(
       );
     }
 
-    // Obtener public ID anterior por si se reemplaza o elimina
-    const prevResult = await query('SELECT imagen_public_id FROM inventario WHERE id = $1', [params.id]);
-    const prevPublicId = prevResult.rows[0]?.imagen_public_id;
+    // Obtener item actual para resolver coherencia de estado y fotos
+    const prevResult = await query('SELECT * FROM inventario WHERE id = $1', [params.id]);
+    if (prevResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
+    }
+    const currentItem = prevResult.rows[0];
+    const prevPublicId = currentItem.imagen_public_id;
+
+    const finalAdmin = situacion_administrativa !== undefined ? situacion_administrativa : currentItem.situacion_administrativa;
+    const finalCondicion = condicion !== undefined ? condicion : currentItem.condicion;
+    let finalEstado = estado !== undefined ? estado : currentItem.estado;
+
+    // Reglas de integridad
+    if (finalCondicion === 'malo' && finalEstado === 'disponible') {
+      finalEstado = 'mantenimiento';
+    }
+    if (['baja', 'perdido', 'pendiente_revision'].includes(finalAdmin) && finalEstado === 'disponible') {
+      finalEstado = 'no_prestable';
+    }
+    if (finalEstado === 'no_prestable') {
+      disponible = 0;
+    }
+
+    const effectiveTotal = total !== undefined ? total : currentItem.cantidad_total;
+    const effectiveDisp = disponible !== undefined ? disponible : currentItem.cantidad_disponible;
+
+    if (effectiveDisp > effectiveTotal) {
+      return NextResponse.json(
+        { error: 'La cantidad disponible no puede exceder la cantidad total' },
+        { status: 400 }
+      );
+    }
 
     let imagen_url = undefined;
     let imagen_public_id = undefined;
@@ -88,17 +141,52 @@ export async function PUT(
            cantidad_disponible = COALESCE($5, cantidad_disponible),
            ubicacion = COALESCE($6, ubicacion),
            estado = COALESCE($7, estado),
+           codigo_patrimonial = COALESCE($8, codigo_patrimonial),
+           marca = COALESCE($9, marca),
+           modelo = COALESCE($10, modelo),
+           condicion = COALESCE($11, condicion),
+           numero_serie = COALESCE($12, numero_serie),
+           color = COALESCE($13, color),
+           nivel = COALESCE($14, nivel),
+           observaciones = COALESCE($15, observaciones),
+           procedencia_entidad = COALESCE($16, procedencia_entidad),
+           documento_sustentatorio = COALESCE($17, documento_sustentatorio),
+           fecha_documento = COALESCE($18, fecha_documento),
+           situacion_administrativa = COALESCE($19, situacion_administrativa),
+           situacion_detalle = COALESCE($20, situacion_detalle),
            updated_at = CURRENT_TIMESTAMP`;
     
-    const queryParams: any[] = [nombre, descripcion, categoria, total, disponible, ubicacion, estado, params.id];
-    let queryIndex = 9;
+    const queryParams: any[] = [
+      nombre !== undefined ? nombre : null,
+      descripcion !== undefined ? descripcion : null,
+      categoria !== undefined ? categoria : null,
+      total !== undefined ? total : null,
+      disponible !== undefined ? disponible : null,
+      ubicacion !== undefined ? ubicacion : null,
+      finalEstado !== undefined ? finalEstado : null,
+      codigo_patrimonial !== undefined ? codigo_patrimonial : null,
+      marca !== undefined ? marca : null,
+      modelo !== undefined ? modelo : null,
+      finalCondicion !== undefined ? finalCondicion : null,
+      numero_serie !== undefined ? numero_serie : null,
+      color !== undefined ? color : null,
+      nivel !== undefined ? nivel : null,
+      observaciones !== undefined ? observaciones : null,
+      procedencia_entidad !== undefined ? procedencia_entidad : null,
+      documento_sustentatorio !== undefined ? documento_sustentatorio : null,
+      fecha_documento !== undefined ? fecha_documento : null,
+      finalAdmin !== undefined ? finalAdmin : null,
+      situacion_detalle !== undefined ? situacion_detalle : null,
+      params.id
+    ];
+    let queryIndex = 22;
 
     if (imagen_url !== undefined) {
        updateQuery += `, imagen_url = $${queryIndex++}, imagen_public_id = $${queryIndex++}`;
        queryParams.push(imagen_url, imagen_public_id);
     }
     
-    updateQuery += ` WHERE id = $8 AND COALESCE($5, cantidad_disponible) <= COALESCE($4, cantidad_total) RETURNING *`;
+    updateQuery += ` WHERE id = $21 RETURNING *`;
 
     let result;
     try {

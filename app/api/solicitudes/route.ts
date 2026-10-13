@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
                       u.apellido,
                       COALESCE(i.nombre, 'Aula de Cómputo (' || d.dia_semana || ' ' || TO_CHAR(d.fecha_reserva, 'DD/MM/YYYY') || ' ' || d.hora_inicio || '-' || d.hora_fin || ')') as item_nombre
                FROM solicitudes s
-               JOIN usuarios u ON s.profesor_id = u.id
+               INNER JOIN usuarios u ON s.profesor_id = u.id
                LEFT JOIN inventario i ON s.inventario_id = i.id
                LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
                WHERE 1=1`;
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       params.push(profesor_id);
     }
 
-    sql += ' ORDER BY s.fecha_solicitud DESC';
+    sql += ' ORDER BY s.fecha_solicitud DESC LIMIT 200';
 
     const result = await query(sql, params);
 

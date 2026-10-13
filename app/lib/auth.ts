@@ -71,3 +71,53 @@ export const createUser = async (
   );
   return result.rows[0];
 };
+
+export type AdminAuthResult =
+  | { success: true; user: { id: number; email: string; nombre: string; role: string } }
+  | { success: false; error: string; status: 401 | 403 };
+
+export async function requireAdminSession(request: {
+  cookies: { get(name: string): { value?: string } | undefined };
+  headers: { get(name: string): string | null };
+}): Promise<AdminAuthResult> {
+  const token =
+    request.cookies.get('auth-token')?.value ||
+    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+
+  if (!token) {
+    return { success: false, error: 'No autenticado. Inicie sesión para continuar.', status: 401 };
+  }
+
+  const decoded = verifyToken(token) as { userId?: number; role?: string; exp?: number } | null;
+  if (!decoded || !decoded.userId) {
+    return { success: false, error: 'Sesión inválida o expirada.', status: 401 };
+  }
+
+  if (decoded.role !== 'admin') {
+    return { success: false, error: 'Acceso denegado. Se requiere rol de administrador.', status: 403 };
+  }
+
+  // Verificar estado y rol real en PostgreSQL Neon
+  const dbUser = await getUserById(decoded.userId);
+  if (!dbUser) {
+    return { success: false, error: 'Usuario no encontrado en el sistema.', status: 401 };
+  }
+
+  if (!dbUser.activo) {
+    return { success: false, error: 'La cuenta de administrador se encuentra desactivada.', status: 403 };
+  }
+
+  if (dbUser.role !== 'admin') {
+    return { success: false, error: 'Permisos insuficientes. El usuario no posee rol de administrador.', status: 403 };
+  }
+
+  return {
+    success: true,
+    user: {
+      id: dbUser.id,
+      email: dbUser.email,
+      nombre: dbUser.nombre,
+      role: dbUser.role,
+    },
+  };
+}

@@ -132,9 +132,17 @@ export default function AdminHorarioView() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem(TEMPLATE_KEY);
     setTemplate(cargarFormato());
-    if (!saved) setShowTemplate(true);
+
+    fetch('/api/horario/template')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.template && Array.isArray(data.template) && data.template.length) {
+          setTemplate(data.template);
+          try { localStorage.setItem(TEMPLATE_KEY, JSON.stringify(data.template)); } catch {}
+        }
+      })
+      .catch(() => {});
 
     fetchData()
       .catch(() => setMessage({ type: 'error', text: 'Error al cargar el horario' }))
@@ -266,7 +274,13 @@ export default function AdminHorarioView() {
       localStorage.setItem(TEMPLATE_KEY, JSON.stringify(clean));
       setTemplate(clean);
       setShowTemplate(false);
-      setMessage({ type: 'success', text: 'Formato de horario guardado para todos los días y semanas' });
+      setMessage({ type: 'success', text: 'Formato de horario guardado y sincronizado para todos los usuarios' });
+
+      void fetch('/api/horario/template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: clean }),
+      });
     } catch {
       setTemplateError('No se pudo guardar el formato. Inténtalo de nuevo.');
     }

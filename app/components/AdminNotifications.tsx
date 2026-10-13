@@ -29,6 +29,8 @@ function playNotificationChime() {
   }
 }
 
+import { useNotificationCenter } from '@/app/lib/useNotificationCenter';
+
 export default function AdminNotifications() {
   const dismissed = useRef(new Set<number>());
   const dismissedDocentes = useRef(new Set<number>());
@@ -38,101 +40,31 @@ export default function AdminNotifications() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [savingDocente, setSavingDocente] = useState<number | null>(null);
 
+  const {
+    solicitudes: rawRequests,
+    usuarios: rawDocentes,
+    notificaciones: rawNotifications,
+  } = useNotificationCenter();
+
+  // Sincronizar solicitudes pendientes recibidas por el centro de notificaciones
   useEffect(() => {
-    let stopped = false;
-    let pending = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let previous: Set<number> | null = null;
-    let pendingSignature: string | null = null;
-    let pendingDocentesSignature: string | null = null;
-    const controller = new AbortController();
+    const pendingNotices = rawRequests
+      .filter(item => !dismissed.current.has(item.id))
+      .map(item => (
+        rawNotifications.find(notice => notice.tipo === 'solicitud_creada' && notice.referencia_id === item.id)
+        || { id: -item.id, referencia_id: item.id, tipo: 'solicitud_creada', mensaje: 'Nueva solicitud de préstamo' }
+      ));
 
-    const poll = async () => {
-      clearTimeout(timer);
-      if (stopped || pending || document.visibilityState === 'hidden') return;
-      pending = true;
-      try {
-        const [response, requestsResponse, docentesResponse] = await Promise.all([
-          fetch('/api/notificaciones/whatsapp', { cache: 'no-store', signal: controller.signal }),
-          fetch('/api/solicitudes?estado=pendiente', { cache: 'no-store', signal: controller.signal }),
-          fetch('/api/usuarios?activo=false', { cache: 'no-store', signal: controller.signal }),
-        ]);
+    setQueue(current => {
+      const active = pendingNotices.find(item => item.referencia_id === current[0]?.referencia_id);
+      return active ? [active, ...pendingNotices.filter(item => item.referencia_id !== active.referencia_id)] : pendingNotices;
+    });
+  }, [rawRequests, rawNotifications]);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (!stopped && Array.isArray(data.notificaciones)) {
-            const notifications: Notification[] = data.notificaciones;
-            window.dispatchEvent(new CustomEvent('admin-notifications', { detail: notifications }));
-            if (previous) {
-              const added = notifications.filter(item => !previous!.has(item.id));
-              if (added.length) {
-                playNotificationChime();
-                const other = added.find(item => item.tipo !== 'solicitud_creada');
-                if (other) setNotice(other);
-                window.dispatchEvent(new Event('admin-requests-updated'));
-              }
-            }
-            previous = new Set(notifications.map(item => item.id));
-          }
-        }
-
-        if (requestsResponse.ok) {
-          const requestData = await requestsResponse.json();
-          if (!stopped && Array.isArray(requestData.solicitudes)) {
-            const requests: { id: number; fecha_solicitud: string }[] = requestData.solicitudes;
-            const signature = requests.map(item => item.id).join(',');
-            if (pendingSignature !== null && signature !== pendingSignature) {
-              playNotificationChime();
-              window.dispatchEvent(new Event('admin-requests-updated'));
-            }
-            pendingSignature = signature;
-            const pendingNotices = requests.filter(item => !dismissed.current.has(item.id)).map(item => (
-              queue.find(notice => notice.tipo === 'solicitud_creada' && notice.referencia_id === item.id)
-              || { id: -item.id, referencia_id: item.id, tipo: 'solicitud_creada', mensaje: 'Nueva solicitud de préstamo' }
-            ));
-            setQueue(current => {
-              const active = pendingNotices.find(item => item.referencia_id === current[0]?.referencia_id);
-              return active ? [active, ...pendingNotices.filter(item => item.referencia_id !== active.referencia_id)] : pendingNotices;
-            });
-          }
-        }
-
-        if (docentesResponse.ok) {
-          const docentesData = await docentesResponse.json();
-          if (!stopped && Array.isArray(docentesData.usuarios)) {
-            const list: DocentePendiente[] = docentesData.usuarios;
-            const signature = list.map(item => item.id).join(',');
-            if (pendingDocentesSignature !== null && signature !== pendingDocentesSignature && list.length > 0) {
-              playNotificationChime();
-            }
-            pendingDocentesSignature = signature;
-            setPendingDocentes(list.filter(d => !dismissedDocentes.current.has(d.id)));
-          }
-        }
-      } catch { /* Reintenta al recuperar la conexión */ }
-      finally {
-        pending = false;
-        if (!stopped) timer = setTimeout(poll, 3000);
-      }
-    };
-
-    void poll();
-    document.addEventListener('visibilitychange', poll);
-    window.addEventListener('online', poll);
-    const handleUpdate = () => { void poll(); };
-    window.addEventListener('admin-requests-updated', handleUpdate);
-    window.addEventListener('admin-users-updated', handleUpdate);
-
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      controller.abort();
-      document.removeEventListener('visibilitychange', poll);
-      window.removeEventListener('online', poll);
-      window.removeEventListener('admin-requests-updated', handleUpdate);
-      window.removeEventListener('admin-users-updated', handleUpdate);
-    };
-  }, []);
+  // Sincronizar docentes pendientes recibidos por el centro de notificaciones
+  useEffect(() => {
+    setPendingDocentes(rawDocentes.filter(d => !dismissedDocentes.current.has(d.id)));
+  }, [rawDocentes]);
 
   useEffect(() => {
     if (!notice) return;

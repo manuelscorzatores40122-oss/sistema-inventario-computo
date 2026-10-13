@@ -14,6 +14,7 @@ import {
   FiUser,
   FiLogOut,
 } from 'react-icons/fi';
+import { logout } from '@/app/lib/logout';
 
 const menuItems = [
   { href: '/admin/dashboard', title: 'Dashboard', icon: FiGrid },
@@ -126,9 +127,7 @@ export default function AdminSidebar() {
         <button
           className="sidebar-footer-btn"
           onClick={() => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/auth/login';
+            void logout();
           }}
         >
           <FiLogOut className="me-3" size={17} style={{ flexShrink: 0 }} />

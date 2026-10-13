@@ -37,10 +37,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva } = await request.json();
+    const body = await request.json();
+    const { sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva, es_recurrente } = body;
     const nextEstado = estado || (reservado_por ? 'separado' : undefined);
 
-    if (nextEstado && !['disponible', 'separado'].includes(nextEstado)) {
+    if (nextEstado && !['disponible', 'separado', 'pendiente'].includes(nextEstado)) {
       return NextResponse.json(
         { error: 'Estado inválido' },
         { status: 400 }
@@ -56,11 +57,16 @@ export async function PUT(
            estado = COALESCE($5, estado),
            reservado_por = CASE WHEN COALESCE($5, estado) = 'disponible' THEN NULL ELSE COALESCE($6, reservado_por) END,
            motivo_reserva = CASE WHEN COALESCE($5, estado) = 'disponible' THEN NULL ELSE COALESCE($7, motivo_reserva) END,
-           fecha_reserva = CASE WHEN COALESCE($5, estado) = 'separado' THEN COALESCE(fecha_reserva, CURRENT_TIMESTAMP) ELSE NULL END,
+           fecha_reserva = CASE 
+             WHEN COALESCE($5, estado) = 'disponible' THEN NULL 
+             WHEN $8::boolean = true THEN NULL
+             ELSE COALESCE($9, fecha_reserva)
+           END,
+           es_recurrente = COALESCE($8, es_recurrente),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8
+       WHERE id = $10
        RETURNING *`,
-      [sala_nombre, dia_semana, hora_inicio, hora_fin, nextEstado, reservado_por, motivo_reserva, params.id]
+      [sala_nombre, dia_semana, hora_inicio, hora_fin, nextEstado, reservado_por, motivo_reserva, es_recurrente, fecha_reserva, params.id]
     );
 
     if (result.rows.length === 0) {
@@ -70,16 +76,14 @@ export async function PUT(
       );
     }
 
-    // TODO: Enviar notificación WhatsApp al profesor
-
     return NextResponse.json({
-      message: 'Disponibilidad reservada',
+      message: 'Disponibilidad actualizada',
       disponibilidad: result.rows[0],
     });
   } catch (error) {
-    console.error('Error al reservar disponibilidad:', error);
+    console.error('Error al actualizar disponibilidad:', error);
     return NextResponse.json(
-      { error: 'Error al reservar disponibilidad' },
+      { error: 'Error al actualizar disponibilidad' },
       { status: 500 }
     );
   }
@@ -103,13 +107,11 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json({
-      message: 'Disponibilidad eliminada',
-    });
+    return NextResponse.json({ message: 'Disponibilidad eliminada' });
   } catch (error) {
-    console.error('Error al liberar disponibilidad:', error);
+    console.error('Error al eliminar disponibilidad:', error);
     return NextResponse.json(
-      { error: 'Error al liberar disponibilidad' },
+      { error: 'Error al eliminar disponibilidad' },
       { status: 500 }
     );
   }

@@ -26,6 +26,19 @@ CREATE TABLE IF NOT EXISTS inventario (
   cantidad_disponible INTEGER NOT NULL,
   ubicacion VARCHAR(255),
   estado VARCHAR(50) DEFAULT 'disponible',
+  codigo_patrimonial VARCHAR(100),
+  marca VARCHAR(100),
+  modelo VARCHAR(100),
+  condicion VARCHAR(50) DEFAULT 'bueno',
+  numero_serie VARCHAR(150),
+  color VARCHAR(100),
+  nivel VARCHAR(50),
+  observaciones TEXT,
+  procedencia_entidad VARCHAR(255),
+  documento_sustentatorio VARCHAR(255),
+  fecha_documento DATE,
+  situacion_administrativa VARCHAR(20) NOT NULL DEFAULT 'activo',
+  situacion_detalle VARCHAR(255),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -125,6 +138,48 @@ CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones_whatsapp
 CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
 CREATE INDEX IF NOT EXISTS idx_prestamos_inventario ON prestamos(inventario_id);
 CREATE INDEX IF NOT EXISTS idx_prestamos_profesor ON prestamos(profesor_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_activo_oculto ON usuarios(activo, oculto);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_estado_fecha ON solicitudes(estado, fecha_solicitud DESC);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_profesor_fecha ON solicitudes(profesor_id, fecha_solicitud DESC);
+CREATE INDEX IF NOT EXISTS idx_prestamos_estado_fecha ON prestamos(estado, fecha_prestamo DESC);
+CREATE INDEX IF NOT EXISTS idx_prestamos_profesor_estado ON prestamos(profesor_id, estado);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario_fecha ON notificaciones_whatsapp(usuario_id, fecha_envio DESC);
+
+-- Tablas de historial de importación de inventario
+CREATE TABLE IF NOT EXISTS importaciones_inventario (
+  id                SERIAL PRIMARY KEY,
+  nombre_archivo    VARCHAR(255) NOT NULL,
+  archivo_hash      CHAR(64)     NOT NULL,
+  tamano_bytes      INTEGER      NOT NULL,
+  hoja              VARCHAR(100),
+  admin_id          INTEGER      NOT NULL REFERENCES usuarios(id),
+  total_filas       INTEGER      NOT NULL DEFAULT 0,
+  insertados        INTEGER      NOT NULL DEFAULT 0,
+  actualizados      INTEGER      NOT NULL DEFAULT 0,
+  omitidos          INTEGER      NOT NULL DEFAULT 0,
+  rechazados        INTEGER      NOT NULL DEFAULT 0,
+  estado            VARCHAR(20)  NOT NULL DEFAULT 'completada' CHECK (estado IN ('completada', 'fallida')),
+  mensaje_error     TEXT,
+  fecha_importacion TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS importaciones_inventario_detalle (
+  id              SERIAL PRIMARY KEY,
+  importacion_id  INTEGER     NOT NULL REFERENCES importaciones_inventario(id) ON DELETE CASCADE,
+  fila_excel      INTEGER     NOT NULL,
+  numero_ugel     VARCHAR(20),
+  huella_registro CHAR(64),
+  inventario_id   INTEGER     REFERENCES inventario(id) ON DELETE SET NULL,
+  resultado       VARCHAR(20) NOT NULL CHECK (resultado IN ('insertado', 'actualizado', 'omitido', 'rechazado')),
+  mensaje         TEXT,
+  datos           JSONB       NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventario_numero_serie ON inventario (UPPER(numero_serie)) WHERE numero_serie IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventario_situacion ON inventario (situacion_administrativa);
+CREATE INDEX IF NOT EXISTS idx_importaciones_hash ON importaciones_inventario (archivo_hash);
+CREATE INDEX IF NOT EXISTS idx_import_detalle_importacion ON importaciones_inventario_detalle (importacion_id);
+CREATE INDEX IF NOT EXISTS idx_import_detalle_huella ON importaciones_inventario_detalle (huella_registro);
 
 
 

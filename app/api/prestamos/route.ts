@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
                       u.nombre as profesor_nombre,
                       u.apellido
                FROM prestamos p
-               JOIN inventario i ON p.inventario_id = i.id
-               JOIN usuarios u ON p.profesor_id = u.id
+               INNER JOIN inventario i ON p.inventario_id = i.id
+               INNER JOIN usuarios u ON p.profesor_id = u.id
                WHERE 1=1`;
     const params: any[] = [];
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       params.push(`${hasta} 23:59:59`);
     }
 
-    sql += ' ORDER BY p.fecha_prestamo DESC';
+    sql += ' ORDER BY p.fecha_prestamo DESC LIMIT 200';
 
     const result = await query(sql, params);
 

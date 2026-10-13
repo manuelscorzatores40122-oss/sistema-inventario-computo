@@ -32,12 +32,15 @@ function playNotificationChime() {
   }
 }
 
+import { useNotificationCenter } from '@/app/lib/useNotificationCenter';
+
 export default function SolicitudApprovalNotice() {
   const [queue, setQueue] = useState<TeacherNotification[]>([]);
   const dialog = useRef<HTMLDialogElement>(null);
   const accepted = useRef(new Set<number>());
   const storageKey = useRef('');
   const current = queue[0];
+  const { notificaciones } = useNotificationCenter();
 
   useEffect(() => {
     let user: { id: number; role: string };
@@ -52,53 +55,21 @@ export default function SolicitudApprovalNotice() {
       } catch { /* Conserva los avisos aceptados en memoria si el almacenamiento falla. */ }
     };
     readAccepted();
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let inFlight = false;
-    let previousIds: string | null = null;
-    const controller = new AbortController();
 
-    const poll = async () => {
-      clearTimeout(timer);
-      if (stopped || inFlight) return;
-      if (document.visibilityState === 'hidden') return;
-      inFlight = true;
-      try {
-        const response = await fetch('/api/notificaciones/whatsapp', { cache: 'no-store', signal: controller.signal });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (stopped || !Array.isArray(data.notificaciones)) return;
-        const notifications: TeacherNotification[] = data.notificaciones;
-        readAccepted();
-        setQueue(notifications.filter(n => ['solicitud_aprobada', 'solicitud_rechazada', 'prestamo_registrado'].includes(n.tipo) && !accepted.current.has(n.id)).sort((a, b) => a.id - b.id));
-        window.dispatchEvent(new CustomEvent('teacher-notifications', { detail: notifications }));
-        const ids = notifications.map(n => n.id).join(',');
-        if (previousIds !== null && ids !== previousIds) window.dispatchEvent(new Event('teacher-requests-updated'));
-        previousIds = ids;
-      } catch { /* Reintenta tras una desconexión sin interrumpir al docente. */ }
-      finally {
-        inFlight = false;
-        if (!stopped) timer = setTimeout(poll, 3000);
-      }
-    };
+    const notifications: TeacherNotification[] = notificaciones;
+    setQueue(notifications.filter(n => ['solicitud_aprobada', 'solicitud_rechazada', 'prestamo_registrado'].includes(n.tipo) && !accepted.current.has(n.id)).sort((a, b) => a.id - b.id));
+
     const syncAccepted = (event: StorageEvent) => {
       if (event.key !== storageKey.current) return;
       readAccepted();
       setQueue(items => items.filter(n => !accepted.current.has(n.id)));
     };
-    void poll();
-    document.addEventListener('visibilitychange', poll);
-    window.addEventListener('online', poll);
+
     window.addEventListener('storage', syncAccepted);
     return () => {
-      stopped = true;
-      clearTimeout(timer);
-      controller.abort();
-      document.removeEventListener('visibilitychange', poll);
-      window.removeEventListener('online', poll);
       window.removeEventListener('storage', syncAccepted);
     };
-  }, []);
+  }, [notificaciones]);
 
   const accept = () => {
     if (!current) return;

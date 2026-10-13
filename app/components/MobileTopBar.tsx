@@ -3,11 +3,11 @@
 import { FiLogOut } from 'react-icons/fi';
 import NotificacionesBell from './NotificacionesBell';
 
+import { logout } from '@/app/lib/logout';
+
 export default function MobileTopBar() {
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/auth/login';
+    void logout();
   };
 
   return (

@@ -12,6 +12,7 @@ import {
   FiLogOut,
   FiCalendar,
 } from 'react-icons/fi';
+import { logout } from '@/app/lib/logout';
 
 const menuItems = [
   { href: '/profesor/dashboard', title: 'Inicio', icon: FiHome },
@@ -81,9 +82,7 @@ export default function ProfesorHeader() {
         <button
           className="profesor-sidebar-logout"
           onClick={() => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/auth/login';
+            void logout();
           }}
         >
           <FiLogOut size={18} />

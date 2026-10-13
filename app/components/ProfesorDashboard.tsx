@@ -28,6 +28,9 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiRefreshCw,
+  FiSearch,
+  FiArrowLeft,
+  FiCheck,
 } from 'react-icons/fi';
 
 interface Item {
@@ -113,6 +116,8 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
   const [motivo, setMotivo] = useState('');
   const [requestLocation, setRequestLocation] = useState(emptyRequestLocation);
   const [solicitudType, setSolicitudType] = useState<'equipo' | 'aula'>('equipo');
+  const [requestStep, setRequestStep] = useState(1);
+  const [equipoCategory, setEquipoCategory] = useState('Todos');
   const [aulaForm, setAulaForm] = useState({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
   const [alertNotice, setAlertNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -121,6 +126,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
 
   const closeRequestModal = () => {
     setShowRequestModal(false);
+    setRequestStep(1);
     if (openArticleRequest) router.push('/profesor/dashboard');
   };
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -254,8 +260,13 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
   const filteredItems = useMemo(() => {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const search = normalize(articleSearch);
-    return inventario.filter(item => item.cantidad_disponible > 0 && item.estado === 'disponible' && normalize(item.nombre).includes(search));
-  }, [inventario, articleSearch]);
+    return inventario.filter(item => 
+      item.cantidad_disponible > 0 && 
+      item.estado === 'disponible' && 
+      normalize(item.nombre).includes(search) &&
+      (equipoCategory === 'Todos' || (item.categoria && item.categoria.toLowerCase() === equipoCategory.toLowerCase()))
+    );
+  }, [inventario, articleSearch, equipoCategory]);
 
   const itemSeleccionado = useMemo(() => {
     return inventario.find((item) => item.id === selectedItem) || null;
@@ -334,6 +345,7 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
         setCantidad(1);
         setMotivo('');
         setRequestLocation(emptyRequestLocation);
+        setRequestStep(1);
         setAulaForm({ fecha_reserva: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fin: '10:00' });
         setShowRequestModal(false);
 
@@ -507,71 +519,198 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
 
         {/* SOLICITUD DE ARTÍCULOS O AULAS */}
         {showRequestModal && (
-          <div className="request-modal-layer" role="presentation" onMouseDown={(event) => {
+          <div className="request-modal-layer d-flex align-items-end align-items-md-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)', position: 'fixed', inset: 0, zIndex: 1050, padding: 0 }} role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeRequestModal();
           }}>
-        <section id="solicitud-aula" className="request-modal-card card border-0 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
-          <header className="request-modal-header">
-            <div>
-              <span>Gestión docente</span>
-              <h2 id="request-modal-title">{solicitudType === 'aula' ? 'Solicitar aula' : 'Solicitar artículos'}</h2>
-            </div>
-            <button type="button" onClick={closeRequestModal} aria-label="Cerrar formulario"><FiX size={20} /></button>
+        <section id="solicitud-aula" className="profesor-request-card card border-0 overflow-hidden shadow-lg w-100 mx-auto" style={{ maxWidth: '450px', height: '90vh', maxHeight: '850px', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, display: 'flex', flexDirection: 'column' }} role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+          <header className="profesor-request-header text-white px-3 py-3 d-flex align-items-center" style={{ background: '#028271' }}>
+            <button type="button" onClick={closeRequestModal} className="btn text-white p-2 border-0 bg-transparent rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', backgroundColor: 'rgba(255,255,255,0.15)' }} aria-label="Atrás"><FiArrowLeft size={22} /></button>
+            <h2 id="request-modal-title" className="m-0 ms-3 fw-semibold" style={{ fontSize: '1.1rem' }}>{solicitudType === 'aula' ? 'Reservar aula' : 'Solicitar equipo'}</h2>
           </header>
-          <div className="request-form-body card-body p-3 p-md-4 bg-white">
-            <p className="request-form-intro">{solicitudType === 'equipo' ? 'Elige un artículo y cuéntanos para qué lo usarás.' : 'Elige el horario y cuéntanos para qué usarás el aula.'}</p>
+          
+          <div className="bg-white flex-grow-1 overflow-auto d-flex flex-column">
+            {solicitudType === 'equipo' && (
+              <div className="profesor-stepper px-4 pt-4 pb-2 bg-white">
+                <div className="position-relative d-flex justify-content-between">
+                  <div className="position-absolute top-50 start-0 w-100 translate-middle-y" style={{ height: '3px', backgroundColor: '#e2e8f0', zIndex: 1 }}>
+                    <div style={{ height: '100%', backgroundColor: '#028271', width: `${((requestStep - 1) / 3) * 100}%`, transition: 'width 0.3s ease' }}></div>
+                  </div>
+                  {[
+                    { num: 1, label: 'Equipo' },
+                    { num: 2, label: 'Cantidad' },
+                    { num: 3, label: 'Detalles' },
+                    { num: 4, label: 'Confirmar' }
+                  ].map(step => {
+                    const isActive = requestStep >= step.num;
+                    return (
+                      <div key={step.num} className="d-flex flex-column align-items-center position-relative" style={{ zIndex: 2, width: '60px' }}>
+                        <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm mb-2" style={{ width: '32px', height: '32px', fontSize: '0.85rem', backgroundColor: isActive ? '#028271' : '#f1f5f9', color: isActive ? '#fff' : '#94a3b8', transition: 'all 0.3s ease', border: isActive ? 'none' : '1px solid #cbd5e1' }}>
+                          {step.num}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: isActive ? 700 : 500, color: isActive ? '#0f172a' : '#94a3b8' }}>{step.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="request-form-body p-4 d-flex flex-column flex-grow-1">
             {solicitudType === 'equipo' ? (
               <>
-            <div className="request-form-step mb-3">
-              <label htmlFor="request-item" className="inventory-form-label request-step-title">
-                <span className="request-step-number" aria-hidden="true">1</span>
-                ¿Qué artículo necesitas?
-              </label>
-              <ArticleAutocomplete
-                items={filteredItems}
-                value={articleSearch}
-                selectedId={selectedItem}
-                loading={loading}
-                onChange={value => {
-                  setArticleSearch(value);
-                  setSelectedItem(null);
-                  setCantidad(1);
-                }}
-                onSelect={item => {
-                  setArticleSearch(item.nombre);
-                  setSelectedItem(item.id);
-                  setCantidad(1);
-                }}
-              />
-            </div>
+                {requestStep === 1 && (
+                  <div className="step-content animate__animated animate__fadeIn">
+                    <h3 className="fw-bold mb-3 text-dark" style={{ fontSize: '1.25rem', letterSpacing: '-0.5px' }}>1. ¿Qué artículo necesitas?</h3>
+                    <div className="search-bar mb-3 position-relative">
+                      <FiSearch className="position-absolute text-slate-400" style={{ left: '16px', top: '14px' }} size={18} />
+                      <input 
+                        type="text" 
+                        className="form-control rounded-pill border-slate-300 shadow-sm"
+                        placeholder="Buscar equipo (ej. proyector, laptop...)"
+                        value={articleSearch}
+                        onChange={(e) => setArticleSearch(e.target.value)}
+                        style={{ paddingLeft: '44px', height: '48px', fontSize: '0.95rem' }}
+                      />
+                    </div>
+                    
+                    <div className="category-pills d-flex gap-2 overflow-auto pb-2 mb-3 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+                       {['Todos', 'Proyectores', 'Laptops', 'Audio'].map(cat => (
+                         <button 
+                           key={cat} 
+                           type="button" 
+                           onClick={() => setEquipoCategory(cat)}
+                           className={`btn rounded-pill px-3 py-1 ${equipoCategory === cat ? 'text-white' : 'text-slate-600 bg-white border-slate-200'}`}
+                           style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', fontWeight: equipoCategory === cat ? 600 : 500, backgroundColor: equipoCategory === cat ? '#028271' : 'transparent', border: equipoCategory === cat ? 'none' : '1px solid #e2e8f0' }}
+                         >
+                           {cat}
+                         </button>
+                       ))}
+                    </div>
 
-            <div className="request-form-step request-quantity-step mb-3">
-              <div>
-                <h3 className="inventory-form-label request-step-title" id="request-quantity-label">
-                  <span className="request-step-number" aria-hidden="true">2</span>
-                  ¿Cuántas unidades?
-                </h3>
-                <p className="request-step-help" id="request-stock" aria-live="polite">
-                  {itemSeleccionado ? `${maxStock} disponibles` : 'Primero elige un artículo.'}
-                </p>
-              </div>
-              <div className="mobile-stepper" role="group" aria-labelledby="request-quantity-label" aria-describedby="request-stock">
-                <button type="button" className="mobile-stepper-btn"
-                  onClick={() => setCantidad((prev) => Math.max(1, prev - 1))}
-                  disabled={!itemSeleccionado || cantidad <= 1} aria-label="Disminuir cantidad">
-                  <FiMinus size={16} />
-                </button>
-                <span className="mobile-stepper-val" aria-live="polite">{cantidad}</span>
-                <button type="button" className="mobile-stepper-btn"
-                  onClick={() => setCantidad((prev) => Math.min(maxStock, prev + 1))}
-                  disabled={!itemSeleccionado || cantidad >= maxStock} aria-label="Aumentar cantidad">
-                  <FiPlus size={16} />
-                </button>
-              </div>
-            </div>
-            </>
+                    <div className="equipment-list d-flex flex-column gap-3 mb-4">
+                      {filteredItems.map(item => {
+                        const isSelected = selectedItem === item.id;
+                        return (
+                          <div 
+                            key={item.id} 
+                            onClick={() => { setSelectedItem(item.id); setCantidad(1); setRequestStep(2); }}
+                            className={`equipment-card p-3 d-flex align-items-center gap-3 rounded-4 border shadow-sm ${isSelected ? 'bg-orange-50' : 'bg-white'}`}
+                            style={{ cursor: 'pointer', transition: 'all 0.2s', borderColor: isSelected ? '#ea580c' : '#e2e8f0' }}
+                          >
+                             <div className="equipment-img bg-white rounded-3 d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0" style={{ width: '60px', height: '60px' }}>
+                               {(item as any).imagen_url ? <img src={(item as any).imagen_url} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FiPackage size={28} className="text-slate-300" />}
+                             </div>
+                             <div className="flex-grow-1">
+                               <h4 className="mb-1 text-dark fw-bold" style={{ fontSize: '0.95rem', letterSpacing: '-0.3px' }}>{item.nombre}</h4>
+                               <span className="badge rounded-pill fw-semibold px-2 py-1" style={{ fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d' }}>
+                                 {item.cantidad_disponible} disponibles
+                               </span>
+                             </div>
+                             <div className="pe-1 flex-shrink-0">
+                               {isSelected ? <div className="rounded-circle d-flex align-items-center justify-content-center text-white" style={{ width: '24px', height: '24px', backgroundColor: '#ea580c' }}><FiCheck size={14} /></div> : <FiChevronRight className="text-slate-400" size={20} />}
+                             </div>
+                          </div>
+                        );
+                      })}
+                      {filteredItems.length === 0 && (
+                        <div className="text-center py-5 text-slate-400">
+                          <FiPackage size={32} className="mb-2 opacity-50" />
+                          <p>No hay equipos disponibles con esos filtros.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {requestStep === 2 && (
+                  <div className="step-content animate__animated animate__fadeIn flex-grow-1 d-flex flex-column">
+                    <h3 className="fw-bold mb-4 text-dark" style={{ fontSize: '1.25rem', letterSpacing: '-0.5px' }}>2. ¿Cuántas unidades?</h3>
+                    <div className="d-flex flex-column align-items-center justify-content-center py-5 mb-4 bg-slate-50 rounded-4 border border-slate-100">
+                      <div className="mobile-stepper d-flex align-items-center bg-white rounded-pill border border-slate-200 p-2 shadow-sm mb-3">
+                        <button type="button" className="btn rounded-circle text-slate-500 d-flex align-items-center justify-content-center border-0" style={{ width: '48px', height: '48px', background: '#f8fafc' }}
+                          onClick={() => setCantidad((prev) => Math.max(1, prev - 1))} disabled={cantidad <= 1}>
+                          <FiMinus size={22} />
+                        </button>
+                        <span className="fw-bold text-dark px-4" style={{ minWidth: '80px', textAlign: 'center', fontSize: '1.5rem' }}>{cantidad}</span>
+                        <button type="button" className="btn rounded-circle text-slate-500 d-flex align-items-center justify-content-center border-0" style={{ width: '48px', height: '48px', background: '#f8fafc' }}
+                          onClick={() => setCantidad((prev) => Math.min(maxStock, prev + 1))} disabled={cantidad >= maxStock}>
+                          <FiPlus size={22} />
+                        </button>
+                      </div>
+                      <p className="text-slate-500 fw-medium m-0">{maxStock} disponibles en total</p>
+                    </div>
+                    <div className="mt-auto">
+                      <button type="button" className="btn text-slate-500 w-100 mb-2 py-2 fw-medium" onClick={() => setRequestStep(1)}>Volver</button>
+                    </div>
+                  </div>
+                )}
+
+                {requestStep === 3 && (
+                  <div className="step-content animate__animated animate__fadeIn flex-grow-1 d-flex flex-column">
+                    <h3 className="fw-bold mb-3 text-dark" style={{ fontSize: '1.25rem', letterSpacing: '-0.5px' }}>3. ¿Dónde lo usarás?</h3>
+                    <p className="text-slate-500 small mb-3">Completa la sección o el número de aula.</p>
+                    <div className="bg-slate-50 p-3 rounded-4 border border-slate-100 mb-4">
+                      <RequestLocationFields value={requestLocation} onChange={setRequestLocation} />
+                    </div>
+                    
+                    <h3 className="fw-bold mb-3 mt-2 text-dark" style={{ fontSize: '1.25rem', letterSpacing: '-0.5px' }}>¿Para qué lo necesitas?</h3>
+                    <textarea
+                      id="request-reason"
+                      rows={3}
+                      value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}
+                      className="form-control rounded-4 border-slate-300 shadow-sm mb-2"
+                      placeholder="Ej.: Proyectar una presentación en clase"
+                      style={{ fontSize: '0.95rem', padding: '1rem' }}
+                    />
+                    <details className="request-reason-suggestions">
+                      <summary className="text-slate-500 fw-medium d-flex align-items-center gap-1" style={{ fontSize: '0.85rem' }}><FiChevronRight /> Usar un motivo sugerido</summary>
+                      <div className="request-reason-options d-flex flex-wrap gap-2 mt-2 pb-2">
+                        {motivosPredefinidos.map((preset) => (
+                          <button key={preset} type="button" onClick={() => setMotivo(preset)}
+                            className={`btn btn-sm rounded-pill border ${motivo === preset ? 'bg-orange-50 border-orange text-orange-700 fw-semibold' : 'bg-white border-slate-200 text-slate-600'}`}>
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                    <div className="mt-auto pt-3">
+                      <button type="button" className="btn text-slate-500 w-100 mb-2 py-2 fw-medium" onClick={() => setRequestStep(2)}>Volver</button>
+                    </div>
+                  </div>
+                )}
+                
+                {requestStep === 4 && (
+                  <div className="step-content animate__animated animate__fadeIn flex-grow-1 d-flex flex-column">
+                     <h3 className="fw-bold mb-4 text-dark" style={{ fontSize: '1.25rem', letterSpacing: '-0.5px' }}>4. Confirmar solicitud</h3>
+                     <div className="bg-slate-50 rounded-4 p-4 border border-slate-100 mb-4">
+                        <div className="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom border-slate-200">
+                             <div className="equipment-img bg-white border border-slate-200 rounded-3 d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0" style={{ width: '64px', height: '64px' }}>
+                               {(itemSeleccionado as any)?.imagen_url ? <img src={(itemSeleccionado as any).imagen_url} alt="img" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FiPackage size={24} className="text-slate-300" />}
+                             </div>
+                             <div>
+                               <h4 className="fw-bold text-dark mb-1 h5">{itemSeleccionado ? inventario.find(i => i.id === selectedItem)?.nombre : ''}</h4>
+                               <span className="text-orange-600 fw-semibold">{cantidad} {cantidad === 1 ? 'unidad' : 'unidades'}</span>
+                             </div>
+                        </div>
+                        <div className="mb-3">
+                           <small className="d-block text-slate-500 fw-medium mb-1">Destino</small>
+                           <strong className="text-dark">{formatRequestLocation({ seccion: requestLocation.seccion, numero_aula: requestLocation.numero_aula } as any) || 'No especificado'}</strong>
+                        </div>
+                        <div>
+                           <small className="d-block text-slate-500 fw-medium mb-1">Motivo</small>
+                           <strong className="text-dark">{motivo || 'Uso docente en clase'}</strong>
+                        </div>
+                     </div>
+                     <div className="mt-auto">
+                      <button type="button" className="btn text-slate-500 w-100 mb-2 py-2 fw-medium" onClick={() => setRequestStep(3)}>Volver</button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="row g-3 mb-3 animate__animated animate__fadeIn">
+                <p className="text-slate-500 mb-2">Elige el horario y cuéntanos para qué usarás el aula.</p>
                 <div className="col-12 col-md-4">
                   <label className="inventory-form-label">Fecha de reserva</label>
                   <input
@@ -604,52 +743,52 @@ export default function ProfesorDashboard({ openArticleRequest = false }: { open
               </div>
             )}
 
-            {solicitudType === 'equipo' && <RequestLocationFields value={requestLocation} onChange={setRequestLocation} />}
-            <div className="request-form-step mb-3">
-              <label htmlFor="request-reason" className="inventory-form-label request-step-title">
-                {solicitudType === 'equipo' && <span className="request-step-number" aria-hidden="true">3</span>}
-                ¿Para qué lo necesitas?
-              </label>
-              <textarea
-                id="request-reason"
-                rows={2}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                className="form-control rounded-3 border-slate-300"
-                placeholder="Ej.: Proyectar una presentación en clase"
-                style={{ fontSize: '1rem', padding: '0.65rem 0.85rem' }}
-              />
-              <details className="request-reason-suggestions">
-                <summary>Usar un motivo sugerido</summary>
-                <div className="request-reason-options d-flex flex-wrap gap-1 mb-2">
-                  {motivosPredefinidos.map((preset) => (
-                    <button key={preset} type="button" onClick={() => setMotivo(preset)}
-                      aria-pressed={motivo === preset}
-                      className={`reason-preset-chip ${motivo === preset ? 'active' : ''}`}>
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </details>
+            {alertNotice?.type === 'error' && <div className="alert alert-danger mt-3" role="alert">{alertNotice.text}</div>}
             </div>
 
-            {alertNotice?.type === 'error' && <div className="alert alert-danger" role="alert">{alertNotice.text}</div>}
-            <div className="request-form-footer">
-            {solicitudType === 'equipo' && (
-              <p className="request-submit-hint" aria-live="polite">
-                {itemSeleccionado ? `${cantidad} ${cantidad === 1 ? 'unidad' : 'unidades'} · ${itemSeleccionado.nombre}` : 'Selecciona un artículo para continuar.'}
-              </p>
-            )}
-            {/* BOTÓN ENVIAR */}
-            <button
-              onClick={handleSolicitar}
-              disabled={loading || enviando || (solicitudType === 'equipo' && !selectedItem)}
-              className="request-submit btn btn-primary w-100 py-2 py-md-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm mt-4"
-              style={{ fontSize: '0.95rem' }}
-            >
-              <FiSend size={18} />
-              {enviando ? 'Enviando solicitud...' : 'Enviar solicitud'}
-            </button>
+            {/* BOTONES DE NAVEGACIÓN PASOS */}
+            <div className="request-form-footer p-3 bg-white mt-auto border-top border-slate-100 shadow-sm" style={{ zIndex: 10 }}>
+              {solicitudType === 'equipo' ? (
+                requestStep < 4 ? (
+                  <button 
+                    type="button" 
+                    className="btn btn-primary w-100 py-3 rounded-pill fw-bold text-white shadow-sm d-flex justify-content-center gap-2 align-items-center border-0"
+                    style={{ backgroundColor: '#ea580c', fontSize: '1rem', display: requestStep === 1 ? 'none' : 'flex' }}
+                    onClick={() => {
+                      if (requestStep === 3) {
+                         if (!requestLocation.seccion.trim() && !requestLocation.numero_aula.trim()) {
+                            setAlertNotice({ type: 'error', text: 'Indica la sección o el número de aula.' });
+                            return;
+                         }
+                         setAlertNotice(null);
+                      }
+                      setRequestStep(s => s + 1);
+                    }}
+                    disabled={requestStep === 1 && !selectedItem}
+                  >
+                    Siguiente <FiChevronRight size={18} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSolicitar}
+                    disabled={loading || enviando}
+                    className="btn btn-primary w-100 py-3 rounded-pill fw-bold text-white shadow-sm d-flex align-items-center justify-content-center gap-2 border-0"
+                    style={{ backgroundColor: '#ea580c', fontSize: '1rem' }}
+                  >
+                    <FiSend size={18} />
+                    {enviando ? 'Enviando solicitud...' : 'Enviar solicitud'}
+                  </button>
+                )
+              ) : (
+                <button
+                  onClick={handleSolicitar}
+                  disabled={loading || enviando}
+                  className="request-submit btn btn-primary w-100 py-3 fw-bold rounded-pill shadow-sm border-0"
+                  style={{ backgroundColor: '#028271', fontSize: '1rem' }}
+                >
+                  <FiSend size={18} /> {enviando ? 'Enviando...' : 'Reservar aula'}
+                </button>
+              )}
             </div>
           </div>
         </section>

@@ -1,34 +1,29 @@
 import { Pool, PoolClient } from 'pg';
 
-let pool: Pool;
+const globalForDb = globalThis as unknown as { pgPool?: Pool };
 
-export const initializePool = () => {
-  if (!pool) {
+export const initializePool = (): Pool => {
+  if (!globalForDb.pgPool) {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString) {
-      throw new Error('DATABASE_URL no está definida en .env.local');
+      throw new Error('DATABASE_URL no está definida en el entorno (.env)');
     }
 
-    pool = new Pool({
+    globalForDb.pgPool = new Pool({
       connectionString,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
     });
   }
 
-  return pool;
+  return globalForDb.pgPool;
 };
 
 export const query = async (text: string, params?: any[]) => {
   const pool = initializePool();
-
-  const client = await pool.connect();
-
-  try {
-    const result = await client.query(text, params);
-    return result;
-  } finally {
-    client.release();
-  }
+  return await pool.query(text, params);
 };
 
 export const getClient = async (): Promise<PoolClient> => {

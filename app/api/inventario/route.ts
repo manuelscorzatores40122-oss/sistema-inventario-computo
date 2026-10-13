@@ -43,17 +43,57 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let uploadedPublicId: string | null = null;
   try {
-    const { nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado = 'disponible', imagen_base64 } = await request.json();
+    const {
+      nombre,
+      descripcion,
+      categoria,
+      cantidad_total,
+      cantidad_disponible,
+      ubicacion,
+      estado = 'disponible',
+      imagen_base64,
+      codigo_patrimonial,
+      marca,
+      modelo,
+      condicion = 'bueno',
+      numero_serie,
+      color,
+      nivel,
+      observaciones,
+      procedencia_entidad,
+      documento_sustentatorio,
+      fecha_documento,
+      situacion_administrativa = 'activo',
+      situacion_detalle
+    } = await request.json();
+
     const total = Number(cantidad_total);
-    const disponible = cantidad_disponible === undefined || cantidad_disponible === ''
-      ? total
-      : Number(cantidad_disponible);
 
     if (!nombre || !categoria || !Number.isInteger(total) || total < 0) {
       return NextResponse.json(
         { error: 'Campos requeridos: nombre, categoria y cantidad_total válida' },
         { status: 400 }
       );
+    }
+
+    const adminSituacion = situacion_administrativa || 'activo';
+    const fisicaCondicion = condicion || 'bueno';
+    let estadoFinal = estado || 'disponible';
+
+    // Regla de integridad: si es baja, perdido, pendiente o malo -> nunca disponible
+    if (fisicaCondicion === 'malo' && estadoFinal === 'disponible') {
+      estadoFinal = 'mantenimiento';
+    }
+    if (['baja', 'perdido', 'pendiente_revision'].includes(adminSituacion) && estadoFinal === 'disponible') {
+      estadoFinal = 'no_prestable';
+    }
+
+    let disponible = cantidad_disponible === undefined || cantidad_disponible === ''
+      ? (estadoFinal === 'no_prestable' ? 0 : total)
+      : Number(cantidad_disponible);
+
+    if (estadoFinal === 'no_prestable') {
+      disponible = 0;
     }
 
     if (!Number.isInteger(disponible) || disponible < 0 || disponible > total) {
@@ -83,8 +123,37 @@ export async function POST(request: NextRequest) {
     let result;
     try {
       result = await query(
-        'INSERT INTO inventario (nombre, descripcion, categoria, cantidad_total, cantidad_disponible, ubicacion, estado, imagen_url, imagen_public_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-        [nombre, descripcion, categoria, total, disponible, ubicacion, estado, imagen_url, imagen_public_id]
+        `INSERT INTO inventario (
+          nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
+          ubicacion, estado, imagen_url, imagen_public_id, codigo_patrimonial,
+          marca, modelo, condicion, numero_serie, color, nivel,
+          observaciones, procedencia_entidad, documento_sustentatorio, fecha_documento,
+          situacion_administrativa, situacion_detalle
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING *`,
+        [
+          nombre,
+          descripcion || null,
+          categoria,
+          total,
+          disponible,
+          ubicacion || null,
+          estadoFinal,
+          imagen_url,
+          imagen_public_id,
+          codigo_patrimonial || null,
+          marca || null,
+          modelo || null,
+          fisicaCondicion,
+          numero_serie || null,
+          color || null,
+          nivel || null,
+          observaciones || null,
+          procedencia_entidad || null,
+          documento_sustentatorio || null,
+          fecha_documento || null,
+          adminSituacion,
+          situacion_detalle || null
+        ]
       );
     } catch (dbError) {
       if (uploadedPublicId) {

@@ -1,5 +1,5 @@
-import PerfilView from '@/app/components/PerfilView';
+import ProfesorPerfilView from '@/app/components/ProfesorPerfilView';
 
 export default function ProfesorPerfilPage() {
-  return <PerfilView />;
+  return <ProfesorPerfilView />;
 }

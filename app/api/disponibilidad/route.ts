@@ -53,21 +53,35 @@ export async function GET(request: NextRequest) {
 // POST - Crear disponibilidad de sala (admin)
 export async function POST(request: NextRequest) {
   try {
-    const { sala_nombre = 'Sala de Cómputo', dia_semana, hora_inicio, hora_fin, estado = 'disponible', reservado_por, motivo_reserva } = await request.json();
+    const body = await request.json();
+    const {
+      sala_nombre = 'Horario de Clases',
+      dia_semana,
+      hora_inicio,
+      hora_fin,
+      estado = 'disponible',
+      reservado_por,
+      motivo_reserva,
+      fecha_reserva = null,
+      es_recurrente = true,
+    } = body;
 
     if (!sala_nombre || !dia_semana || !hora_inicio || !hora_fin) {
       return NextResponse.json(
-        { error: 'Campos requeridos' },
+        { error: 'Campos requeridos: sala_nombre, dia_semana, hora_inicio, hora_fin' },
         { status: 400 }
       );
     }
 
     const finalEstado = reservado_por ? 'separado' : estado;
+    // Si es horario recurrente de clases semanal, fecha_reserva debe ser NULL para que aplique a todas las semanas
+    const finalFechaReserva = (sala_nombre === 'Horario de Clases' && es_recurrente) ? null : fecha_reserva;
+
     const result = await query(
-      `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $6::int IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END)
+      `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva, es_recurrente)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [sala_nombre, dia_semana, hora_inicio, hora_fin, finalEstado, reservado_por ?? null, motivo_reserva ?? null]
+      [sala_nombre, dia_semana, hora_inicio, hora_fin, finalEstado, reservado_por ?? null, motivo_reserva ?? null, finalFechaReserva, es_recurrente]
     );
 
     return NextResponse.json({
