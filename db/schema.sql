@@ -276,3 +276,7 @@ ON CONFLICT (dni) DO UPDATE
       area = EXCLUDED.area,
       correo_personal = EXCLUDED.correo_personal,
       updated_at = CURRENT_TIMESTAMP;
+
+-- Búsqueda de acceso sin distinguir mayúsculas y detección de cruces de sala.
+CREATE INDEX IF NOT EXISTS idx_usuarios_email_lower ON usuarios (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_disponibilidad_cruces_activos ON disponibilidad (dia_semana, fecha_reserva, hora_inicio, hora_fin) WHERE estado IN ('separado', 'pendiente');

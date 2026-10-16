@@ -9,9 +9,13 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --incremental false",
-    "test": "node --test tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs",
+    "test": "node --test tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs tests/admin-calendar.test.cjs tests/access-performance.test.cjs",
     "test:teacher-ui": "node tests/teacher-browser-smoke.cjs",
-    "test:admin-ui": "node tests/admin-browser-smoke.cjs"
+    "test:admin-ui": "node tests/admin-browser-smoke.cjs",
+    "test:admin-actions": "node tests/admin-actions-browser.cjs",
+    "test:account-flow": "node tests/account-flow-integration.cjs",
+    "test:summary-read": "node tests/summary-read-integration.cjs",
+    "test:auth-ui": "node tests/auth-browser.cjs"
   },
   "dependencies": {
     "@vercel/postgres": "^0.8.0",

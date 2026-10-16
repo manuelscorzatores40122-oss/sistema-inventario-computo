@@ -1,6 +1,6 @@
 import { Pool, PoolClient } from 'pg';
 
-const globalForDb = globalThis as unknown as { pgPool?: Pool };
+const globalForDb = globalThis as unknown as { pgPool?: Pool; pgPoolErrorHandler?: boolean };
 
 export const initializePool = (): Pool => {
   if (!globalForDb.pgPool) {
@@ -19,6 +19,14 @@ export const initializePool = (): Pool => {
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000, // Sends TCP keep-alive probes every 10s to prevent disconnects
     });
+  }
+  if (!globalForDb.pgPoolErrorHandler) {
+    // Neon puede cerrar una conexión inactiva. Consumir este evento evita que
+    // un socket ocioso desconectado termine el proceso y falle el siguiente login.
+    globalForDb.pgPool.on('error', (error: Error & { code?: string }) => {
+      console.error('Se cerró una conexión inactiva de base de datos:', error.code || error.name);
+    });
+    globalForDb.pgPoolErrorHandler = true;
   }
 
   return globalForDb.pgPool;

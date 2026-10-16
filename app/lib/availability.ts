@@ -17,6 +17,11 @@ export async function saveAvailability(request: NextRequest, id?: string) {
       const result = await client.query('SELECT * FROM disponibilidad WHERE id = $1 FOR UPDATE', [id]);
       if (!result.rows.length) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'Turno no encontrado.' }, { status: 404 }); }
       current = result.rows[0];
+      const linked = await client.query("SELECT id FROM solicitudes WHERE disponibilidad_id = $1 AND estado IN ('pendiente', 'aprobada') LIMIT 1", [id]);
+      if (current.estado === 'pendiente' || linked.rows.length) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Este turno pertenece a una solicitud. Revísala en la bandeja o libera la reserva antes de crear una nueva.' }, { status: 409 });
+      }
     }
     const row = { sala_nombre: 'Horario de Clases', estado: 'disponible', reservado_por: null, motivo_reserva: null, fecha_reserva: null, ...current, ...body };
     if (body.reservado_por && !body.estado) row.estado = 'separado';

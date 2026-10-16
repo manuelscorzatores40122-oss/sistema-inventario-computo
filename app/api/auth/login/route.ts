@@ -3,7 +3,8 @@ import { getUserByEmail, comparePassword, generateToken } from '@/app/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body || {};
 
     if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password || email.length > 255 || password.length > 128) {
       return NextResponse.json(
@@ -65,11 +66,13 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en login:', error);
+    if (error instanceof SyntaxError) return NextResponse.json({ error: 'Revisa los datos del formulario.' }, { status: 400 });
+    if (error?.message === 'JWT_SECRET debe estar configurada') return NextResponse.json({ error: 'El acceso está temporalmente sin configurar en este servidor. Avisa a administración.', code: 'AUTH_CONFIGURATION' }, { status: 503 });
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
+      { error: 'No pudimos conectar para iniciar sesión. Tus datos no se han borrado; vuelve a intentarlo.', code: 'AUTH_UNAVAILABLE' },
+      { status: 503 }
     );
   }
 }

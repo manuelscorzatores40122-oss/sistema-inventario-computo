@@ -18,6 +18,7 @@ export const comparePassword = async (
   password: string,
   hashedPassword: string
 ): Promise<boolean> => {
+  if (typeof hashedPassword !== 'string' || !/^\$2[aby]\$\d{2}\$/.test(hashedPassword)) return false;
   return bcrypt.compare(password, hashedPassword);
 };
 
@@ -48,7 +49,8 @@ export const getUserById = async (id: number) => {
 export const getUserByEmail = async (email: string) => {
   const cleanInput = email.trim();
   const result = await query(
-    'SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1) OR LOWER(email) = LOWER($1 || \'@colegio.com\') OR LOWER(email) = LOWER($1 || \'@colegio.edu\') OR dni = $1',
+    `SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1) OR LOWER(email) = LOWER($1 || '@colegio.com') OR LOWER(email) = LOWER($1 || '@colegio.edu') OR dni = $1
+     ORDER BY CASE WHEN dni = $1 THEN 0 WHEN LOWER(email) = LOWER($1) THEN 1 ELSE 2 END LIMIT 1`,
     [cleanInput]
   );
   return result.rows[0];

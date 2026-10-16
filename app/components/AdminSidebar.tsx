@@ -1,10 +1,8 @@
-'use client';
-
-import Link from 'next/link';
-import NotificacionesBell from './NotificacionesBell';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+"use client";
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   FiGrid,
   FiPackage,
@@ -14,128 +12,72 @@ import {
   FiUser,
   FiLogOut,
   FiClock,
-} from 'react-icons/fi';
-import { logout } from '@/app/lib/logout';
-
-const menuItems = [
-  { href: '/admin/dashboard', title: 'Dashboard', icon: FiGrid },
-  { href: '/admin/inventario', title: 'Inventario', icon: FiPackage },
-  { href: '/admin/prestamos', title: 'Préstamos', icon: FiInbox },
-  { href: '/admin/profesores', title: 'Profesores', icon: FiUsers },
-  { href: '/admin/horario', title: 'Horario', icon: FiCalendar },
-  { href: '/admin/solicitudes', title: 'Solicitudes', icon: FiInbox },
-  { href: '/admin/historial', title: 'Historial', icon: FiClock },
-  { href: '/admin/perfil', title: 'Perfil', icon: FiUser },
-];
-
+} from "react-icons/fi";
+import { logout } from "@/app/lib/logout";
+import NotificacionesBell from "./NotificacionesBell";
+import s from "./admin/AdminWorkspace.module.css";
+const menu = [
+  ["/admin/dashboard", "Centro de operaciones", FiGrid],
+  ["/admin/solicitudes", "Solicitudes", FiInbox],
+  ["/admin/prestamos", "Préstamos y devoluciones", FiPackage],
+  ["/admin/horario", "Calendario de la sala", FiCalendar],
+  ["/admin/inventario", "Inventario", FiPackage],
+  ["/admin/profesores", "Profesores y cuentas", FiUsers],
+  ["/admin/historial", "Historial", FiClock],
+  ["/admin/perfil", "Mi perfil", FiUser],
+] as const;
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-
+  const [name, setName] = useState("Administrador");
   useEffect(() => {
-    const data = localStorage.getItem('user');
-    if (data) {
-      try {
-        setUser(JSON.parse(data));
-      } catch (error) {
-        console.error('Error al leer usuario:', error);
-      }
-    }
+    try {
+      setName(
+        JSON.parse(localStorage.getItem("user") || "{}").nombre ||
+          "Administrador",
+      );
+    } catch {}
   }, []);
-
-  const isActive = (href: string) =>
-    href === '/admin/dashboard'
-      ? pathname === href
-      : pathname.startsWith(href);
-
   return (
-    <aside
-      className="position-fixed top-0 start-0 h-100 d-flex flex-column admin-sidebar"
-      style={{
-        width: '260px',
-        zIndex: 1000,
-      }}
-    >
-      <div className="sidebar-header">
-        <div className="d-flex align-items-center mb-2">
-          <div
-            className="d-flex align-items-center justify-content-center me-3"
-            style={{ width: '38px', height: '38px', flexShrink: 0 }}
-          >
-            <Image src="/logo.png" alt="Logo" width={38} height={38} style={{ objectFit: 'contain' }} />
-          </div>
-          <h2 className="h6 fw-bold mb-0">Sistema de Inventario</h2>
+    <aside className={s.sidebar} aria-label="Administración">
+      <Link href="/admin/dashboard" className={s.brand}>
+        <Image
+          src="/logo.png"
+          width={40}
+          height={44}
+          alt="Colegio Manuel Scorza"
+        />
+        <span>
+          Manuel Scorza<small>Gestión de recursos</small>
+        </span>
+      </Link>
+      <div className={s.identity}>
+        <span className={s.avatar}>{name.charAt(0)}</span>
+        <div>
+          <strong>{name}</strong>
+          <small>Administrador</small>
         </div>
-
-        <p className="text-secondary small mb-0 ps-1" style={{ color: 'var(--color-slate-400)' }}>
-          Panel de Administración
-        </p>
+        <NotificacionesBell />
       </div>
-
-      <div className="p-4 border-bottom" style={{ borderColor: 'var(--color-slate-800)' }}>
-        <div className="d-flex align-items-center">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 sidebar-brand-icon"
-            style={{
-              width: '42px',
-              height: '42px',
-              flexShrink: 0,
-            }}
+      <nav className={s.navigation} aria-label="Menú de administración">
+        <p>ESPACIO DE TRABAJO</p>
+        {menu.map(([href, label, Icon]) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={pathname.startsWith(href) ? "page" : undefined}
           >
-            {user?.nombre?.charAt(0)?.toUpperCase() || 'A'}
-          </div>
-
-          <div className="min-w-0">
-            <div className="fw-semibold text-truncate">
-              {user?.nombre || 'Administrador'}
-            </div>
-
-            <div className="small" style={{ color: 'var(--color-slate-400)' }}>
-              Administrador
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 py-2 d-flex align-items-center justify-content-between"><span className="small">Notificaciones</span><NotificacionesBell /></div>
-
-      <nav className="flex-grow-1 overflow-auto py-3">
-        <div className="text-uppercase small fw-bold px-4 mb-3" style={{ color: 'var(--color-slate-500)', letterSpacing: '0.05em' }}>
-          Menú Principal
-        </div>
-
-        {menuItems.map((item) => {
-          const active = isActive(item.href);
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-nav-item ${active ? 'active' : ''}`}
-            >
-              <Icon
-                className="me-3"
-                size={17}
-                style={{ flexShrink: 0 }}
-              />
-              <span>{item.title}</span>
-            </Link>
-          );
-        })}
+            <Icon size={19} />
+            <span>{label}</span>
+          </Link>
+        ))}
       </nav>
-
-      <div className="p-3 border-top" style={{ borderColor: 'var(--color-slate-800)' }}>
-        <button
-          className="sidebar-footer-btn"
-          onClick={() => {
-            void logout();
-          }}
-        >
-          <FiLogOut className="me-3" size={17} style={{ flexShrink: 0 }} />
-          <span>Cerrar sesión</span>
+      <footer className={s.sidebarFooter}>
+        <span>Inventario · Sala de cómputo</span>
+        <button onClick={() => void logout()}>
+          <FiLogOut size={18} />
+          Cerrar sesión
         </button>
-      </div>
+      </footer>
     </aside>
   );
 }

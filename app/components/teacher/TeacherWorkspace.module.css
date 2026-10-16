@@ -309,3 +309,8 @@
   .hero h2 { font-size:20px; }
   .hero p { margin-bottom:15px; }
 }
+
+/* Fechas anteriores siguen siendo consultables con contraste completo en administración. */
+.almanac[data-admin=true] .almanacDate[data-past=true]:not([data-outside=true]):not([aria-pressed=true]){color:#36594e}
+.almanac[data-admin=true] .almanacDate small{color:#526d69}
+.almanac[data-admin=true] .almanacDate[aria-pressed=true] small{color:#fff}

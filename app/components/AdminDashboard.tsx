@@ -1,112 +1,590 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { FiInbox, FiPackage, FiUsers, FiCheckCircle, FiXCircle, FiArrowRight, FiUser, FiSearch, FiCalendar, FiClock } from 'react-icons/fi';
-import styles from './AdminDashboard.module.css';
-import AdminQuickForm from './AdminQuickForm';
-
-interface Solicitud {
-  id: number;
-  profesor_nombre: string;
-  item_nombre: string | null;
-  cantidad_solicitada: number;
-  estado: string;
-  fecha_solicitud: string;
-}
-interface Item { id: number; nombre: string; categoria: string; cantidad_total: number; cantidad_disponible: number }
-
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import {
+  FiArrowRight,
+  FiCalendar,
+  FiCheckCircle,
+  FiClock,
+  FiInbox,
+  FiPackage,
+  FiPlus,
+  FiRefreshCw,
+  FiSearch,
+  FiUsers,
+} from "react-icons/fi";
+import {
+  dateLabel,
+  normalize,
+  reservationsForDate,
+  schoolDate,
+} from "@/app/lib/teacher-utils";
+import { Modal } from "./teacher/TeacherUi";
+import AdminQuickForm from "./AdminQuickForm";
+import {
+  adminWrite,
+  useAdminData,
+  type RequestRow,
+  type LoanRow,
+  type TeacherRow,
+} from "./admin/useAdminData";
+import s from "./admin/AdminWorkspace.module.css";
+type Action =
+  | { type: "request"; row: RequestRow }
+  | { type: "delivery" | "return"; row: LoanRow }
+  | { type: "account"; row: TeacherRow };
 export default function AdminDashboard() {
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
-  const [profesores, setProfesores] = useState(0);
-  const [prestamos, setPrestamos] = useState<{ estado: string; cantidad: number }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [user, setUser] = useState<{ id: number; nombre: string } | null>(null);
-  const [busy, setBusy] = useState<number | null>(null);
-  const [search, setSearch] = useState('');
-  const [quickForm, setQuickForm] = useState<'loan' | 'classroom' | null>(null);
-  const [now, setNow] = useState<Date | null>(null);
-
-  const refresh = useCallback(async () => {
+  const { data, loading, refreshing, error, updated, refresh } = useAdminData();
+  const [tab, setTab] = useState("requests"),
+    [search, setSearch] = useState(""),
+    [quick, setQuick] = useState(false);
+  const [action, setAction] = useState<Action | null>(null),
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState(""),
+    [actionError, setActionError] = useState("");
+  const [comment, setComment] = useState(""),
+    [condition, setCondition] = useState("bueno");
+  const requests = (data?.requests || [])
+    .filter((r) => r.estado === "pendiente")
+    .sort((a, b) => a.fecha_solicitud.localeCompare(b.fecha_solicitud));
+  const deliveries = (data?.loans || []).filter(
+    (r) => r.estado === "pendiente",
+  );
+  const returns = (data?.loans || []).filter((r) => r.estado === "prestado");
+  const accounts = (data?.teachers || []).filter((r) => !r.activo);
+  const agenda = reservationsForDate(data?.schedule || [], schoolDate());
+  const attention = (data?.items || []).filter(
+    (r) => r.estado === "mantenimiento" || Number(r.cantidad_disponible) === 0,
+  );
+  const tabs = [
+    { key: "requests", label: "Solicitudes", rows: requests },
+    { key: "deliveries", label: "Por entregar", rows: deliveries },
+    { key: "returns", label: "En uso", rows: returns },
+    { key: "accounts", label: "Cuentas inactivas", rows: accounts },
+  ];
+  const current = tabs.find((t) => t.key === tab)!;
+  const filtered = current.rows.filter((row) =>
+    normalize(JSON.stringify(row)).includes(normalize(search)),
+  );
+  function open(next: Action) {
+    setAction(next);
+    setComment("");
+    setCondition("bueno");
+    setActionError("");
+  }
+  async function save(decision?: "aprobada" | "rechazada") {
+    if (!action) return;
+    setBusy(true);
+    setActionError("");
     try {
-      const responses = await Promise.all(['/api/solicitudes', '/api/inventario', '/api/usuarios?role=profesor&activo=true', '/api/prestamos'].map(url => fetch(url, { cache: 'no-store' })));
-      if (responses.some(response => !response.ok)) throw new Error('No se pudieron cargar los datos del panel. Intenta nuevamente.');
-      const [requests, inventory, teachers, loans] = await Promise.all(responses.map(response => response.json()));
-      setPrestamos(loans.prestamos || []);
-      setSolicitudes(requests.solicitudes || []);
-      setItems(inventory.items || []);
-      setProfesores(teachers.total ?? teachers.usuarios?.length ?? 0);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar el panel.');
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    try { setUser(JSON.parse(localStorage.getItem('user') || 'null')); } catch { /* La sesión se valida en el middleware. */ }
-    setNow(new Date());
-    const timer = window.setInterval(() => setNow(new Date()), 60000);
-    void refresh();
-    const update = () => { void refresh(); };
-    window.addEventListener('admin-requests-updated', update);
-    return () => { clearInterval(timer); window.removeEventListener('admin-requests-updated', update); };
-  }, [refresh]);
-
-  const decide = async (id: number, estado: 'aprobada' | 'rechazada') => {
-    setBusy(id);
-    try {
-      const response = await fetch(`/api/solicitudes/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado, admin_id: user?.id }) });
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'No se pudo actualizar la solicitud.'); }
-      window.dispatchEvent(new Event('admin-requests-updated'));
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error al actualizar la solicitud.'); }
-    finally { setBusy(null); }
-  };
-
-  const pending = solicitudes.filter(s => s.estado === 'pendiente');
-  const visible = pending.filter(s => `${s.profesor_nombre} ${s.item_nombre || 'Sala de cómputo'}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-  const total = items.reduce((sum, item) => sum + Number(item.cantidad_total), 0);
-  const available = items.reduce((sum, item) => sum + Number(item.cantidad_disponible), 0);
-  const percent = total ? Math.round(available / total * 100) : 0;
-  const states = [{ label: 'Aprobadas', value: solicitudes.filter(s => s.estado === 'aprobada').length }, { label: 'Pendientes', value: pending.length }, { label: 'Rechazadas', value: solicitudes.filter(s => s.estado === 'rechazada').length }];
-  const metric = (value: number) => loading || error ? '—' : value.toLocaleString('es-PE');
-
+      if (action.type === "request")
+        await adminWrite(`/api/solicitudes/${action.row.id}`, {
+          estado: decision,
+          comentarios: comment,
+        });
+      else if (action.type === "account")
+        await adminWrite(`/api/usuarios/${action.row.id}`, { activo: true });
+      else
+        await adminWrite(`/api/prestamos/${action.row.id}`, {
+          estado: action.type === "delivery" ? "prestado" : "devuelto",
+          devolucion_estado: condition,
+          devolucion_observacion: comment,
+        });
+      setNotice(
+        action.type === "account"
+          ? "Cuenta activada. El docente ya puede iniciar sesión."
+          : action.type === "return"
+            ? "Devolución registrada y stock actualizado."
+            : action.type === "delivery"
+              ? "Entrega confirmada. El equipo figura en uso."
+              : decision === "aprobada"
+                ? "Solicitud aprobada correctamente."
+                : "Solicitud rechazada.",
+      );
+      setAction(null);
+      await refresh();
+      window.dispatchEvent(new Event("admin-requests-updated"));
+      window.dispatchEvent(new Event("admin-users-updated"));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "No se pudo guardar.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className={styles.dashboard}>
-      {quickForm && <AdminQuickForm type={quickForm} onClose={() => setQuickForm(null)} onSaved={() => { void refresh(); }} />}
-      <header className={styles.topbar}>
-        <label className={styles.search}><FiSearch size={18} /><input aria-label="Buscar solicitudes pendientes" placeholder="Buscar profesor o artículo…" value={search} onChange={e => setSearch(e.target.value)} /></label>
-        <Link href="/admin/perfil" className={styles.profile}><span>{user?.nombre || 'Administrador'}</span><span className={styles.avatar}><FiUser size={18} /></span></Link>
+    <div className={s.page}>
+      <header className={s.heading}>
+        <div>
+          <span className={s.eyebrow}>
+            ADMINISTRACIÓN ·{" "}
+            {dateLabel(schoolDate(), { day: "numeric", month: "long" })}
+          </span>
+          <h1>Centro de operaciones</h1>
+          <p>Las tareas del colegio, listas para resolver.</p>
+        </div>
+        <div className={s.actions}>
+          <button
+            className={s.secondary}
+            disabled={refreshing}
+            onClick={() => void refresh()}
+          >
+            <FiRefreshCw />
+            {refreshing ? "Actualizando…" : "Actualizar"}
+          </button>
+          <button className={s.button} onClick={() => setQuick(true)}>
+            <FiPlus />
+            Nuevo préstamo
+          </button>
+        </div>
       </header>
-      <div className={styles.content}>
-        <div className={styles.heading}><div><span className={styles.eyebrow}>ADMINISTRACIÓN · MANUEL SCORZA</span><h1>Centro de operaciones</h1><p>Atiende solicitudes, controla entregas y prepara los recursos del colegio.</p></div><button className={styles.shortcutButton} onClick={() => void refresh()}>Actualizar panel</button></div>
-        {error && <div role="alert" className={styles.error}>{error} <button onClick={() => void refresh()}>Reintentar</button></div>}
-        <div className={styles.metrics}>
-          {[{ label: 'Solicitudes pendientes', value: pending.length, icon: FiInbox, href: '/admin/solicitudes' }, { label: 'Unidades en inventario', value: total, icon: FiPackage, href: '/admin/inventario' }, { label: 'Préstamos en uso', value: prestamos.filter(p => p.estado === 'prestado').length, icon: FiInbox, href: '/admin/prestamos' }, { label: 'Por entregar', value: prestamos.filter(p => p.estado === 'pendiente').length, icon: FiClock, href: '/admin/prestamos' }, { label: 'Profesores activos', value: profesores, icon: FiUsers, href: '/admin/profesores' }].map(({ label, value, icon: Icon, href }) => <Link key={label} href={href} className={styles.metric}><Icon size={30} /><span>{label}</span><strong>{metric(value)}</strong><small>Ver detalle <FiArrowRight /></small></Link>)}
+      {error && (
+        <div className={s.notice} data-error role="alert">
+          {error} {data && "Se conserva la última información disponible."}
         </div>
-        <div className={styles.grid}>
-          <section className={`${styles.card} ${styles.loanShortcut} ${styles.shortcut}`}>
-            <span className={styles.shortcutIcon}><FiPackage size={30} /></span>
-            <h2>Préstamos de equipos</h2>
-            <p>Registra la entrega de un equipo o artículo a un profesor.</p>
-            <button type="button" onClick={() => setQuickForm('loan')} className={styles.shortcutButton}>Realizar un préstamo <FiArrowRight /></button>
-          </section>
-          <section className={`${styles.card} ${styles.calendar}`}><div className={styles.cardHeading}><h2>Hoy en el colegio</h2><FiCalendar /></div><div className={styles.calendarBody}><div><span>{now?.toLocaleDateString('es-PE', { month: 'long' }) || '—'}</span><strong>{now?.getDate().toString().padStart(2, '0') || '—'}</strong><span>{now?.toLocaleDateString('es-PE', { weekday: 'long' })}</span></div><div><FiClock size={45} strokeWidth={1.3} /><b>{now?.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) || '—'}</b><Link href="/admin/horario">Ver horario <FiArrowRight /></Link></div></div></section>
-          <section className={`${styles.card} ${styles.shortcut}`}>
-            <span className={styles.shortcutIcon}><FiCalendar size={26} /></span>
-            <h2>Reserva de aula</h2>
-            <p>Consulta el horario y asigna un turno en la sala de cómputo.</p>
-            <button type="button" onClick={() => setQuickForm('classroom')} className={styles.shortcutButton}>Separar aula <FiArrowRight /></button>
-          </section>
-          <section className={styles.card}><div className={styles.cardHeading}><h2>Estado de solicitudes</h2></div><div className={styles.progressList}>{states.map(state => <div key={state.label}><div><span>{state.label}</span><b>{metric(state.value)}</b></div><div className={styles.track}><span style={{ width: `${!loading && !error && solicitudes.length ? state.value / solicitudes.length * 100 : 0}%` }} /></div></div>)}</div><Link className={styles.footerLink} href="/admin/solicitudes">Ver solicitudes <FiArrowRight /></Link></section>
-          <section className={styles.card}><div className={styles.cardHeading}><h2>Disponibilidad de stock</h2></div><div className={styles.donut} style={{ background: `conic-gradient(#087f6f ${!loading && !error ? percent : 0}%, #ededed 0)` }}><div><strong>{loading || error || !total ? '—' : `${percent}%`}</strong><small>disponible</small></div></div><p className={styles.stockCaption}>{metric(available)} de {metric(total)} unidades</p></section>
+      )}
+      {notice && (
+        <div className={s.notice} role="status">
+          {notice}
         </div>
-        <section className={`${styles.card} ${styles.requests}`}><div className={styles.cardHeading}><div><h2>Solicitudes pendientes <span className={styles.badge}>{metric(pending.length)}</span></h2><p>Revisa las solicitudes de los profesores.</p></div><Link href="/admin/solicitudes">Ver todas <FiArrowRight /></Link></div>
-          {loading ? <p className={styles.empty} role="status">Cargando solicitudes…</p> : error ? <p className={styles.empty}>No se pudieron actualizar las solicitudes.</p> : visible.length === 0 ? <div className={styles.empty}><FiCheckCircle size={28} /><p>{search ? 'No hay solicitudes que coincidan con tu búsqueda.' : 'No hay solicitudes pendientes.'}</p></div> : <div className={styles.tableWrap}><table><thead><tr><th>Profesor</th><th>Artículo / espacio</th><th>Cantidad</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>{visible.map(s => <tr key={s.id}><td><span className={styles.initial}>{s.profesor_nombre?.charAt(0).toUpperCase()}</span>{s.profesor_nombre}</td><td>{s.item_nombre || 'Sala de cómputo'}</td><td>{s.cantidad_solicitada}</td><td>{new Date(s.fecha_solicitud).toLocaleDateString('es-PE')}</td><td><div className={styles.actions}><button disabled={busy !== null} onClick={() => void decide(s.id, 'aprobada')}><FiCheckCircle />{busy === s.id ? 'Procesando…' : 'Aprobar'}</button><button disabled={busy !== null} onClick={() => void decide(s.id, 'rechazada')}><FiXCircle />Rechazar</button></div></td></tr>)}</tbody></table></div>}
-        </section>
-        <footer className={styles.pageFooter}>Sistema de Inventario <span>Panel de administración</span></footer>
+      )}
+      <div className={s.metrics}>
+        {[
+          {
+            title: "Solicitudes por revisar",
+            value: requests.length,
+            icon: FiInbox,
+            key: "requests",
+            hint: "Revisar y responder",
+          },
+          {
+            title: "Equipos por entregar",
+            value: deliveries.length,
+            icon: FiPackage,
+            key: "deliveries",
+            hint: "Confirmar la entrega",
+          },
+          {
+            title: "Préstamos en uso",
+            value: returns.length,
+            icon: FiClock,
+            key: "returns",
+            hint: "Registrar una devolución",
+          },
+          {
+            title: "Cuentas inactivas",
+            value: accounts.length,
+            icon: FiUsers,
+            key: "accounts",
+            hint: "Revisar antes de activar",
+          },
+        ].map(({ title, value, icon: Icon, key, hint }) => (
+          <button
+            key={key}
+            className={s.metric}
+            data-alert={value > 0}
+            onClick={() => {
+              setTab(key);
+              setSearch("");
+              document
+                .getElementById("work-queue")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            <Icon size={20} />
+            <span>{title}</span>
+            <strong>{data ? value : "—"}</strong>
+            <small>{hint} →</small>
+          </button>
+        ))}
       </div>
+      <div className={s.columns}>
+        <section
+          className={s.panel}
+          id="work-queue"
+          style={{ scrollMarginTop: 80 }}
+        >
+          <header className={s.panelHead}>
+            <div>
+              <h2>Bandeja de trabajo</h2>
+              <p>Resuelve cada tarea sin salir del panel.</p>
+            </div>
+            <span className={s.caption}>
+              {updated ? `Actualizado ${updated}` : "Conectando…"}
+            </span>
+          </header>
+          <div className={s.tabs} aria-label="Tipo de tarea">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                aria-pressed={tab === t.key}
+                onClick={() => {
+                  setTab(t.key);
+                  setSearch("");
+                }}
+              >
+                {t.label} · {data ? t.rows.length : "—"}
+              </button>
+            ))}
+          </div>
+          <label className={s.search}>
+            <FiSearch />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar docente o recurso…"
+              aria-label="Buscar en la bandeja"
+            />
+          </label>
+          {loading ? (
+            <div className={s.empty} role="status">
+              Cargando tareas…
+            </div>
+          ) : !data ? (
+            <div className={s.empty}>
+              No se pudo cargar la bandeja.
+              <button className={s.secondary} onClick={() => void refresh()}>
+                Reintentar
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className={s.empty}>
+              <FiCheckCircle size={30} />
+              <h3>
+                {search ? "Sin coincidencias" : "Todo al día en esta bandeja"}
+              </h3>
+              <p>
+                {tab === "accounts"
+                  ? "Aquí aparecen cuentas pendientes de activación o desactivadas."
+                  : "Las nuevas tareas aparecerán automáticamente."}
+              </p>
+            </div>
+          ) : (
+            filtered.slice(0, 20).map((row) => {
+              if (tab === "accounts") {
+                const r = row as TeacherRow;
+                return (
+                  <article className={s.row} key={r.id}>
+                    <div>
+                      <strong>
+                        {r.nombre} {r.apellido}
+                      </strong>
+                      <p>
+                        DNI: {r.dni || "Sin registrar"} · {r.area || "Sin área"}
+                      </p>
+                      <small>
+                        Cuenta inactiva · revisa la identidad del docente
+                      </small>
+                    </div>
+                    <button
+                      className={s.secondary}
+                      onClick={() => open({ type: "account", row: r })}
+                    >
+                      Revisar cuenta
+                    </button>
+                  </article>
+                );
+              }
+              if (tab === "requests") {
+                const r = row as RequestRow;
+                return (
+                  <article className={s.row} key={r.id}>
+                    <div>
+                      <span className={s.tag}>
+                        {r.disponibilidad_id ? "SALA DE CÓMPUTO" : "EQUIPO"} · #
+                        {r.id}
+                      </span>
+                      <h3>{r.item_nombre || "Sala de cómputo"}</h3>
+                      <p>
+                        {r.profesor_nombre} {r.apellido} ·{" "}
+                        {r.cantidad_solicitada} unidad(es)
+                      </p>
+                      <small>Recibida {dateLabel(r.fecha_solicitud)}</small>
+                    </div>
+                    <button
+                      className={s.button}
+                      onClick={() => open({ type: "request", row: r })}
+                    >
+                      Revisar <FiArrowRight />
+                    </button>
+                  </article>
+                );
+              }
+              const r = row as LoanRow;
+              return (
+                <article className={s.row} key={r.id}>
+                  <div>
+                    <span className={s.tag}>PRÉSTAMO #{r.id}</span>
+                    <h3>{r.item_nombre}</h3>
+                    <p>
+                      {r.profesor_nombre} {r.profesor_apellido} · {r.cantidad}{" "}
+                      unidad(es)
+                    </p>
+                    <small>Registrado {dateLabel(r.fecha_prestamo)}</small>
+                  </div>
+                  <button
+                    className={s.secondary}
+                    onClick={() =>
+                      open({
+                        type: tab === "deliveries" ? "delivery" : "return",
+                        row: r,
+                      })
+                    }
+                  >
+                    {tab === "deliveries"
+                      ? "Confirmar entrega"
+                      : "Registrar devolución"}
+                  </button>
+                </article>
+              );
+            })
+          )}
+          {filtered.length > 20 && (
+            <div className={s.panelBody}>
+              <Link
+                href={
+                  tab === "accounts"
+                    ? "/admin/profesores"
+                    : tab === "requests"
+                      ? "/admin/solicitudes"
+                      : "/admin/prestamos"
+                }
+                className={s.secondary}
+              >
+                Ver las {filtered.length} tareas en el módulo
+              </Link>
+            </div>
+          )}
+        </section>
+        <aside className={s.side}>
+          <section className={s.panel}>
+            <header className={s.panelHead}>
+              <div>
+                <h2>
+                  <FiCalendar /> Sala de cómputo hoy
+                </h2>
+                <p>
+                  {dateLabel(schoolDate(), {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </p>
+              </div>
+              <Link href="/admin/horario">Abrir calendario →</Link>
+            </header>
+            {!data ? (
+              <div className={s.empty}>Agenda sin cargar.</div>
+            ) : !agenda.length ? (
+              <div className={s.empty}>
+                <FiCalendar size={26} />
+                <h3>Sin clases ni reservas hoy</h3>
+                <p>Asigna una clase desde el calendario mensual.</p>
+                <Link href="/admin/horario" className={s.secondary}>
+                  Planificar la sala
+                </Link>
+              </div>
+            ) : (
+              agenda.slice(0, 5).map((r) => (
+                <div className={s.row} key={r.id}>
+                  <div>
+                    <strong className={s.agendaTime}>
+                      {r.hora_inicio.slice(0, 5)} – {r.hora_fin.slice(0, 5)}
+                    </strong>
+                    <p>{r.motivo_reserva || "Clase en la sala"}</p>
+                    <small>
+                      {r.reservado_por_nombre} {r.reservado_por_apellido} ·{" "}
+                      {r.estado === "pendiente" ? "En revisión" : "Confirmada"}
+                    </small>
+                  </div>
+                </div>
+              ))
+            )}
+            {agenda.length > 5 && (
+              <div className={s.panelBody}>
+                <Link href="/admin/horario">
+                  Ver los {agenda.length} turnos
+                </Link>
+              </div>
+            )}
+          </section>
+          <section className={s.panel}>
+            <header className={s.panelHead}>
+              <div>
+                <h2>Atención al inventario</h2>
+                <p>
+                  {data
+                    ? `${attention.length} artículos sin stock disponible o en mantenimiento`
+                    : "Consultando stock real…"}
+                </p>
+              </div>
+            </header>
+            <div className={s.panelBody}>
+              {attention.slice(0, 4).map((i) => (
+                <div className={s.stock} key={i.id}>
+                  <strong>{i.nombre}</strong>
+                  <span>
+                    {i.estado === "mantenimiento"
+                      ? "Mantenimiento"
+                      : "Sin disponibles"}
+                  </span>
+                </div>
+              ))}
+              {data && !attention.length && (
+                <p>Sin alertas de disponibilidad.</p>
+              )}
+              <p className={s.caption}>
+                Disponibles:{" "}
+                {data
+                  ? data.items.reduce(
+                      (n, i) => n + Number(i.cantidad_disponible),
+                      0,
+                    )
+                  : "—"}{" "}
+                unidades. Revisa existencias antes de aprobar.
+              </p>
+              <Link href="/admin/inventario" className={s.secondary}>
+                Gestionar inventario <FiArrowRight />
+              </Link>
+            </div>
+          </section>
+        </aside>
+      </div>
+      {quick && (
+        <AdminQuickForm
+          type="loan"
+          onClose={() => setQuick(false)}
+          onSaved={() => void refresh()}
+        />
+      )}
+      {action && (
+        <Modal
+          title={
+            action.type === "request"
+              ? "Revisar solicitud"
+              : action.type === "delivery"
+                ? "Confirmar entrega"
+                : action.type === "return"
+                  ? "Registrar devolución"
+                  : "Activar cuenta de docente"
+          }
+          onClose={() => setAction(null)}
+          busy={busy}
+        >
+          <div className={s.form}>
+            <div className={s.detail}>
+              {action.type === "account" ? (
+                <>
+                  <strong>
+                    {action.row.nombre} {action.row.apellido}
+                  </strong>
+                  <p>DNI: {action.row.dni || "Sin registrar"}</p>
+                  <p>
+                    Al activar esta cuenta permites el acceso del docente al
+                    sistema.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <strong>{action.row.item_nombre || "Sala de cómputo"}</strong>
+                  <p>
+                    {action.row.profesor_nombre} · Registro #{action.row.id}
+                  </p>
+                  {action.type === "request" ? (
+                    <>
+                      <p>{action.row.motivo || "Sin motivo registrado"}</p>
+                      <p>Cantidad: {action.row.cantidad_solicitada}</p>
+                      {(action.row.seccion || action.row.numero_aula) && (
+                        <p>
+                          Destino: {action.row.seccion} {action.row.numero_aula}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p>Cantidad: {action.row.cantidad}</p>
+                  )}
+                </>
+              )}
+            </div>
+            {action.type === "return" && (
+              <label>
+                Estado del equipo al recibirlo
+                <select
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
+                >
+                  <option value="bueno">Bueno</option>
+                  <option value="regular">Regular</option>
+                  <option value="malo">Malo · requiere mantenimiento</option>
+                </select>
+              </label>
+            )}
+            {(action.type === "request" || action.type === "return") && (
+              <label>
+                {action.type === "request"
+                  ? "Respuesta para el docente (opcional)"
+                  : "Observaciones de devolución (opcional)"}
+                <textarea
+                  value={comment}
+                  maxLength={1000}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+              </label>
+            )}
+            {action.type === "delivery" && (
+              <p>
+                Confirma únicamente cuando hayas entregado físicamente los
+                equipos al docente.
+              </p>
+            )}
+            {actionError && (
+              <div role="alert" className={s.notice} data-error>
+                {actionError}
+              </div>
+            )}
+            <footer>
+              <button
+                disabled={busy}
+                className={s.secondary}
+                onClick={() => setAction(null)}
+              >
+                Volver
+              </button>
+              {action.type === "request" ? (
+                <>
+                  <button
+                    disabled={busy}
+                    className={s.danger}
+                    onClick={() => void save("rechazada")}
+                  >
+                    Rechazar solicitud
+                  </button>
+                  <button
+                    disabled={busy}
+                    className={s.button}
+                    onClick={() => void save("aprobada")}
+                  >
+                    {busy ? "Guardando…" : "Aprobar solicitud"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  disabled={busy}
+                  className={s.button}
+                  onClick={() => void save()}
+                >
+                  {busy
+                    ? "Guardando…"
+                    : action.type === "account"
+                      ? "Activar cuenta"
+                      : action.type === "delivery"
+                        ? "Confirmar entrega"
+                        : "Guardar devolución"}
+                </button>
+              )}
+            </footer>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

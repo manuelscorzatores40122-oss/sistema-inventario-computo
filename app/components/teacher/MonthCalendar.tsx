@@ -5,9 +5,9 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { calendarMonthDays, dateLabel, reservationsForDate, schoolDate, type Reservation } from '@/app/lib/teacher-utils';
 import s from './TeacherWorkspace.module.css';
 
-export default function MonthCalendar({ month, onMonthChange, value, onChange, reservations, userId, compact = false, futureOnly = false }: {
+export default function MonthCalendar({ month, onMonthChange, value, onChange, reservations, userId, compact = false, futureOnly = false, admin = false }: {
   month: string; onMonthChange: (month: string) => void; value: string; onChange: (date: string) => void;
-  reservations: Reservation[]; userId?: number; compact?: boolean; futureOnly?: boolean;
+  reservations: Reservation[]; userId?: number; compact?: boolean; futureOnly?: boolean; admin?: boolean;
 }) {
   const heading = useId();
   const grid = useRef<HTMLDivElement>(null);
@@ -17,9 +17,9 @@ export default function MonthCalendar({ month, onMonthChange, value, onChange, r
     next.setUTCMonth(next.getUTCMonth() + offset);
     onMonthChange(next.toISOString().slice(0, 10));
   }
-  return <section className={`${s.almanac} ${compact ? s.almanacCompact : ''}`} aria-labelledby={heading}>
+  return <section className={`${s.almanac} ${compact ? s.almanacCompact : ''}`} data-admin={admin} aria-labelledby={heading}>
     <header className={s.almanacHeader}>
-      <div><span className={s.eyebrow}>{compact ? 'ELIGE LA FECHA DE TU CLASE' : 'PLANIFICA TU PRÓXIMA CLASE'}</span><h2 id={heading}>{dateLabel(month, { month: 'long', year: 'numeric' })}</h2></div>
+      <div><span className={s.eyebrow}>{admin ? 'CALENDARIO DE LA SALA' : compact ? 'ELIGE LA FECHA DE TU CLASE' : 'PLANIFICA TU PRÓXIMA CLASE'}</span><h2 id={heading}>{dateLabel(month, { month: 'long', year: 'numeric' })}</h2></div>
       <div className={s.almanacControls}><button type="button" className={s.iconButton} aria-label="Mes anterior" onClick={() => moveMonth(-1)}><FiChevronLeft size={17} /></button><button type="button" className={s.iconButton} aria-label="Mes siguiente" onClick={() => moveMonth(1)}><FiChevronRight size={17} /></button></div>
     </header>
     <div ref={grid} className={s.almanacGrid}>
@@ -34,11 +34,11 @@ export default function MonthCalendar({ month, onMonthChange, value, onChange, r
           aria-label={`${dateLabel(date, { weekday: 'long', day: 'numeric', month: 'long' })}${mine ? ', tienes una reserva' : ''}, ${events.length} turnos ocupados`}
           onClick={() => { onChange(date); if (date.slice(0, 7) !== month.slice(0, 7)) onMonthChange(date.slice(0, 7) + '-01'); }}>
           <strong>{Number(date.slice(8, 10))}</strong>
-          <span className={s.almanacMarkers} aria-hidden="true">{events.slice(0, 3).map(row => <i key={row.id} data-mine={row.reservado_por === userId} />)}</span>
+          <span className={s.almanacMarkers} aria-hidden="true">{events.slice(0, 3).map(row => <i key={row.id} data-mine={admin ? !row.fecha_reserva : row.reservado_por === userId} />)}</span>
           {!compact && <small>{mine ? 'Mi reserva' : events.length ? `${events.length} ${events.length === 1 ? 'turno ocupado' : 'turnos ocupados'}` : past ? '' : 'Sin reservas'}</small>}
         </button>;
       })}
     </div>
-    <footer className={s.almanacFooter}><span><i />Mis reservas</span><span><i />Otros turnos ocupados</span><button type="button" onClick={() => { onMonthChange(today.slice(0, 7) + '-01'); onChange(today); }}>Ir a hoy</button></footer>
+    <footer className={s.almanacFooter}><span><i />{admin ? 'Clases semanales' : 'Mis reservas'}</span><span><i />{admin ? 'Reservas por fecha' : 'Otros turnos ocupados'}</span><button type="button" onClick={() => { onMonthChange(today.slice(0, 7) + '-01'); onChange(today); }}>Ir a hoy</button></footer>
   </section>;
 }

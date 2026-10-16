@@ -1076,25 +1076,27 @@ export function AdminProfesoresView() {
         if (!response.ok) throw new Error(await readError(response));
         setUsuarios(previous => previous.map(user => user.id === id ? { ...user, activo: !usuario.activo } : user));
         setMessage({ type: 'success', text: usuario.activo ? 'Cuenta desactivada' : 'Cuenta activada' });
+        window.dispatchEvent(new Event('admin-users-updated'));
       } catch (error) { setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo actualizar la cuenta' }); }
       finally { setUpdatingId(null); }
     }, usuario.activo);
   };
 
   const aprobarCuenta = async (usuario: Usuario) => {
-    const response = await fetch(`/api/usuarios/${usuario.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ activo: true }),
-    });
-
-    if (!response.ok) {
-      setMessage({ type: 'error', text: 'No se pudo activar la cuenta' });
-      return;
-    }
-
-    setMessage({ type: 'success', text: `¡Cuenta de ${usuario.nombre} ${usuario.apellido} aprobada y activada con éxito!` });
-    fetchUsuarios();
+    if (updatingId !== null) return;
+    setUpdatingId(usuario.id);
+    try {
+      const response = await fetch(`/api/usuarios/${usuario.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: true }),
+      });
+      if (!response.ok) throw new Error(await readError(response));
+      setUsuarios(previous => previous.map(user => user.id === usuario.id ? { ...user, activo: true } : user));
+      setMessage({ type: 'success', text: `Cuenta de ${usuario.nombre} ${usuario.apellido} activada. Ya puede ingresar con su DNI y la contraseña que eligió al registrarse.` });
+      window.dispatchEvent(new Event('admin-users-updated'));
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo activar la cuenta. Intenta nuevamente.' });
+    } finally { setUpdatingId(null); }
   };
 
   const rechazarCuenta = async (id: number) => {
@@ -1199,7 +1201,7 @@ export function AdminProfesoresView() {
               <div className={teacherStyles.access}><span className={teacherStyles.role}>{usuario.role === 'admin' ? <FiShield /> : <FiUser />}{usuario.role === 'admin' ? 'Administrador' : 'Profesor'}</span><span className={usuario.activo ? teacherStyles.active : teacherStyles.inactive}><span aria-hidden="true">●</span>{usuario.activo ? 'Activo' : 'Pendiente / inactivo'}</span></div>
               <div className={teacherStyles.actions}>
                 <button onClick={() => edit(usuario)} aria-label={`Editar a ${usuario.nombre} ${usuario.apellido}`}><FiEdit2 /> Editar</button>
-                {usuario.activo ? <><button title="Restablecer contraseña" aria-label={`Restablecer contraseña de ${usuario.nombre} ${usuario.apellido}`} onClick={() => { setResetUser(usuario); setNewPasswordInput(''); }}><FiKey /><span className={teacherStyles.mobileAction}>Clave</span></button><button className={teacherStyles.danger} title="Desactivar cuenta" aria-label={`Desactivar cuenta de ${usuario.nombre} ${usuario.apellido}`} disabled={updatingId === usuario.id} onClick={() => deactivate(usuario.id)}><FiUserX /><span className={teacherStyles.mobileAction}>{updatingId === usuario.id ? 'Actualizando…' : 'Desactivar'}</span></button></> : <><button className={teacherStyles.approve} onClick={() => aprobarCuenta(usuario)} title="Aprobar cuenta" aria-label={`Aprobar cuenta de ${usuario.nombre} ${usuario.apellido}`}><FiCheck /><span className={teacherStyles.mobileAction}>Aprobar</span></button><button className={teacherStyles.danger} onClick={() => rechazarCuenta(usuario.id)} title="Rechazar registro" aria-label={`Rechazar registro de ${usuario.nombre} ${usuario.apellido}`}><FiX /><span className={teacherStyles.mobileAction}>Rechazar</span></button></>}
+                {usuario.activo ? <><button title="Restablecer contraseña" aria-label={`Restablecer contraseña de ${usuario.nombre} ${usuario.apellido}`} onClick={() => { setResetUser(usuario); setNewPasswordInput(''); }}><FiKey /><span className={teacherStyles.mobileAction}>Clave</span></button><button className={teacherStyles.danger} title="Desactivar cuenta" aria-label={`Desactivar cuenta de ${usuario.nombre} ${usuario.apellido}`} disabled={updatingId === usuario.id} onClick={() => deactivate(usuario.id)}><FiUserX /><span className={teacherStyles.mobileAction}>{updatingId === usuario.id ? 'Actualizando…' : 'Desactivar'}</span></button></> : <><button className={teacherStyles.approve} disabled={updatingId !== null} onClick={() => aprobarCuenta(usuario)} title="Aprobar cuenta" aria-label={`Aprobar cuenta de ${usuario.nombre} ${usuario.apellido}`}><FiCheck /><span className={teacherStyles.mobileAction}>Aprobar</span></button><button className={teacherStyles.danger} onClick={() => rechazarCuenta(usuario.id)} title="Rechazar registro" aria-label={`Rechazar registro de ${usuario.nombre} ${usuario.apellido}`}><FiX /><span className={teacherStyles.mobileAction}>Rechazar</span></button></>}
               </div>
             </article>)}
           </div>

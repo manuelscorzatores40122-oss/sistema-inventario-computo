@@ -78,7 +78,7 @@ export default function Login({ register = false }: { register?: boolean }) {
         ),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ error: 'El servidor no respondió correctamente. Intenta nuevamente en unos momentos.' }));
 
       if (!response.ok) {
         setError(data.error || (isRegister ? 'No se pudo crear la cuenta' : 'Error al iniciar sesión'));
@@ -130,8 +130,8 @@ export default function Login({ register = false }: { register?: boolean }) {
             </div>
             <p className="login-school">I.E. Manuel Scorza</p>
             <p className="login-mobile-greeting">{greeting}</p>
-            <h1 className="login-title">{isRegister ? 'Solicitud de Cuenta Docente' : 'Iniciar sesión'}</h1>
-            <p className="login-subtitle">{isRegister ? 'Completa tus datos. El administrador revisará y aprobará tu acceso.' : 'Ingresa tus credenciales para continuar'}</p>
+            <h1 className="login-title">{registered ? 'Solicitud enviada' : isRegister ? 'Solicitud de Cuenta Docente' : 'Iniciar sesión'}</h1>
+            <p className="login-subtitle">{registered ? 'Recibimos tus datos correctamente.' : isRegister ? 'Completa tus datos. El administrador revisará y aprobará tu acceso.' : 'Ingresa tus credenciales para continuar'}</p>
           </div>
 
           {registered && (
@@ -232,10 +232,10 @@ export default function Login({ register = false }: { register?: boolean }) {
             </button>
           </form>}
 
-          <p className="login-register-link">
+          {registered ? <p className="login-register-link"><Link href="/auth/login">Volver al inicio de sesión</Link></p> : <p className="login-register-link">
             {isRegister ? '¿Ya tienes una cuenta aprobada? ' : '¿Eres un docente nuevo? '}
             <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Solicita tu cuenta aquí'}</Link>
-          </p>
+          </p>}
 
           <div className="login-footer">
             <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">
