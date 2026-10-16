@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             SELECT json_agg(row_to_json(u_row)) as list FROM (
               SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo, dni, area, fecha_creacion
               FROM usuarios
-              WHERE activo = false AND oculto = false
+              WHERE estado_registro = 'pendiente' AND activo = false AND oculto = false
               ORDER BY fecha_creacion DESC
               LIMIT 50
             ) u_row

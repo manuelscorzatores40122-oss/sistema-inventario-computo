@@ -28,6 +28,7 @@ const teachers = [
     nombre: "Luis",
     apellido: "Pérez",
     activo: false,
+    estado_registro: "pendiente",
     dni: "90029002",
   },
 ];
@@ -282,7 +283,7 @@ async function main() {
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     assert.equal(writes.at(-1).body.devolucion_estado, "malo");
     await page
-      .getByRole("button", { name: "Cuentas inactivas · 1", exact: true })
+      .getByRole("button", { name: "Solicitudes de cuenta · 1", exact: true })
       .click();
     await page.getByRole("button", { name: "Revisar cuenta" }).click();
     await page

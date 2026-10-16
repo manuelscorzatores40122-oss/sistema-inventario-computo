@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     if (!user.activo) {
       return NextResponse.json(
-        { error: 'Tu cuenta está pendiente de aprobación por el administrador del colegio.' },
+        { error: user.estado_registro === 'rechazada' ? 'Tu solicitud de cuenta no fue aprobada. Contacta a administración para revisar tus datos.' : user.estado_registro === 'aprobada' ? 'Tu cuenta está desactivada. Contacta a administración.' : 'Tu cuenta está pendiente de aprobación por el administrador del colegio.' },
         { status: 401 }
       );
     }

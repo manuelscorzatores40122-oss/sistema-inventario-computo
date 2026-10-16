@@ -19,10 +19,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Este DNI ya tiene una cuenta o una solicitud pendiente. Si no puedes ingresar, contacta a administración.' }, { status: 409 });
     }
     const user = await createUser(dni, body.nombre.trim(), body.apellido.trim(), body.password, 'profesor', body.telefono?.trim(), body.correo_personal?.trim(), false, dni, body.area?.trim(), client);
+    await client.query("UPDATE usuarios SET estado_registro = 'pendiente' WHERE id = $1", [user.id]);
     await client.query(`INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado)
       SELECT id, COALESCE(NULLIF(telefono, ''), '-'), $1, 'registro_profesor', $2, 'pendiente'
       FROM usuarios WHERE role = 'admin' AND activo = true`,
-      [`${body.nombre.trim()} ${body.apellido.trim()} solicita una cuenta docente. Revisa sus datos y habilita su acceso desde Profesores.`, user.id]);
+      [`${body.nombre.trim()} ${body.apellido.trim()} solicita una cuenta docente. Revisa sus datos en Solicitudes de cuenta.`, user.id]);
     await client.query('COMMIT');
     return NextResponse.json({ message: 'Tu solicitud fue recibida. Administración revisará tus datos y habilitará tu acceso.', user }, { status: 201 });
   } catch (error: any) {

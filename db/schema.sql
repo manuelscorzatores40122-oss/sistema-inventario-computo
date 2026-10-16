@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   area VARCHAR(255),
   oculto BOOLEAN DEFAULT false,
   activo BOOLEAN DEFAULT true,
+  estado_registro VARCHAR(20) CHECK (estado_registro IN ('pendiente', 'aprobada', 'rechazada')),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

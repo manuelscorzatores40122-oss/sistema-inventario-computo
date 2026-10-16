@@ -30,6 +30,7 @@ export type TeacherRow = {
   nombre: string;
   apellido: string;
   activo: boolean;
+  estado_registro?: 'pendiente' | 'aprobada' | 'rechazada' | null;
   area?: string;
   dni?: string;
   fecha_creacion?: string;

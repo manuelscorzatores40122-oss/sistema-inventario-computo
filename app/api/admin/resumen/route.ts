@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         WHERE p.estado IN ('pendiente', 'prestado')
       ) r), '[]'::json) AS loans,
       COALESCE((SELECT json_agg(r ORDER BY r.apellido, r.nombre) FROM (
-        SELECT id, nombre, apellido, dni, area, activo, fecha_creacion FROM usuarios
+        SELECT id, nombre, apellido, dni, area, activo, estado_registro, fecha_creacion FROM usuarios
         WHERE role = 'profesor' AND oculto = false
       ) r), '[]'::json) AS teachers,
       COALESCE((SELECT json_agg(r ORDER BY r.nombre) FROM (

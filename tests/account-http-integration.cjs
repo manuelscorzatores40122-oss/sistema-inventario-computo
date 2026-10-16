@@ -62,12 +62,25 @@ async function main() {
       jwt.sign({ userId: admin.id, role: "admin" }, process.env.JWT_SECRET, {
         expiresIn: "5m",
       });
-    let response = await fetch(base + "/api/usuarios/" + id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", cookie: adminCookie },
-      body: JSON.stringify({ activo: true }),
+    let response = await fetch(base + "/api/solicitudes/cuentas", {
+      headers: { cookie: adminCookie },
     });
     let body = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.ok(
+      body.cuentas.some(
+        (row) => row.id === id && row.estado_registro === "pendiente",
+      ),
+    );
+    console.log(
+      "HTTP bandeja: nueva solicitud de cuenta presente como pendiente.",
+    );
+    response = await fetch(base + "/api/solicitudes/cuentas/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", cookie: adminCookie },
+      body: JSON.stringify({ estado: "aprobada" }),
+    });
+    body = await response.json();
     assert.equal(response.status, 200, JSON.stringify(body));
     console.log("HTTP aprobación: 200.");
     result = await send("/api/auth/login", { email: dni, password });

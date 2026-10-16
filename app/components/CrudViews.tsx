@@ -5,6 +5,7 @@ import Link from 'next/link';
 import teacherStyles from './TeachersDirectory.module.css';
 import RequestListControls from './RequestListControls';
 import AdminQuickForm from './AdminQuickForm';
+import AccountRequestsInbox from './admin/AccountRequestsInbox';
 import { compareRequests } from '@/app/lib/request-order';
 import RequestSubmittedNotice from './RequestSubmittedNotice';
 import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
@@ -1534,8 +1535,10 @@ export function AdminSolicitudesView() {
   };
 
   return (
-    <PageShell title="Control de Solicitudes" subtitle="Supervisa, aprueba o rechaza los pedidos de equipos y reservas de aula realizados por los docentes.">
+    <PageShell title="Control de Solicitudes" subtitle="Revisa solicitudes de cuenta, pedidos de equipos y reservas de aula de los docentes.">
       <Notice message={message} />
+      <AccountRequestsInbox />
+      <h2 className="h5 mb-3">Pedidos de equipos y reservas de aula</h2>
 
       {/* Métricas KPI Resumen */}
       <div className="inventory-summary mb-4">

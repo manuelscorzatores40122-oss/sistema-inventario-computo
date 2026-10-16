@@ -51,7 +51,7 @@ export default function AdminDashboard() {
     (r) => r.estado === "pendiente",
   );
   const returns = (data?.loans || []).filter((r) => r.estado === "prestado");
-  const accounts = (data?.teachers || []).filter((r) => !r.activo);
+  const accounts = (data?.teachers || []).filter((r) => r.estado_registro === 'pendiente');
   const agenda = reservationsForDate(data?.schedule || [], schoolDate());
   const attention = (data?.items || []).filter(
     (r) => r.estado === "mantenimiento" || Number(r.cantidad_disponible) === 0,
@@ -60,7 +60,7 @@ export default function AdminDashboard() {
     { key: "requests", label: "Solicitudes", rows: requests },
     { key: "deliveries", label: "Por entregar", rows: deliveries },
     { key: "returns", label: "En uso", rows: returns },
-    { key: "accounts", label: "Cuentas inactivas", rows: accounts },
+    { key: "accounts", label: "Solicitudes de cuenta", rows: accounts },
   ];
   const current = tabs.find((t) => t.key === tab)!;
   const filtered = current.rows.filter((row) =>
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
             hint: "Registrar una devolución",
           },
           {
-            title: "Cuentas inactivas",
+            title: "Solicitudes de cuenta",
             value: accounts.length,
             icon: FiUsers,
             key: "accounts",
@@ -254,7 +254,7 @@ export default function AdminDashboard() {
               </h3>
               <p>
                 {tab === "accounts"
-                  ? "Aquí aparecen cuentas pendientes de activación o desactivadas."
+                  ? "Las solicitudes nuevas aparecen también en Solicitudes → Solicitudes de cuenta."
                   : "Las nuevas tareas aparecerán automáticamente."}
               </p>
             </div>
@@ -272,7 +272,7 @@ export default function AdminDashboard() {
                         DNI: {r.dni || "Sin registrar"} · {r.area || "Sin área"}
                       </p>
                       <small>
-                        Cuenta inactiva · revisa la identidad del docente
+                        Solicitud de cuenta · revisa la identidad del docente
                       </small>
                     </div>
                     <button

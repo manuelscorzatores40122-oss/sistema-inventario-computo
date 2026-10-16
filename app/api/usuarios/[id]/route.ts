@@ -78,6 +78,7 @@ export async function PUT(
            role = COALESCE($5, role),
            telefono = CASE WHEN $10::boolean THEN $6 ELSE telefono END,
            activo = COALESCE($7, activo),
+           estado_registro = CASE WHEN $7::boolean = true AND estado_registro = 'pendiente' THEN 'aprobada' ELSE estado_registro END,
            correo_personal = COALESCE($8, correo_personal),
            dni = CASE WHEN $1::text IS NOT NULL AND $1::text ~ '^[0-9]{8}$' THEN $1 ELSE dni END,
            area = COALESCE($11, area),
