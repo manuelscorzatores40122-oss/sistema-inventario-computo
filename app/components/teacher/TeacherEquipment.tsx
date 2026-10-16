@@ -24,9 +24,12 @@ export default function TeacherEquipment() {
   const [submitted, setSubmitted] = useState<number | null>(null);
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => { const id = Number(new URLSearchParams(window.location.search).get('equipo')); if (id) setSelected(id); }, []);
-  const categories = Array.from(new Set(data?.inventory.map(item => item.categoria).filter(Boolean) || []));
-  const filtered = data?.inventory.filter(item => (category === 'Todas' || item.categoria === category) && normalize(`${item.nombre} ${item.categoria} ${item.marca || ''} ${item.modelo || ''}`).includes(normalize(search))) || [];
-  const item = data?.inventory.find(row => row.id === selected);
+  const available = data?.inventory.filter(row => row.cantidad_disponible > 0) || [];
+  const categories = Array.from(new Set(available.map(item => item.categoria).filter(Boolean)));
+  const filtered = available.filter(item => (category === 'Todas' || item.categoria === category) && normalize(`${item.nombre} ${item.categoria} ${item.marca || ''} ${item.modelo || ''}`).includes(normalize(search))) || [];
+  const item = available.find(row => row.id === selected);
+  useEffect(() => { setPage(current => Math.min(current, Math.max(1, Math.ceil(filtered.length / 12)))); }, [filtered.length]);
+  useEffect(() => { if (data && category !== 'Todas' && !data.inventory.some(row => row.cantidad_disponible > 0 && row.categoria === category)) setCategory('Todas'); }, [data, category]);
   const canRequest = (row: Equipment) => row.estado === 'disponible' && row.cantidad_disponible > 0;
   const choose = (row: Equipment) => {
     setSelected(row.id); setQuantity(1); setError('');
@@ -56,7 +59,7 @@ export default function TeacherEquipment() {
       <div className={s.catalogLayout}>
         <section aria-label="Catálogo de equipos"><div className={s.toolbar}><div className={s.search}><FiSearch size={16} /><input aria-label="Buscar equipos" placeholder="Buscar equipo, marca o categoría…" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div><span className={s.eyebrow}>{filtered.length} recursos</span></div>
           <div className={s.chips} aria-label="Categorías">{['Todas', ...categories].map(value => <button key={value} aria-pressed={category === value} onClick={() => { setCategory(value); setPage(1); }}>{value}</button>)}</div>
-          {!filtered.length ? <div className={s.card}><EmptyState title="No encontramos equipos" description="Prueba otra palabra o cambia la categoría."><button className={s.secondary} onClick={() => { setSearch(''); setCategory('Todas'); setPage(1); }}>Limpiar filtros</button></EmptyState></div> : <div className={s.catalog}>{filtered.slice((page - 1) * 12, page * 12).map(row => <button key={row.id} type="button" className={s.equipment} aria-pressed={selected === row.id} aria-label={`Seleccionar ${row.nombre}`} onClick={() => choose(row)} disabled={!canRequest(row)}>
+          {!filtered.length ? <div className={s.card}><EmptyState title={available.length ? "No encontramos equipos" : "No hay equipos disponibles"} description={available.length ? "Prueba otra palabra o cambia la categoría." : "Los equipos aparecerán aquí cuando tengan unidades disponibles."}><button className={s.secondary} onClick={() => { setSearch(''); setCategory('Todas'); setPage(1); }}>Limpiar filtros</button></EmptyState></div> : <div className={s.catalog}>{filtered.slice((page - 1) * 12, page * 12).map(row => <button key={row.id} type="button" className={s.equipment} aria-pressed={selected === row.id} aria-label={`Seleccionar ${row.nombre}`} onClick={() => choose(row)} disabled={!canRequest(row)}>
             <div className={s.equipmentImage}>{row.imagen_url ? <img src={row.imagen_url} alt={row.nombre} loading="lazy" /> : <FiMonitor size={45} strokeWidth={1} />}<span className={s.badge} data-tone={canRequest(row) ? 'green' : 'gray'}>{canRequest(row) ? 'Disponible' : row.estado === 'mantenimiento' ? 'Mantenimiento' : 'Sin stock'}</span></div>
             <div className={s.equipmentCopy}><small>{row.categoria || 'Equipo'}</small><strong>{row.nombre}</strong><p>{[row.marca, row.modelo].filter(Boolean).join(' · ') || 'Recurso del centro de cómputo'}</p><div className={s.equipmentFoot}><span>{row.cantidad_disponible} disponibles</span>{selected === row.id ? <FiCheckCircle size={17} /> : <FiArrowRight size={17} />}</div></div>
           </button>)}</div>}
