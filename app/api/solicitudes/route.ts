@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
         if (overlapCheck.rows.length > 0) {
           await client.query('ROLLBACK');
-          return NextResponse.json({ error: 'No se puede solicitar: el aula ya estará ocupada en ese horario.' }, { status: 400 });
+          return NextResponse.json({ error: 'No se puede solicitar: el aula ya estará ocupada en ese horario. Actualiza los turnos y elige otro horario.' }, { status: 409 });
         }
 
         const resultDisp = await client.query(

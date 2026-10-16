@@ -55,6 +55,19 @@ test('reserva: fechas de Lima, cruces de horas y clases semanales son consistent
   assert.equal(utils.overlaps('08:30', '09:30', [rows[0]]), true);
   assert.equal(utils.overlaps('09:00', '09:45', [rows[0]]), false);
 });
+
+test('el almanaque ajusta las semanas al mes y conserva los días de años bisiestos', () => {
+  const { calendarMonthDays } = load('app/lib/teacher-utils.ts', {}, { Intl });
+  assert.equal(calendarMonthDays('2021-02-01').length, 28);
+  const leap = calendarMonthDays('2024-02-01');
+  assert.equal(leap.length, 35);
+  assert.ok(leap.includes('2024-02-29'));
+  const october = calendarMonthDays('2026-10-01');
+  assert.equal(october.length, 35);
+  assert.equal(october[0], '2026-09-28');
+  assert.equal(october.at(-1), '2026-11-01');
+  assert.equal(calendarMonthDays('fecha-invalida').length, 0);
+});
 test('editar el perfil no permite elevar permisos y exige contraseña actual', async () => {
   let writes = 0;
   const route = load('app/api/usuarios/[id]/route.ts', { '@/app/lib/session': { requireSession: async () => ({ user: { id: 4, role: 'profesor' }, response: null }) }, '@/app/lib/auth': { hashPassword: async () => 'hash', comparePassword: async () => false }, '@/app/lib/db': { query: async sql => { if (sql.startsWith('UPDATE')) writes++; return { rows: [{ password: 'hash' }] }; } } });

@@ -9,6 +9,14 @@ export function addDays(date: string, days: number): string {
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
 }
+export function calendarMonthDays(month: string): string[] {
+  const first = new Date(`${month.slice(0, 7)}-01T12:00:00Z`);
+  if (!Number.isFinite(first.getTime())) return [];
+  const offset = (first.getUTCDay() + 6) % 7;
+  const count = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const start = addDays(first.toISOString().slice(0, 10), -offset);
+  return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, index) => addDays(start, index));
+}
 export function weekday(date: string): string {
   return WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
 }

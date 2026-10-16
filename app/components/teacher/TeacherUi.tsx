@@ -32,7 +32,7 @@ export function DataBoundary({ children }: { children: ReactNode }) {
 export function Notice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'error' | 'success' | 'warning' }) {
   return <div className={`${s.info} ${tone !== 'info' ? s[tone] : ''}`} role={tone === 'error' ? 'alert' : 'status'}><FiAlertCircle size={18} /><div>{children}</div></div>;
 }
-export function Modal({ title, children, onClose, busy = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean }) {
+export function Modal({ title, children, onClose, busy = false, wide = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   useEffect(() => {
@@ -43,7 +43,7 @@ export function Modal({ title, children, onClose, busy = false }: { title: strin
     document.body.style.overflow = 'hidden';
     return () => { dialog?.close(); document.body.style.overflow = overflow; previous?.focus(); };
   }, []);
-  return <dialog ref={ref} className={s.dialog} aria-labelledby={id} onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
+  return <dialog ref={ref} className={`${s.dialog} ${wide ? s.dialogWide : ''}`} aria-labelledby={id} onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
     <div className={s.dialogHead}><h2 id={id}>{title}</h2><button type="button" className={s.iconButton} disabled={busy} aria-label="Cerrar ventana" onClick={onClose}><FiX size={18} /></button></div><div className={s.dialogBody}>{children}</div>
   </dialog>;
 }

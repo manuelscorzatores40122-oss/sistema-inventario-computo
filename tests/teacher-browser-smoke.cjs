@@ -68,9 +68,25 @@ async function main() {
   assert.equal(data.requests.find(row => row.id === 101).estado, 'cancelada');
   await page.getByRole('tab', { name: /Mis préstamos/ }).click(); await page.getByText('PRÉSTAMO #201', { exact: true }).waitFor();
   await page.goto(`${base}/profesor/horario`); await page.getByRole('button', { name: 'Solicitar reserva' }).click();
-  await page.getByLabel('Fecha de la clase').fill(future); await page.getByLabel('Actividad y sección').fill('Investigación con 4.º A');
+  await page.getByRole('dialog').getByRole('heading', { name: /octubre|noviembre|diciembre|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre/i }).waitFor();
+  data.schedule.push({ id: 900, dia_semana: 'Lunes', hora_inicio: '08:00', hora_fin: '08:45', fecha_reserva: future, estado: 'separado', reservado_por: 999, motivo_reserva: 'Clase programada' });
+  // La siguiente carga usa una reserva ajena para comprobar exclusión de turnos en el formulario.
+  await page.getByRole('button', { name: 'Cerrar ventana' }).click();
+  await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
+  await page.getByRole('button', { name: 'Solicitar reserva' }).click();
+  await page.getByLabel('Fecha de la clase').fill(future);
+  assert.equal(await page.getByRole('dialog').getByRole('button', { name: /08:00 – 08:45/ }).isDisabled(), true);
+  await page.getByRole('dialog').evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: path.join(output, 'reserva-almanaque-390.png'), fullPage: false });
+  await page.getByLabel('Actividad y sección').fill('Investigación con 4.º A');
+  await page.getByRole('button', { name: 'Necesito otro horario', exact: true }).click();
+  await page.getByLabel('Hora de inicio').fill('08:15'); await page.getByLabel('Hora de fin').fill('08:30');
+  await page.getByText('Este horario está ocupado. Selecciona otro turno.', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Enviar solicitud', exact: true }).isDisabled(), true);
+  await page.getByRole('button', { name: 'Usar un turno de clase', exact: true }).click();
   await page.getByRole('button', { name: 'Enviar solicitud', exact: true }).click(); await page.getByText('Tu turno está en revisión').waitFor();
   assert.equal(writes.at(-1).tipo_solicitud, 'aula'); assert.equal(writes.at(-1).fecha_reserva, future);
+  assert.equal(writes.at(-1).hora_inicio, '08:45');
   await page.goto(`${base}/profesor/perfil`); await page.getByLabel('Teléfono de contacto').fill('987654321'); await page.getByRole('button', { name: 'Guardar datos' }).click(); await page.getByText('Tus datos de contacto se actualizaron correctamente.').waitFor();
   assert.equal(user.telefono, '987654321');
   await page.getByRole('button', { name: /Notificaciones/ }).click(); await page.getByText('Tu solicitud de laptop fue aprobada.', { exact: false }).waitFor();

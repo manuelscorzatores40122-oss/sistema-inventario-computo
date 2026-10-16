@@ -195,6 +195,84 @@
 .successBox h2 { font-size:20px; margin-bottom:10px; }
 .successBox p { color:var(--muted); font-size:13px; margin-bottom:24px; }
 .mobileFormLink { display:none; }
+.calendarIntro { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.calendarIntro>span { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#4b7062; }
+.calendarIntro small { font-size:11px; color:var(--muted); }
+.almanac { padding:25px; }
+.almanacHeader { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:24px; }
+.almanacHeader h2 { font-size:23px; letter-spacing:-.6px; font-weight:700; color:var(--ink); text-transform:capitalize; margin:7px 0 0; }
+.almanacControls { display:flex; gap:7px; }
+.almanacGrid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+.almanacWeekday { text-align:center; text-transform:uppercase; letter-spacing:.08em; font-size:10px; color:var(--muted); padding:0 0 12px; }
+.almanacDate { min-height:88px; min-width:0; padding:9px 5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; border:1px solid #e9eeeb; border-radius:9px; background:white; color:var(--ink); }
+.almanacDate strong { width:30px; height:30px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+.almanacDate:hover:not(:disabled) { background:#f3f8f4; border-color:#b5d3bf; }
+.almanacDate[aria-current=date] strong { border:1px solid #087f6f; border-radius:50%; color:#087f6f; }
+.almanacDate[aria-pressed=true] { background:#087f6f; border-color:#087f6f; color:white; box-shadow:0 3px 9px #087f6f20; }
+.almanacDate[aria-pressed=true] strong { color:white; border-color:#ffffff70; }
+.almanacDate[data-outside=true] { background:#f8faf8; color:#aebbb2; }
+.almanacDate[data-past=true]:not([aria-pressed=true]) { color:#9eada5; }
+.almanacDate[aria-pressed=true][data-outside=true] { background:#087f6f; color:white; }
+.almanacDate small { font-size:8px; color:#849d8d; white-space:nowrap; }
+.almanacDate[aria-pressed=true] small { color:#d2e8da; }
+.almanacMarkers { height:5px; display:flex; align-items:center; justify-content:center; gap:3px; }
+.almanacMarkers i { width:4px; height:4px; background:#d8ae52; border-radius:50%; }
+.almanacMarkers i[data-mine=true] { background:#61a286; }
+.almanacDate[aria-pressed=true] .almanacMarkers i { background:#e4d894; }
+.almanacFooter { display:flex; align-items:center; flex-wrap:wrap; gap:8px 15px; border-top:1px solid var(--line); padding-top:17px; margin-top:20px; }
+.almanacFooter span { display:flex; align-items:center; gap:5px; font-size:9px; color:var(--muted); }
+.almanacFooter i { height:6px; width:6px; border-radius:50%; background:#61a286; }
+.almanacFooter span:nth-child(2) i { background:#d8ae52; }
+.almanacFooter button { margin-left:auto; background:none; border:0; font-size:11px; font-weight:600; color:var(--brand); min-height:30px; padding:0; }
+.dialogWide { width:min(850px,calc(100vw - 28px)); }
+.bookingFieldset { border:0; padding:0; min-width:0; }
+.bookingColumns { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:25px; align-items:start; }
+.bookingSteps { display:flex; gap:15px; justify-content:space-between; padding-bottom:22px; margin-bottom:22px; border-bottom:1px solid var(--line); }
+.bookingSteps span { display:flex; align-items:center; gap:7px; font-size:11px; color:#6f8b7b; }
+.bookingSteps b { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; color:#087f6f; background:#eaf5ee; font-size:10px; }
+.almanacCompact { border:1px solid var(--line); border-radius:12px; padding:16px; }
+.almanacCompact .almanacHeader { margin-bottom:17px; }
+.almanacCompact .almanacHeader h2 { font-size:18px; }
+.almanacCompact .eyebrow { font-size:8px; letter-spacing:.1em; }
+.almanacCompact .almanacDate { min-height:42px; gap:1px; padding:2px; border-color:transparent; }
+.almanacCompact .almanacDate strong { font-size:12px; width:25px; height:25px; }
+.almanacCompact .almanacFooter { gap:8px; margin-top:12px; padding-top:12px; }
+.bookingSelectedDate { display:flex; align-items:center; gap:10px; border:1px solid #daeadf; background:#f1f8f3; padding:13px; border-radius:9px; margin-bottom:18px; color:#408067; }
+.bookingSelectedDate small { display:block; font-size:10px; color:#789485; margin-bottom:2px; }
+.bookingSelectedDate strong { font-size:12px; text-transform:capitalize; }
+.timeChoices { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.timeChoices button { border:1px solid var(--line); border-radius:8px; padding:10px 8px; background:white; color:#426451; min-height:60px; }
+.timeChoices button>span { display:flex; justify-content:center; align-items:center; gap:5px; font-size:11px; font-weight:600; }
+.timeChoices button small { display:block; margin-top:4px; font-size:9px; color:#8ca393; }
+.timeChoices button[aria-pressed=true] { background:#eaf5ee; border-color:#529c79; color:#087f6f; }
+.timeChoices button:disabled { background:#f6f7f6; color:#9aaba0; opacity:.7; text-decoration:none; }
+.customTimeToggle { border:0; background:none; color:#087f6f; font-size:11px; text-decoration:underline; padding:7px 0; margin-bottom:15px; }
+.occupiedDetails { color:#7c8f82; font-size:11px; padding:10px 0; margin-bottom:15px; }
+.occupiedDetails p { margin:8px 0 0; }
+.bookingReview { display:flex; gap:11px; background:#f3f7f4; border:1px solid var(--line); border-radius:9px; padding:15px; margin-top:22px; color:#60816c; }
+.bookingReview svg { flex-shrink:0; margin-top:3px; }
+.bookingReview strong { font-size:12px; color:#426952; }
+.bookingReview p { margin:4px 0 0; font-size:11px; }
+.bookingFooter { display:flex; justify-content:space-between; gap:12px; position:sticky; bottom:-24px; z-index:3; padding:18px 0 0; margin-top:7px; background:white; }
+@media(max-width:767px) {
+  .calendarIntro { flex-direction:column; align-items:flex-start; gap:5px; }
+  .almanac { padding:18px 13px; }
+  .almanacHeader { margin-bottom:20px; }
+  .almanacHeader .eyebrow { font-size:8px; letter-spacing:.08em; }
+  .almanacHeader h2 { font-size:22px; }
+  .almanacGrid { gap:3px; }
+  .almanacDate { min-height:49px; padding:3px; gap:3px; border:0; }
+  .almanacDate small { display:none; }
+  .almanacDate strong { width:27px; height:27px; font-size:13px; }
+  .almanacWeekday { font-size:9px; }
+  .almanacFooter { gap:7px 10px; padding-top:13px; margin-top:15px; }
+  .bookingColumns { grid-template-columns:1fr; gap:5px; }
+  .bookingSteps { gap:6px; padding-bottom:16px; margin-bottom:16px; }
+  .bookingSteps span { flex:1; font-size:9px; gap:4px; line-height:1.4; }
+  .bookingSteps b { flex-shrink:0; width:19px; height:19px; }
+  .bookingFooter { bottom:-20px; padding:14px 0; gap:8px; }
+  .bookingFooter .secondary,.bookingFooter .button { padding:10px; font-size:11px; flex:1; }
+}
 .calendarGrid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
 .calendarWeekday { text-align:center; font-size:10px; color:var(--muted); padding:7px 0 12px; text-transform:uppercase; letter-spacing:.05em; }
 .calendarDay { position:relative; min-width:0; min-height:88px; background:#fff; border:1px solid #e5ece8; border-radius:9px; padding:10px; color:var(--ink); text-align:left; display:flex; flex-direction:column; justify-content:space-between; gap:5px; }
