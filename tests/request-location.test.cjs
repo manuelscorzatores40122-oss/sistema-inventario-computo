@@ -23,6 +23,7 @@ function route() {
   }).outputText, {
     exports: exported, console, URL,
     require(name) {
+      if (name === '@/app/lib/session') return { requireSession: async () => ({ user: { id: 1, role: 'profesor', activo: true }, response: null }) };
       if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
       if (name === '@/app/lib/admin-notifications') {
         const helper = {};
@@ -33,7 +34,7 @@ function route() {
       throw new Error(name);
     },
   });
-  return { post: data => exported.POST({ json: async () => ({ profesor_id: 1, inventario_id: 1, cantidad_solicitada: 1, tipo_solicitud: 'equipo', ...data }) }), calls };
+  return { post: data => exported.POST({ json: async () => ({ profesor_id: 1, inventario_id: 1, cantidad_solicitada: 1, motivo: 'Actividad docente', tipo_solicitud: 'equipo', ...data }) }), calls };
 }
 
 test('rechaza ubicación vacía, tipos incorrectos y textos demasiado largos antes de escribir', async () => {

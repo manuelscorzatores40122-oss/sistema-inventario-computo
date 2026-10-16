@@ -13,6 +13,7 @@ import {
   FiInbox,
   FiUser,
   FiLogOut,
+  FiClock,
 } from 'react-icons/fi';
 import { logout } from '@/app/lib/logout';
 
@@ -23,6 +24,7 @@ const menuItems = [
   { href: '/admin/profesores', title: 'Profesores', icon: FiUsers },
   { href: '/admin/horario', title: 'Horario', icon: FiCalendar },
   { href: '/admin/solicitudes', title: 'Solicitudes', icon: FiInbox },
+  { href: '/admin/historial', title: 'Historial', icon: FiClock },
   { href: '/admin/perfil', title: 'Perfil', icon: FiUser },
 ];
 

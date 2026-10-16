@@ -1,5 +1,5 @@
-import ProfesorDashboard from '@/app/components/ProfesorDashboard';
+import TeacherEquipment from '@/app/components/teacher/TeacherEquipment';
 
 export default function SolicitarArticuloPage() {
-  return <ProfesorDashboard openArticleRequest />;
+  return <TeacherEquipment />;
 }

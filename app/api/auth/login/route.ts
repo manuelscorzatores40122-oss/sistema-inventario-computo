@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password || email.length > 255 || password.length > 128) {
       return NextResponse.json(
         { error: 'Email y contraseña requeridos' },
         { status: 400 }
@@ -47,6 +47,8 @@ export async function POST(request: NextRequest) {
         nombre: user.nombre,
         apellido: user.apellido,
         role: user.role,
+        dni: user.dni,
+        area: user.area,
         telefono: user.telefono,
         correo_personal: user.correo_personal,
       },

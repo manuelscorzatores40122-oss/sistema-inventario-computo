@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
 import { verifyToken } from '@/app/lib/auth';
@@ -7,6 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const result = await query(
       `SELECT s.*,
               u.nombre as profesor_nombre,
@@ -17,8 +20,8 @@ export async function GET(
        JOIN usuarios u ON s.profesor_id = u.id
        LEFT JOIN inventario i ON s.inventario_id = i.id
        LEFT JOIN disponibilidad d ON s.disponibilidad_id = d.id
-       WHERE s.id = $1`,
-      [params.id]
+       WHERE s.id = $1 AND ($2::boolean OR s.profesor_id = $3)`,
+      [params.id, session.user.role === 'admin', session.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -44,14 +47,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const { estado, comentarios, cantidad_solicitada, motivo } = await request.json();
     
-    const token = request.cookies.get('auth-token')?.value;
-    const actor = token ? verifyToken(token) : null;
-    if (!actor || typeof actor === 'string' || actor.role !== 'admin' || !actor.userId) {
-      return NextResponse.json({ error: 'Solo un administrador puede gestionar solicitudes.' }, { status: 403 });
-    }
-    const admin_id = actor.userId;
+    const admin_id = session.user.id;
     const cantidad = cantidad_solicitada === undefined || cantidad_solicitada === ''
       ? undefined
       : Number(cantidad_solicitada);
@@ -100,7 +100,7 @@ export async function PUT(
       const nextEstado = estado || sol.estado;
       const nextCantidad = cantidad ?? sol.cantidad_solicitada;
 
-      if (sol.estado !== 'pendiente' && estado) {
+      if (sol.estado !== 'pendiente') {
         await client.query('ROLLBACK');
         return NextResponse.json(
           { error: 'Esta solicitud ya fue procesada. Actualiza la lista para ver su estado.' },
@@ -126,10 +126,15 @@ export async function PUT(
             );
           }
 
-          await client.query(
-            'UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1 WHERE id = $2',
+          const stockUpdate = await client.query(
+            `UPDATE inventario SET cantidad_disponible = cantidad_disponible - $1, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $2 AND cantidad_disponible >= $1 AND estado = 'disponible' RETURNING id`,
             [nextCantidad, sol.inventario_id]
           );
+          if (!stockUpdate.rows.length) {
+            await client.query('ROLLBACK');
+            return NextResponse.json({ error: 'El stock cambió o el equipo ya no está disponible. Actualiza la lista.' }, { status: 409 });
+          }
 
           await client.query(
             'INSERT INTO movimientos_inventario (inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion) VALUES ($1, $2, $3, $4, $5)',
@@ -152,7 +157,7 @@ export async function PUT(
         // If it was an aula request, and it's rejected/canceled, remove the pending availability
         if (sol.disponibilidad_id) {
           await client.query(
-            "DELETE FROM disponibilidad WHERE id = $1 AND estado = 'pendiente'",
+            "UPDATE disponibilidad SET estado = 'disponible', reservado_por = NULL, motivo_reserva = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND estado = 'pendiente'",
             [sol.disponibilidad_id]
           );
         }
@@ -212,7 +217,7 @@ export async function PUT(
   } catch (error: any) {
     console.error('Error al actualizar solicitud:', error);
     return NextResponse.json(
-      { error: error.message, stack: error.stack },
+      { error: 'No se pudo actualizar la solicitud. Intenta nuevamente.' },
       { status: 500 }
     );
   }
@@ -224,8 +229,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const result = await query(
-      'DELETE FROM solicitudes WHERE id = $1 RETURNING id',
+      "DELETE FROM solicitudes WHERE id = $1 AND estado IN ('rechazada', 'cancelada') RETURNING id",
       [params.id]
     );
 

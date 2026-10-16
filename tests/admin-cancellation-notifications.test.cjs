@@ -25,6 +25,7 @@ test('cancelación notifica dentro de la transacción; fallo revierte la operaci
     }, release() {} };
     const helper = load('app/lib/admin-notifications.ts');
     const route = load('app/api/solicitudes/[id]/cancelar/route.ts', name => {
+      if (name === '@/app/lib/session') return { requireSession: async () => ({ user: { id: 3, role: 'profesor' }, response: null }) };
       if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
       if (name === '@/app/lib/auth') return { verifyToken: () => ({ userId: 3 }) };
       if (name === '@/app/lib/db') return { getClient: async () => client };

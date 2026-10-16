@@ -9,7 +9,8 @@ export function exportToCsv(filename: string, headers: { key: string; label: str
 
   const escapeCell = (value: any): string => {
     if (value === null || value === undefined) return '""';
-    const stringValue = String(value).replace(/"/g, '""');
+    const text = String(value);
+    const stringValue = (/^[\s]*[=+@\-]/.test(text) ? `'${text}` : text).replace(/"/g, '""');
     return `"${stringValue}"`;
   };
 

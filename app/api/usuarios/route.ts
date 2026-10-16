@@ -1,9 +1,13 @@
+import { validateAccountInput } from '@/app/lib/account-validation';
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser, getUserByEmail } from '@/app/lib/auth';
 import { query } from '@/app/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const activo = searchParams.get('activo');
@@ -45,7 +49,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, nombre, apellido, password, role = 'profesor', telefono, correo_personal } = await request.json();
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
+    const body = await request.json();
+    const validationError = validateAccountInput(body);
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
+    const { nombre, apellido, password, role = 'profesor', telefono, correo_personal, area } = body;
+    const email = (body.dni || body.email).trim();
 
     const finalPassword = password || email;
 
@@ -79,13 +89,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await createUser(email, nombre, apellido, finalPassword, role, telefono, correo_personal);
+    const user = await createUser(email, nombre.trim(), apellido.trim(), finalPassword, role, telefono?.trim(), correo_personal?.trim(), true, /^\d{8}$/.test(email) ? email : undefined, area?.trim());
 
     return NextResponse.json({
       message: 'Usuario creado exitosamente',
       usuario: user,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '23505') return NextResponse.json({ error: 'El DNI o usuario ya existe.' }, { status: 409 });
+    if (error?.code === '22001') return NextResponse.json({ error: 'Un dato supera el tamaño permitido. Revisa el teléfono y el usuario.' }, { status: 400 });
     console.error('Error al crear usuario:', error);
     return NextResponse.json(
       { error: 'Error al crear usuario' },

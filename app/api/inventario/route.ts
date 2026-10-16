@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 import cloudinary from '@/app/lib/cloudinary';
@@ -5,11 +6,22 @@ import cloudinary from '@/app/lib/cloudinary';
 // GET - Listar inventario
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
     const categoria = searchParams.get('categoria');
     const estado = searchParams.get('estado');
 
-    let sql = 'SELECT * FROM inventario WHERE 1=1';
+    const simple = searchParams.get('simple') === 'true';
+
+    let sql = simple
+      ? 'SELECT id, nombre, categoria, cantidad_disponible, estado FROM inventario WHERE 1=1'
+      : `SELECT id, nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
+                ubicacion, estado, imagen_url, codigo_patrimonial, marca, modelo,
+                condicion, numero_serie, color, nivel, observaciones, procedencia_entidad,
+                documento_sustentatorio, fecha_documento, situacion_administrativa,
+                situacion_detalle, fecha_creacion, updated_at
+         FROM inventario WHERE 1=1`;
     const params: any[] = [];
 
     if (categoria) {
@@ -29,6 +41,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       items: result.rows,
       total: result.rows.length,
+    }, {
+      headers: {
+        'Cache-Control': 'private, no-cache, no-transform',
+      }
     });
   } catch (error) {
     console.error('Error al obtener inventario:', error);
@@ -43,6 +59,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let uploadedPublicId: string | null = null;
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const {
       nombre,
       descripcion,

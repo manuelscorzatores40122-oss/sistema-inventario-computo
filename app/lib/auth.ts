@@ -1,8 +1,13 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from './db';
+import type { PoolClient } from 'pg';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_jwt_cambiar';
+function jwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET debe estar configurada');
+  return secret;
+}
 
 export const hashPassword = async (password: string): Promise<string> => {
   const salt = await bcrypt.genSalt(10);
@@ -19,14 +24,14 @@ export const comparePassword = async (
 export const generateToken = (userId: number, role: string) => {
   return jwt.sign(
     { userId, role },
-    JWT_SECRET,
-    { expiresIn: '7d' }
+    jwtSecret(),
+    { expiresIn: '1d' }
   );
 };
 
 export const verifyToken = (token: string) => {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, jwtSecret(), { algorithms: ['HS256'] });
   } catch (error) {
     return null;
   }
@@ -34,7 +39,7 @@ export const verifyToken = (token: string) => {
 
 export const getUserById = async (id: number) => {
   const result = await query(
-    'SELECT id, email, nombre, apellido, role, telefono, correo_personal, activo FROM usuarios WHERE id = $1',
+    'SELECT id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo FROM usuarios WHERE id = $1',
     [id]
   );
   return result.rows[0];
@@ -59,11 +64,13 @@ export const createUser = async (
   correo_personal?: string,
   activo: boolean = true,
   dni?: string,
-  area?: string
+  area?: string,
+  client?: Pick<PoolClient, 'query'>
 ) => {
   const hashedPassword = await hashPassword(password);
-  const userDni = dni || email;
-  const result = await query(
+  const userDni = dni || (/^\d{8}$/.test(email) ? email : null);
+  const execute = client ? client.query.bind(client) : query;
+  const result = await execute(
     `INSERT INTO usuarios (email, nombre, apellido, password, role, telefono, correo_personal, activo, dni, area)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id, email, nombre, apellido, role, activo, dni, area`,

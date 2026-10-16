@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 import cloudinary from '@/app/lib/cloudinary';
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const result = await query(
       'SELECT * FROM inventario WHERE id = $1',
       [params.id]
@@ -37,6 +40,8 @@ export async function PUT(
 ) {
   let uploadedPublicId: string | null = null;
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const {
       nombre,
       descripcion,
@@ -231,6 +236,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const prevResult = await query('SELECT imagen_public_id FROM inventario WHERE id = $1', [params.id]);
     const prevPublicId = prevResult.rows[0]?.imagen_public_id;
 

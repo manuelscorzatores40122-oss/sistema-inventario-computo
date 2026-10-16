@@ -1,20 +1,32 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
 
 // GET - Listar préstamos
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
-    const profesor_id = searchParams.get('profesor_id');
+    const profesor_id = session.user.role === 'admin' ? searchParams.get('profesor_id') : String(session.user.id);
     const desde = searchParams.get('desde');
     const hasta = searchParams.get('hasta');
 
     let sql = `SELECT p.*,
                       i.nombre as item_nombre,
                       i.categoria,
+                      i.marca,
+                      i.modelo,
+                      i.numero_serie,
+                      i.codigo_patrimonial,
+                      i.ubicacion as item_ubicacion,
                       u.nombre as profesor_nombre,
-                      u.apellido
+                      u.apellido,
+                      u.apellido as profesor_apellido,
+                      u.dni as profesor_dni,
+                      u.area as profesor_area,
+                      u.telefono as profesor_telefono
                FROM prestamos p
                INNER JOIN inventario i ON p.inventario_id = i.id
                INNER JOIN usuarios u ON p.profesor_id = u.id
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
       params.push(`${hasta} 23:59:59`);
     }
 
-    sql += ' ORDER BY p.fecha_prestamo DESC LIMIT 200';
+    sql += ' ORDER BY p.fecha_prestamo DESC';
 
     const result = await query(sql, params);
 
@@ -61,6 +73,8 @@ export async function GET(request: NextRequest) {
 // POST - Registrar préstamo de equipo a un profesor
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const body = await request.json();
     const profesor_id = Number(body.profesor_id);
     const rawItems = body.articulos === undefined ? [body] : body.articulos;

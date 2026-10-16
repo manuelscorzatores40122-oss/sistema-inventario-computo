@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
 
@@ -7,6 +8,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const client = await getClient();
 
     try {
@@ -32,8 +35,16 @@ export async function PUT(
       const prestamo = result.rows[0];
       const body = await request.json().catch(() => ({}));
       const nuevoEstado = body.estado || 'devuelto';
+      if (!['prestado', 'devuelto', 'cancelado'].includes(nuevoEstado) || (nuevoEstado === 'cancelado' && prestamo.estado !== 'pendiente') || (nuevoEstado === 'devuelto' && prestamo.estado !== 'prestado')) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Transición de préstamo inválida. Solo puedes cancelar pendientes o devolver equipos entregados.' }, { status: 400 });
+      }
       const observacion = body.devolucion_observacion || body.observacion || null;
       const estadoFisico = body.devolucion_estado || 'bueno';
+      if (!['bueno', 'regular', 'malo'].includes(estadoFisico) || (observacion !== null && (typeof observacion !== 'string' || observacion.length > 1000))) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Revisa el estado físico y las observaciones (hasta 1000 caracteres).' }, { status: 400 });
+      }
 
       if (prestamo.estado === 'devuelto') {
         await client.query('ROLLBACK');
@@ -115,8 +126,8 @@ export async function PUT(
 
       // Reponer stock
       await client.query(
-        'UPDATE inventario SET cantidad_disponible = cantidad_disponible + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [prestamo.cantidad, prestamo.inventario_id]
+        "UPDATE inventario SET cantidad_disponible = cantidad_disponible + $1, estado = CASE WHEN $3 = 'malo' THEN 'mantenimiento' ELSE estado END, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+        [prestamo.cantidad, prestamo.inventario_id, estadoFisico]
       );
 
       await client.query(
@@ -150,6 +161,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const result = await query(
       'SELECT estado FROM prestamos WHERE id = $1',
       [params.id]

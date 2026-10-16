@@ -1,5 +1,5 @@
-import { ProfesorSolicitudesView } from '@/app/components/CrudViews';
+import TeacherRequests from '@/app/components/teacher/TeacherRequests';
 
 export default function ProfesorSolicitudesPage() {
-  return <ProfesorSolicitudesView />;
+  return <TeacherRequests />;
 }

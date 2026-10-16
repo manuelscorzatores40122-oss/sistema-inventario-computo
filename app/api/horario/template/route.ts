@@ -1,5 +1,7 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
+export const dynamic = 'force-dynamic';
 
 const FORMATO_DEFECTO = [
   { hora_inicio: '08:00', hora_fin: '08:45' },
@@ -32,9 +34,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const { template } = await request.json();
-    if (!Array.isArray(template) || template.length === 0) {
-      return NextResponse.json({ error: 'La plantilla debe contener al menos un turno' }, { status: 400 });
+    if (!Array.isArray(template) || template.length === 0 || template.length > 30 || template.some((row: any) => !row || typeof row.hora_inicio !== 'string' || typeof row.hora_fin !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.hora_inicio) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.hora_fin) || row.hora_inicio >= row.hora_fin) || template.some((row: any, index: number) => template.some((other: any, otherIndex: number) => index !== otherIndex && row.hora_inicio < other.hora_fin && row.hora_fin > other.hora_inicio))) {
+      return NextResponse.json({ error: 'La plantilla debe tener turnos válidos, sin cruces de horas' }, { status: 400 });
     }
 
     const valor = JSON.stringify(template);

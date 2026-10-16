@@ -1,5 +1,6 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
-import { hashPassword } from '@/app/lib/auth';
+import { hashPassword, comparePassword } from '@/app/lib/auth';
 import { query } from '@/app/lib/db';
 
 export async function GET(
@@ -7,6 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
+    if (session.user.role !== 'admin' && String(session.user.id) !== params.id) return NextResponse.json({ error: 'Acceso denegado.' }, { status: 403 });
     const result = await query(
       'SELECT id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo, fecha_creacion, updated_at FROM usuarios WHERE id = $1',
       [params.id]
@@ -34,7 +38,20 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { email, nombre, apellido, password, role, telefono, correo_personal, activo } = await request.json();
+    const session = await requireSession(request);
+    if (session.response) return session.response;
+    if (session.user.role !== 'admin' && String(session.user.id) !== params.id) return NextResponse.json({ error: 'Acceso denegado.' }, { status: 403 });
+    const body = await request.json();
+    const { email, nombre, apellido, password, role, telefono, correo_personal, activo, current_password, area } = body;
+    if ([email, nombre, apellido].some(value => value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > 255)) || (area !== undefined && (typeof area !== 'string' || area.length > 255))) return NextResponse.json({ error: 'Revisa los datos de identidad y el área del docente.' }, { status: 400 });
+    if (session.user.role !== 'admin' && ['email', 'dni', 'nombre', 'apellido', 'role', 'activo', 'area', 'oculto'].some(key => key in body)) return NextResponse.json({ error: 'Los datos de identidad y permisos los gestiona administración.' }, { status: 403 });
+    if ((telefono !== undefined && (typeof telefono !== 'string' || telefono.length > 20)) || (correo_personal !== undefined && (typeof correo_personal !== 'string' || correo_personal.length > 255 || (correo_personal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo_personal))))) return NextResponse.json({ error: 'Revisa el teléfono y el correo personal.' }, { status: 400 });
+    if (password && (typeof password !== 'string' || password.length > 128)) return NextResponse.json({ error: 'Contraseña inválida.' }, { status: 400 });
+    if (password && session.user.role !== 'admin') {
+      if (password.length < 8 || typeof current_password !== 'string') return NextResponse.json({ error: 'Indica tu contraseña actual y una nueva de al menos 8 caracteres.' }, { status: 400 });
+      const credentials = await query('SELECT password FROM usuarios WHERE id = $1', [session.user.id]);
+      if (!credentials.rows[0] || !await comparePassword(current_password, credentials.rows[0].password)) return NextResponse.json({ error: 'La contraseña actual no es correcta.' }, { status: 400 });
+    }
 
     if (role && !['admin', 'profesor'].includes(role)) {
       return NextResponse.json(
@@ -59,13 +76,15 @@ export async function PUT(
            apellido = COALESCE($3, apellido),
            password = COALESCE($4, password),
            role = COALESCE($5, role),
-           telefono = $6,
+           telefono = CASE WHEN $10::boolean THEN $6 ELSE telefono END,
            activo = COALESCE($7, activo),
            correo_personal = COALESCE($8, correo_personal),
+           dni = CASE WHEN $1::text IS NOT NULL AND $1::text ~ '^[0-9]{8}$' THEN $1 ELSE dni END,
+           area = COALESCE($11, area),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $9
-       RETURNING id, email, nombre, apellido, role, telefono, correo_personal, activo, fecha_creacion, updated_at`,
-      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, correo_personal ?? null, params.id]
+        RETURNING id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo, fecha_creacion, updated_at`,
+      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, correo_personal ?? null, params.id, Object.prototype.hasOwnProperty.call(body, 'telefono'), area ?? null]
     );
 
     if (result.rows.length === 0) {
@@ -101,6 +120,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const hard = new URL(request.url).searchParams.get('hard') === 'true';
 
     const result = hard

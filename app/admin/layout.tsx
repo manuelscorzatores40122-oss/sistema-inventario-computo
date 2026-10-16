@@ -1,7 +1,8 @@
-import AdminNotifications from '@/app/components/AdminNotifications';
+import { AdminActivityNotice } from '@/app/components/NotificacionesBell';
 import AdminSidebar from '@/app/components/AdminSidebar';
-import AdminBottomNav from '@/app/components/AdminBottomNav';
+import AdminBottomNav from '@/app/components/AdminMobileNav';
 import MobileTopBar from '@/app/components/MobileTopBar';
+import './admin-workspace.css';
 
 export default function AdminLayout({
   children,
@@ -18,7 +19,7 @@ export default function AdminLayout({
       </div>
       <main className="main-content-offset">{children}</main>
       <AdminBottomNav />
-      <AdminNotifications />
+      <AdminActivityNotice />
     </div>
   );
 }

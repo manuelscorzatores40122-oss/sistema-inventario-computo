@@ -44,6 +44,7 @@ import {
   FiCheck,
   FiImage,
   FiDownload,
+  FiPrinter,
 } from 'react-icons/fi';
 import { exportToCsv } from '@/app/lib/exportCsv';
 import ExcelImportModal from './ExcelImportModal';
@@ -156,8 +157,17 @@ type Prestamo = {
   estado: string;
   item_nombre: string | null;
   categoria: string | null;
+  marca?: string | null;
+  modelo?: string | null;
+  numero_serie?: string | null;
+  codigo_patrimonial?: string | null;
+  item_ubicacion?: string | null;
   profesor_nombre: string | null;
   apellido: string | null;
+  profesor_apellido?: string | null;
+  profesor_dni?: string | null;
+  profesor_area?: string | null;
+  profesor_telefono?: string | null;
   fecha_prestamo: string;
   fecha_devolucion: string | null;
   solicitud_id?: number | null;
@@ -2280,6 +2290,8 @@ export function AdminPrestamosView() {
   const [tab, setTab] = useState<'pendiente' | 'prestado' | 'vencido' | 'devuelto' | 'cancelado'>('pendiente');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [datePreset, setDatePreset] = useState<'todos' | 'hoy' | 'semana' | 'mes'>('todos');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
   const [message, setMessage] = useState<Message>(null);
   const [showNewLoan, setShowNewLoan] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -2287,9 +2299,19 @@ export function AdminPrestamosView() {
   const [procesando, setProcesando] = useState<number | null>(null);
 
   // Modal para registrar devolución con observaciones y condición física
-  const [devolutionModal, setDevolutionModal] = useState<{ id: number; equipo: string; profesor: string } | null>(null);
+  const [devolutionModal, setDevolutionModal] = useState<{
+    id: number;
+    equipo: string;
+    profesor: string;
+    serie?: string | null;
+    marca?: string | null;
+    modelo?: string | null;
+  } | null>(null);
   const [devolutionObservacion, setDevolutionObservacion] = useState('');
   const [devolutionEstado, setDevolutionEstado] = useState('bueno');
+
+  // Modal de Vale Oficial de Préstamo
+  const [voucherModal, setVoucherModal] = useState<Prestamo | null>(null);
 
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
@@ -2316,6 +2338,37 @@ export function AdminPrestamosView() {
     window.addEventListener('admin-requests-updated', refresh);
     return () => window.removeEventListener('admin-requests-updated', refresh);
   }, [fechaInicio, fechaFin]);
+
+  const handleDatePreset = (preset: 'todos' | 'hoy' | 'semana' | 'mes') => {
+    setDatePreset(preset);
+    const now = new Date();
+    const toIso = (d: Date) => d.toISOString().split('T')[0];
+
+    if (preset === 'todos') {
+      setFechaInicio('');
+      setFechaFin('');
+    } else if (preset === 'hoy') {
+      const today = toIso(now);
+      setFechaInicio(today);
+      setFechaFin(today);
+    } else if (preset === 'semana') {
+      const past7 = new Date();
+      past7.setDate(past7.getDate() - 7);
+      setFechaInicio(toIso(past7));
+      setFechaFin(toIso(now));
+    } else if (preset === 'mes') {
+      const past30 = new Date();
+      past30.setDate(past30.getDate() - 30);
+      setFechaInicio(toIso(past30));
+      setFechaFin(toIso(now));
+    }
+  };
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    prestamos.forEach((p) => { if (p.categoria) set.add(p.categoria); });
+    return Array.from(set).sort();
+  }, [prestamos]);
 
   const marcarPrestado = async (id: number) => {
     setProcesando(id);
@@ -2372,6 +2425,9 @@ export function AdminPrestamosView() {
       id: p.id,
       equipo: p.item_nombre || 'Equipo',
       profesor: `${p.profesor_nombre || ''} ${p.apellido || ''}`.trim(),
+      serie: p.numero_serie,
+      marca: p.marca,
+      modelo: p.modelo,
     });
     setDevolutionObservacion('');
     setDevolutionEstado('bueno');
@@ -2424,8 +2480,15 @@ export function AdminPrestamosView() {
       { key: 'id', label: 'ID Préstamo' },
       { key: 'item_nombre', label: 'Equipo' },
       { key: 'categoria', label: 'Categoría' },
-      { key: 'profesor_nombre', label: 'Docente' },
-      { key: 'apellido', label: 'Apellidos' },
+      { key: 'marca', label: 'Marca' },
+      { key: 'modelo', label: 'Modelo' },
+      { key: 'numero_serie', label: 'Número de Serie' },
+      { key: 'codigo_patrimonial', label: 'Código Patrimonial' },
+      { key: 'profesor_nombre', label: 'Docente Nombre' },
+      { key: 'apellido', label: 'Docente Apellido' },
+      { key: 'profesor_dni', label: 'DNI Docente' },
+      { key: 'profesor_area', label: 'Área / Especialidad' },
+      { key: 'profesor_telefono', label: 'Teléfono' },
       { key: 'cantidad', label: 'Cantidad' },
       { key: 'detalle', label: 'Detalle' },
       { key: 'estado', label: 'Estado' },
@@ -2459,142 +2522,390 @@ export function AdminPrestamosView() {
     return diffHours >= 24 || isPreviousDay;
   };
 
+  const formatTimeAgo = (dateStr: string) => {
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Hace instantes';
+      if (diffMins < 60) return `Hace ${diffMins} min`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `Hace ${diffHours} h`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Ayer';
+      return `Hace ${diffDays} d`;
+    } catch {
+      return '';
+    }
+  };
+
   const pendientes = prestamos.filter((p) => p.estado === 'pendiente');
   const activos = prestamos.filter((p) => p.estado === 'prestado');
   const vencidos = prestamos.filter((p) => isLoanOverdue(p.fecha_prestamo, p.estado));
   const devueltos = prestamos.filter((p) => p.estado === 'devuelto');
   const cancelados = prestamos.filter((p) => p.estado === 'cancelado');
   const currentLoans = tab === 'pendiente' ? pendientes : tab === 'vencido' ? vencidos : tab === 'prestado' ? activos : tab === 'cancelado' ? cancelados : devueltos;
+
   const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const list = currentLoans.filter(loan => normalize(`${loan.item_nombre || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.detalle || ''} ${loan.id}`).includes(normalize(search.trim())));
+  const list = currentLoans.filter(loan => {
+    if (categoriaFiltro !== 'todas' && loan.categoria !== categoriaFiltro) return false;
+    if (!search.trim()) return true;
+    const searchable = `${loan.item_nombre || ''} ${loan.marca || ''} ${loan.modelo || ''} ${loan.numero_serie || ''} ${loan.codigo_patrimonial || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.profesor_dni || ''} ${loan.profesor_area || ''} ${loan.detalle || ''} PR-${loan.id} ${loan.id}`;
+    return normalize(searchable).includes(normalize(search.trim()));
+  });
+
   const borrowedUnits = activos.reduce((sum, loan) => sum + Number(loan.cantidad), 0);
 
   return (
     <div className="inventory-manager loans-manager">
       <div className="inventory-manager-inner">
         <header className="inventory-manager-header">
-          <div><Link href="/admin/dashboard" className="inventory-breadcrumb">Administración <FiArrowRight size={12} /> Préstamos</Link><h1>Préstamos de equipos</h1><p>Controla las entregas, acompaña cada préstamo y registra las devoluciones.</p></div>
+          <div>
+            <Link href="/admin/dashboard" className="inventory-breadcrumb">
+              Administración <FiArrowRight size={12} /> Préstamos
+            </Link>
+            <h1>Control Central de Préstamos</h1>
+            <p>Monitoreo en tiempo real de entregas, equipamiento en poder de docentes y actas de devolución.</p>
+          </div>
           <div className="loans-header-actions">
             <button type="button" className="btn-secondary-custom d-inline-flex align-items-center gap-1" onClick={handleExportPrestamos}>
               <FiDownload size={15} /> Exportar Excel
             </button>
-            <Link href="/admin/historial" className="btn-secondary-custom"><FiUsers size={16} /> Historial por profesor</Link>
-            <button type="button" className="inventory-add-button" onClick={() => setShowNewLoan(true)}><FiPlus size={18} /> Nuevo préstamo</button>
+            <Link href="/admin/historial" className="btn-secondary-custom d-inline-flex align-items-center gap-1">
+              <FiUsers size={16} /> Historial docente
+            </Link>
+            <button type="button" className="inventory-add-button" onClick={() => setShowNewLoan(true)}>
+              <FiPlus size={18} /> Registrar préstamo
+            </button>
           </div>
         </header>
+
         <Notice message={message} />
         <ConfirmComponent />
-        {showNewLoan && <AdminQuickForm type="loan" onClose={() => setShowNewLoan(false)} onSaved={() => { setTab('prestado'); setSearch(''); void fetchData(); }} />}
 
-        {/* Modal de Registro de Devolución con Observaciones */}
+        {showNewLoan && (
+          <AdminQuickForm
+            type="loan"
+            onClose={() => setShowNewLoan(false)}
+            onSaved={() => { setTab('prestado'); setSearch(''); void fetchData(); }}
+          />
+        )}
+
+        {/* Modal de Registro de Devolución Mejorado con Presets Rápidos */}
         {devolutionModal && (
-          <div className="position-fixed w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 9999, backdropFilter: 'blur(3px)' }}>
-            <div className="bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp" style={{ maxWidth: '480px', width: '92%' }}>
+          <div className="position-fixed w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 9999, backdropFilter: 'blur(3px)' }}>
+            <div className="bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp animate__faster" style={{ maxWidth: '520px', width: '92%' }}>
               <div className="p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
-                  <div className="p-2 rounded-circle bg-primary bg-opacity-10 text-primary">
-                    <FiCheckCircle size={20} />
+                  <div className="p-2 rounded-circle bg-success bg-opacity-10 text-success">
+                    <FiCheckCircle size={22} />
                   </div>
                   <div>
-                    <h3 className="h6 fw-bold text-slate-900 mb-0">Registrar Devolución de Equipo</h3>
-                    <small className="text-slate-500">Ingreso de artículo nuevamente al inventario</small>
+                    <h3 className="h6 fw-bold text-slate-900 mb-0">Recepción y Devolución de Equipo</h3>
+                    <small className="text-slate-500">Ingreso del bien de vuelta al inventario del colegio</small>
                   </div>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setDevolutionModal(null)}></button>
               </div>
+
               <div className="p-4 space-y-3">
                 <div className="p-3 bg-light rounded-3 border mb-3">
-                  <div className="text-xs text-slate-500 font-semibold mb-1">EQUIPO Y DOCENTE</div>
-                  <div className="fw-bold text-slate-800">{devolutionModal.equipo}</div>
-                  <div className="text-sm text-slate-600 d-flex align-items-center gap-1 mt-1">
-                    <FiUser size={13} className="text-slate-400" /> {devolutionModal.profesor}
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="text-xs text-uppercase font-bold text-slate-500">ARTÍCULO ENTREGADO</span>
+                    {devolutionModal.serie && (
+                      <span className="badge bg-white text-dark border font-mono text-xs">
+                        S/N: {devolutionModal.serie}
+                      </span>
+                    )}
+                  </div>
+                  <div className="fw-bold text-slate-900 fs-6">{devolutionModal.equipo}</div>
+                  {(devolutionModal.marca || devolutionModal.modelo) && (
+                    <div className="text-xs text-slate-500 mb-1">
+                      {devolutionModal.marca} {devolutionModal.modelo}
+                    </div>
+                  )}
+                  <div className="text-sm text-slate-700 d-flex align-items-center gap-1 mt-2 pt-2 border-top">
+                    <FiUser size={13} className="text-primary" />
+                    <strong>Profesor:</strong> {devolutionModal.profesor}
                   </div>
                 </div>
 
                 <div className="mb-3">
-                  <label className="inventory-form-label fw-bold">Condición física del equipo devuelto</label>
-                  <select className="inventory-form-input w-100" value={devolutionEstado} onChange={e => setDevolutionEstado(e.target.value)}>
-                    <option value="bueno">Buen estado (Completo y operativo)</option>
-                    <option value="regular">Regular (Desgaste menor o rayones)</option>
-                    <option value="malo">Malo / Requiere reparación o faltan piezas</option>
-                  </select>
+                  <label className="inventory-form-label fw-bold mb-2">Estado físico al momento de recibirlo</label>
+                  <div className="d-grid gap-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                    <button
+                      type="button"
+                      className={`btn btn-sm d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border ${devolutionEstado === 'bueno' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                      onClick={() => setDevolutionEstado('bueno')}
+                    >
+                      <FiCheckCircle size={18} className="mb-1" />
+                      <strong style={{ fontSize: '12px' }}>Buen estado</strong>
+                      <span style={{ fontSize: '10px', opacity: 0.85 }}>Operativo</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border ${devolutionEstado === 'regular' ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'}`}
+                      onClick={() => setDevolutionEstado('regular')}
+                    >
+                      <FiAlertTriangle size={18} className="mb-1" />
+                      <strong style={{ fontSize: '12px' }}>Regular</strong>
+                      <span style={{ fontSize: '10px', opacity: 0.85 }}>Desgaste</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border ${devolutionEstado === 'malo' ? 'btn-danger text-white' : 'btn-outline-secondary'}`}
+                      onClick={() => setDevolutionEstado('malo')}
+                    >
+                      <FiXCircle size={18} className="mb-1" />
+                      <strong style={{ fontSize: '12px' }}>Dañado / Falla</strong>
+                      <span style={{ fontSize: '10px', opacity: 0.85 }}>Averiado</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-2">
-                  <label className="inventory-form-label fw-bold">Observaciones / Incidencias (Opcional)</label>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <label className="inventory-form-label fw-bold mb-0">Observaciones o faltantes</label>
+                    <span className="text-xs text-muted">Plantillas rápidas:</span>
+                  </div>
+                  <div className="d-flex flex-wrap gap-1 mb-2">
+                    {[
+                      'Todo completo y operativo.',
+                      'Sin cargador / cables.',
+                      'Detalles de uso menores.',
+                      'Presenta avería física.',
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className="btn btn-xs btn-light border text-slate-700 py-0 px-2"
+                        style={{ fontSize: '11px' }}
+                        onClick={() => {
+                          setDevolutionObservacion((prev) =>
+                            prev ? `${prev} ${preset}` : preset
+                          );
+                        }}
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
                     className="inventory-form-input w-100"
                     rows={3}
-                    placeholder="Ej. Devuelto con control y cable HDMI completos; o falta adaptador..."
+                    placeholder="Ej. Entregado completo con cargador, estuche y cables; o señalar cualquier faltante..."
                     value={devolutionObservacion}
-                    onChange={e => setDevolutionObservacion(e.target.value)}
+                    onChange={(e) => setDevolutionObservacion(e.target.value)}
                   />
                 </div>
               </div>
+
               <div className="p-3 bg-light border-top d-flex justify-content-end gap-2">
-                <button type="button" className="btn btn-light border btn-sm px-3" onClick={() => setDevolutionModal(null)} disabled={procesando !== null}>
+                <button
+                  type="button"
+                  className="btn btn-light border btn-sm px-3"
+                  onClick={() => setDevolutionModal(null)}
+                  disabled={procesando !== null}
+                >
                   Cancelar
                 </button>
-                <button type="button" className="btn btn-primary btn-sm px-4 fw-bold d-inline-flex align-items-center gap-1" onClick={confirmarDevolucionConDetalle} disabled={procesando !== null}>
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm px-4 fw-bold d-inline-flex align-items-center gap-1 shadow-sm"
+                  onClick={confirmarDevolucionConDetalle}
+                  disabled={procesando !== null}
+                >
                   <FiCheckCircle size={15} />
-                  {procesando !== null ? 'Guardando…' : 'Confirmar devolución'}
+                  {procesando !== null ? 'Registrando ingreso…' : 'Confirmar devolución'}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Filtro por Rango de Fechas */}
-        <div className={`${panel} p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3`}>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="fw-bold text-slate-800 d-flex align-items-center gap-1 me-2">
-              <FiCalendar size={16} className="text-primary" /> Filtrar por fechas:
-            </span>
-            <div className="d-flex align-items-center gap-1">
-              <span className="text-xs text-slate-500 font-semibold">Desde:</span>
-              <input
-                type="date"
-                className="form-control form-control-sm"
-                style={{ width: '150px' }}
-                value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-              />
+        {/* Modal de Vale Institucional Imprimible */}
+        {voucherModal && (
+          <div className="position-fixed w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 9999, backdropFilter: 'blur(3px)' }}>
+            <div className="bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__zoomIn animate__faster" style={{ maxWidth: '650px', width: '94%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="p-3 border-bottom bg-slate-50 d-flex align-items-center justify-content-between">
+                <span className="text-xs fw-bold text-slate-600 d-flex align-items-center gap-1">
+                  <FiShield className="text-primary" /> Vale Oficial de Asignación y Préstamo
+                </span>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    onClick={() => window.print()}
+                  >
+                    <FiPrinter size={14} /> Imprimir Vale
+                  </button>
+                  <button type="button" className="btn-close" onClick={() => setVoucherModal(null)}></button>
+                </div>
+              </div>
+
+              <div className="p-4 overflow-y-auto" id="loan-voucher-print-area">
+                <div className="text-center pb-3 border-bottom mb-3">
+                  <div className="fw-bold text-slate-900 fs-5 mb-0">I.E. MANUEL SCORZA TORRES</div>
+                  <div className="text-xs text-uppercase text-slate-500 font-bold tracking-wider">AULA DE INNOVACIÓN PEDAGÓGICA Y CÓMPUTO</div>
+                  <div className="badge bg-primary bg-opacity-10 text-primary fs-6 mt-2 px-3 py-1">
+                    VALE DE PRÉSTAMO N° PR-{String(voucherModal.id).padStart(4, '0')}
+                  </div>
+                </div>
+
+                <div className="row g-3 mb-3">
+                  <div className="col-sm-6">
+                    <div className="p-2.5 bg-light rounded-3 border h-100">
+                      <span className="text-xs text-uppercase fw-bold text-slate-500 d-block mb-1">DOCENTE RECEPTOR</span>
+                      <div className="fw-bold text-slate-900">{voucherModal.profesor_nombre} {voucherModal.apellido}</div>
+                      <div className="text-xs text-slate-600 mt-0.5">DNI: <strong>{voucherModal.profesor_dni || '-'}</strong></div>
+                      <div className="text-xs text-slate-600">Área / Cargo: <strong>{voucherModal.profesor_area || 'Docente'}</strong></div>
+                      {voucherModal.profesor_telefono && (
+                        <div className="text-xs text-slate-600">Contacto: <strong>{voucherModal.profesor_telefono}</strong></div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="p-2.5 bg-light rounded-3 border h-100">
+                      <span className="text-xs text-uppercase fw-bold text-slate-500 d-block mb-1">FECHA Y ESTADO</span>
+                      <div className="text-xs text-slate-700"><strong>Fecha Entrega:</strong> {new Date(voucherModal.fecha_prestamo).toLocaleString('es-PE')}</div>
+                      <div className="text-xs text-slate-700 mt-1">
+                        <strong>Fecha Devolución:</strong> {voucherModal.fecha_devolucion ? new Date(voucherModal.fecha_devolucion).toLocaleString('es-PE') : 'En curso (Pendiente)'}
+                      </div>
+                      <div className="mt-2">
+                        <span className={`badge ${voucherModal.estado === 'devuelto' ? 'bg-success' : voucherModal.estado === 'cancelado' ? 'bg-secondary' : 'bg-primary'}`}>
+                          Estado: {voucherModal.estado.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-3 border mb-3">
+                  <span className="text-xs text-uppercase fw-bold text-slate-500 d-block mb-2">EQUIPAMIENTO ENTREGADO</span>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <div className="fw-bold fs-6 text-slate-900">{voucherModal.item_nombre}</div>
+                    <span className="badge bg-dark text-white px-2 py-1">Cantidad: {voucherModal.cantidad} unidad(es)</span>
+                  </div>
+                  <div className="row g-2 text-xs text-slate-600 mt-1">
+                    <div className="col-6">Marca: <strong>{voucherModal.marca || 'N/A'}</strong></div>
+                    <div className="col-6">Modelo: <strong>{voucherModal.modelo || 'N/A'}</strong></div>
+                    <div className="col-6">N° de Serie: <strong className="font-mono">{voucherModal.numero_serie || 'Sin serie'}</strong></div>
+                    <div className="col-6">Cód. Patrimonial: <strong>{voucherModal.codigo_patrimonial || 'N/A'}</strong></div>
+                  </div>
+                  {voucherModal.detalle && (
+                    <div className="text-xs bg-light p-2 rounded mt-2 border text-slate-700">
+                      <strong>Detalles / Identificadores:</strong> {voucherModal.detalle}
+                    </div>
+                  )}
+                  {voucherModal.devolucion_observacion && (
+                    <div className="text-xs bg-success bg-opacity-10 p-2 rounded mt-2 border border-success border-opacity-25 text-success-emphasis">
+                      <strong>Observación de Devolución:</strong> {voucherModal.devolucion_observacion} ({voucherModal.devolucion_estado})
+                    </div>
+                  )}
+                </div>
+
+                {/* Firmas Institucionales */}
+                <div className="row mt-4 pt-4 border-top text-center text-xs text-slate-600">
+                  <div className="col-6">
+                    <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto 8px auto' }} />
+                    <div className="fw-bold text-slate-800">{voucherModal.profesor_nombre} {voucherModal.apellido}</div>
+                    <div>Docente Responsable (Recepción)</div>
+                    <div className="text-muted">DNI: {voucherModal.profesor_dni || '_________________'}</div>
+                  </div>
+                  <div className="col-6">
+                    <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto 8px auto' }} />
+                    <div className="fw-bold text-slate-800">Responsable de Aula de Cómputo</div>
+                    <div>Administración / Control Patrimonial</div>
+                    <div className="text-muted">I.E. Manuel Scorza Torres</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-light border-top d-flex justify-content-end">
+                <button type="button" className="btn btn-secondary btn-sm px-4" onClick={() => setVoucherModal(null)}>
+                  Cerrar
+                </button>
+              </div>
             </div>
-            <div className="d-flex align-items-center gap-1">
-              <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
-              <input
-                type="date"
-                className="form-control form-control-sm"
-                style={{ width: '150px' }}
-                value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-              />
-            </div>
-            {(fechaInicio || fechaFin) && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-xs"
-                onClick={() => { setFechaInicio(''); setFechaFin(''); }}
-              >
-                <FiX size={14} /> Limpiar fechas
-              </button>
-            )}
           </div>
-          <Link href="/admin/historial" className="btn-secondary-custom text-decoration-none d-inline-flex align-items-center gap-1 text-xs">
-            <FiUsers size={15} /> Historial por Profesor
-          </Link>
+        )}
+
+        {/* Barra de Filtros Rápidos y Rangos de Fecha */}
+        <div className={`${panel} p-3 mb-4`}>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            {/* Presets Rápidos */}
+            <div className="d-flex align-items-center gap-1 flex-wrap">
+              <span className="fw-bold text-slate-800 text-xs d-flex align-items-center gap-1 me-1">
+                <FiClock size={14} className="text-primary" /> Período:
+              </span>
+              {(['todos', 'hoy', 'semana', 'mes'] as const).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`btn btn-xs px-2.5 py-1 rounded-pill ${
+                    datePreset === preset ? 'btn-primary text-white font-bold' : 'btn-outline-secondary'
+                  }`}
+                  style={{ fontSize: '11px' }}
+                  onClick={() => handleDatePreset(preset)}
+                >
+                  {preset === 'todos' ? 'Histórico completo' : preset === 'hoy' ? 'Hoy' : preset === 'semana' ? 'Últimos 7 días' : 'Este mes'}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Range Picker */}
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <div className="d-flex align-items-center gap-1">
+                <span className="text-xs text-slate-500 font-semibold">Desde:</span>
+                <input
+                  type="date"
+                  className="form-control form-control-sm"
+                  style={{ width: '135px', fontSize: '12px' }}
+                  value={fechaInicio}
+                  onChange={(e) => { setFechaInicio(e.target.value); setDatePreset('todos'); }}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <span className="text-xs text-slate-500 font-semibold">Hasta:</span>
+                <input
+                  type="date"
+                  className="form-control form-control-sm"
+                  style={{ width: '135px', fontSize: '12px' }}
+                  value={fechaFin}
+                  onChange={(e) => { setFechaFin(e.target.value); setDatePreset('todos'); }}
+                />
+              </div>
+              {(fechaInicio || fechaFin) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                  style={{ fontSize: '11px' }}
+                  onClick={() => handleDatePreset('todos')}
+                  title="Restablecer fechas"
+                >
+                  <FiX size={12} /> Limpiar
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
+        {/* Tarjetas KPI Interactivas (Click para cambiar de pestaña) */}
         <div className="inventory-summary">
           {[
-            { label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox },
-            { label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock },
-            { label: '⚠️ Vencidos', value: vencidos.length, unit: 'sin devolver a tiempo', icon: FiAlertTriangle, highlight: vencidos.length > 0 },
-            { label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage },
-            { label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle },
-            { label: 'Cancelados', value: cancelados.length, unit: 'entregas anuladas', icon: FiXCircle }
-          ].map(({ label, value, unit, icon: Icon, highlight }) => (
-            <div className={`inventory-summary-card ${highlight ? 'border border-danger bg-rose-50/50' : ''}`} key={label}>
+            { targetTab: 'pendiente', label: 'Por recoger', value: pendientes.length, unit: 'entregas pendientes', icon: FiInbox },
+            { targetTab: 'prestado', label: 'Préstamos activos', value: activos.length, unit: 'registros en préstamo', icon: FiClock },
+            { targetTab: 'vencido', label: '⚠️ Vencidos', value: vencidos.length, unit: 'superan 24 horas', icon: FiAlertTriangle, highlight: vencidos.length > 0 },
+            { targetTab: 'prestado', label: 'Equipos en uso', value: borrowedUnits, unit: 'unidades con profesores', icon: FiPackage },
+            { targetTab: 'devuelto', label: 'Devueltos', value: devueltos.length, unit: 'préstamos completados', icon: FiCheckCircle },
+            { targetTab: 'cancelado', label: 'Cancelados', value: cancelados.length, unit: 'entregas anuladas', icon: FiXCircle }
+          ].map(({ targetTab, label, value, unit, icon: Icon, highlight }) => (
+            <div
+              key={label}
+              className={`inventory-summary-card ${highlight ? 'border border-danger bg-rose-50/50' : ''}`}
+              style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+              onClick={() => setTab(targetTab as any)}
+              title={`Clic para ver registros de ${label}`}
+            >
               <div>
                 <span className={highlight ? 'text-danger font-bold' : ''}>{label}</span>
                 <Icon size={20} className={highlight ? 'text-danger' : ''} />
@@ -2604,11 +2915,50 @@ export function AdminPrestamosView() {
             </div>
           ))}
         </div>
+
+        {/* Panel Principal de Listado */}
         <div className="inventory-panel inventory-list-panel">
-          <div className="inventory-list-toolbar">
-            <div><h2 className="loans-list-title">Registro de préstamos</h2><span className="loans-count">{list.length} registros</span></div>
-            <label className="loans-search"><FiSearch size={17} /><input aria-label="Buscar préstamos" placeholder="Buscar profesor, equipo o detalle…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><FiX size={15} /></button>}</label>
+          <div className="inventory-list-toolbar d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <h2 className="loans-list-title mb-0">Gestión de entregas y devoluciones</h2>
+              <span className="loans-count">{list.length} registros visibles</span>
+            </div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Filtro por Categoría */}
+              {categories.length > 0 && (
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto', minWidth: '160px', fontSize: '12px' }}
+                  value={categoriaFiltro}
+                  onChange={(e) => setCategoriaFiltro(e.target.value)}
+                >
+                  <option value="todas">Todas las categorías</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Buscador Inteligente Multicampo */}
+              <label className="loans-search mb-0" style={{ minWidth: '280px' }}>
+                <FiSearch size={16} />
+                <input
+                  aria-label="Buscar préstamos"
+                  placeholder="Docente, DNI, serie, equipo, ID..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda">
+                    <FiX size={14} />
+                  </button>
+                )}
+              </label>
+            </div>
           </div>
+
+          {/* Pestañas de Estado */}
           <div className="inventory-state-tabs" role="group" aria-label="Estado del préstamo">
             {([
               { value: 'pendiente', label: 'Por recoger', count: pendientes.length },
@@ -2624,10 +2974,14 @@ export function AdminPrestamosView() {
                 aria-pressed={tab === state.value}
                 onClick={() => setTab(state.value)}
               >
-                {state.label}<span>{state.count}</span>
+                {state.label}
+                <span className="badge rounded-pill bg-slate-200 text-slate-700 ms-1" style={{ fontSize: '11px' }}>
+                  {state.count}
+                </span>
               </button>
             ))}
           </div>
+
           <p className="loans-tab-hint">
             {tab === 'pendiente'
               ? 'Confirma la entrega cuando el profesor recoja sus equipos o cancela si no se retiró.'
@@ -2639,18 +2993,19 @@ export function AdminPrestamosView() {
                     ? 'Préstamos anulados antes del retiro (su stock fue restituido al inventario).'
                     : 'Consulta las entregas que ya fueron devueltas y sus observaciones.'}
           </p>
+
           <div className="overflow-x-auto">
             <table className="inventory-table">
               <thead>
                 <tr>
-                  <th>Equipo</th>
-                  <th>Profesor</th>
-                  <th>Cant.</th>
-                  <th>Detalle / Nota</th>
-                  <th>Fecha de Préstamo</th>
-                  {tab === 'devuelto' && <th>Devolución y Estado</th>}
-                  <th>Estado</th>
-                  <th className="text-right">Acciones</th>
+                  <th style={{ minWidth: '220px' }}>Equipo y Serie</th>
+                  <th style={{ minWidth: '190px' }}>Docente</th>
+                  <th style={{ width: '60px' }}>Cant.</th>
+                  <th>Detalle / Accesorios</th>
+                  <th style={{ minWidth: '150px' }}>Fecha Entrega</th>
+                  {tab === 'devuelto' && <th style={{ minWidth: '170px' }}>Recepción y Estado</th>}
+                  <th style={{ width: '110px' }}>Estado</th>
+                  <th className="text-right" style={{ minWidth: '150px' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -2658,29 +3013,109 @@ export function AdminPrestamosView() {
                   const overdue = isLoanOverdue(prestamo.fecha_prestamo, prestamo.estado);
                   return (
                     <tr key={prestamo.id} className={overdue ? 'bg-red-50/40' : ''}>
-                      <td><div className="inventory-item-name"><span className="inventory-item-icon"><FiPackage size={17} /></span><div><strong>{prestamo.item_nombre || 'Equipo'}</strong><small>PR-{String(prestamo.id).padStart(3, '0')}</small></div></div></td>
+                      {/* Columna Equipo Enriquecida */}
                       <td>
-                        <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-800">
-                          <FiUser size={12} className="text-slate-400" />
-                          {prestamo.profesor_nombre} {prestamo.apellido}
-                        </span>
+                        <div className="inventory-item-name">
+                          <span className="inventory-item-icon">
+                            <FiPackage size={17} />
+                          </span>
+                          <div>
+                            <div className="d-flex align-items-center gap-1 flex-wrap">
+                              <strong className="text-slate-900">{prestamo.item_nombre || 'Equipo'}</strong>
+                              <span className="badge bg-light text-slate-600 border" style={{ fontSize: '10px' }}>
+                                PR-{String(prestamo.id).padStart(3, '0')}
+                              </span>
+                            </div>
+
+                            <div className="d-flex align-items-center gap-1 flex-wrap mt-0.5">
+                              {prestamo.numero_serie && (
+                                <span className="badge bg-slate-100 text-slate-700 border font-mono" style={{ fontSize: '10px' }}>
+                                  S/N: {prestamo.numero_serie}
+                                </span>
+                              )}
+                              {(prestamo.marca || prestamo.modelo) && (
+                                <span className="text-xs text-slate-500">
+                                  {prestamo.marca} {prestamo.modelo}
+                                </span>
+                              )}
+                              {prestamo.codigo_patrimonial && (
+                                <span className="badge bg-slate-50 text-slate-500 border" style={{ fontSize: '10px' }}>
+                                  CP: {prestamo.codigo_patrimonial}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="font-semibold">{prestamo.cantidad}</td>
-                      <td className="loans-detail">{prestamo.detalle || '-'}</td>
-                      <td className="text-xs text-slate-500">{new Date(prestamo.fecha_prestamo).toLocaleString('es-ES', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+
+                      {/* Columna Docente Enriquecida */}
+                      <td>
+                        <div>
+                          <span className="d-inline-flex align-items-center gap-1 font-semibold text-slate-900">
+                            <FiUser size={13} className="text-primary" />
+                            {prestamo.profesor_nombre} {prestamo.apellido}
+                          </span>
+                          <div className="d-flex align-items-center gap-1 flex-wrap mt-0.5">
+                            {prestamo.profesor_dni && (
+                              <span className="badge bg-primary bg-opacity-10 text-primary" style={{ fontSize: '10px' }}>
+                                DNI: {prestamo.profesor_dni}
+                              </span>
+                            )}
+                            {prestamo.profesor_area && (
+                              <small className="text-slate-500" style={{ fontSize: '11px' }}>
+                                · {prestamo.profesor_area}
+                              </small>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cantidad */}
+                      <td className="text-center font-bold text-slate-800">{prestamo.cantidad}</td>
+
+                      {/* Detalle */}
+                      <td className="loans-detail text-xs text-slate-600">
+                        {prestamo.detalle || <span className="text-muted italic">Sin accesorios específicos</span>}
+                      </td>
+
+                      {/* Fecha y Antigüedad */}
+                      <td className="text-xs text-slate-600">
+                        <div className="fw-semibold text-slate-800">
+                          {new Date(prestamo.fecha_prestamo).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                        <div className="text-slate-500" style={{ fontSize: '11px' }}>
+                          {new Date(prestamo.fecha_prestamo).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · <span className="text-primary font-medium">{formatTimeAgo(prestamo.fecha_prestamo)}</span>
+                        </div>
+                      </td>
+
+                      {/* Columna Devolución (solo tab devuelto) */}
                       {tab === 'devuelto' && (
                         <td className="text-xs text-slate-600">
-                          <div>{prestamo.fecha_devolucion ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</div>
+                          <div>
+                            {prestamo.fecha_devolucion
+                              ? new Date(prestamo.fecha_devolucion).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                              : '-'}
+                          </div>
                           {prestamo.devolucion_estado && (
                             <span className={`badge rounded-pill text-xs mt-1 ${
-                              prestamo.devolucion_estado === 'malo' ? 'bg-danger text-white' : prestamo.devolucion_estado === 'regular' ? 'bg-warning text-dark' : 'bg-success text-white'
+                              prestamo.devolucion_estado === 'malo'
+                                ? 'bg-danger text-white'
+                                : prestamo.devolucion_estado === 'regular'
+                                ? 'bg-warning text-dark'
+                                : 'bg-success text-white'
                             }`}>
                               {prestamo.devolucion_estado === 'malo' ? 'Con daño' : prestamo.devolucion_estado === 'regular' ? 'Regular' : 'Buen estado'}
                             </span>
                           )}
-                          {prestamo.devolucion_observacion && <div className="text-xs text-slate-500 italic mt-0.5">{prestamo.devolucion_observacion}</div>}
+                          {prestamo.devolucion_observacion && (
+                            <div className="text-xs text-slate-500 italic mt-0.5 text-truncate" style={{ maxWidth: '180px' }} title={prestamo.devolucion_observacion}>
+                              {prestamo.devolucion_observacion}
+                            </div>
+                          )}
                         </td>
                       )}
+
+                      {/* Estado */}
                       <td>
                         {overdue ? (
                           <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1">
@@ -2690,37 +3125,79 @@ export function AdminPrestamosView() {
                           <StatusBadge value={prestamo.estado} />
                         )}
                       </td>
+
+                      {/* Acciones */}
                       <td className="text-right">
-                        {prestamo.estado === 'pendiente' ? (
-                          <div className="d-flex justify-content-end gap-1">
-                            <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => marcarPrestado(prestamo.id)}>
+                        <div className="d-flex justify-content-end align-items-center gap-1">
+                          {/* Botón Vale Institucional */}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light border text-slate-700 d-inline-flex align-items-center gap-1 py-1 px-2"
+                            style={{ fontSize: '12px' }}
+                            onClick={() => setVoucherModal(prestamo)}
+                            title="Ver e imprimir vale de asignación"
+                          >
+                            <FiPrinter size={13} /> Vale
+                          </button>
+
+                          {prestamo.estado === 'pendiente' ? (
+                            <>
+                              <button
+                                className={`${primaryButton} d-inline-flex align-items-center gap-1 py-1 px-2`}
+                                disabled={procesando !== null}
+                                onClick={() => marcarPrestado(prestamo.id)}
+                              >
+                                <FiCheckCircle size={13} />
+                                {procesando === prestamo.id ? 'Guardando…' : 'Entregar'}
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2"
+                                disabled={procesando !== null}
+                                onClick={() => cancelarPrestamoPendiente(prestamo.id)}
+                                title="Cancelar entrega y reponer stock"
+                              >
+                                <FiX size={13} />
+                              </button>
+                            </>
+                          ) : prestamo.estado === 'prestado' ? (
+                            <button
+                              className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-sm py-1 px-2.5"
+                              disabled={procesando !== null}
+                              onClick={() => abrirModalDevolucion(prestamo)}
+                            >
                               <FiCheckCircle size={13} />
-                              {procesando === prestamo.id ? 'Guardando…' : 'Entregar'}
+                              {procesando === prestamo.id ? 'Guardando…' : 'Devolver'}
                             </button>
-                            <button className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" disabled={procesando !== null} onClick={() => cancelarPrestamoPendiente(prestamo.id)} title="Cancelar entrega y reponer stock">
-                              <FiX size={13} />
-                              Cancelar
+                          ) : (
+                            <button
+                              className={`${dangerButton} d-inline-flex align-items-center gap-1 py-1 px-2`}
+                              disabled={procesando !== null}
+                              onClick={() => eliminar(prestamo.id)}
+                              title="Eliminar registro histórico"
+                            >
+                              <FiTrash2 size={13} />
                             </button>
-                          </div>
-                        ) : prestamo.estado === 'prestado' ? (
-                          <button className={`${primaryButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => abrirModalDevolucion(prestamo)}>
-                            <FiCheckCircle size={13} />
-                            {procesando === prestamo.id ? 'Guardando…' : 'Devolver'}
-                          </button>
-                        ) : (
-                          <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} disabled={procesando !== null} onClick={() => eliminar(prestamo.id)}>
-                            <FiTrash2 size={13} />
-                            Eliminar
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
+
                 {(loading || list.length === 0) && (
                   <tr>
                     <td className="text-center py-6 text-slate-500" colSpan={tab === 'devuelto' ? 8 : 7}>
-                      {loading ? 'Cargando préstamos…' : search ? 'No se encontraron préstamos. Prueba otro nombre, equipo o detalle.' : tab === 'pendiente' ? 'Todo al día. No hay equipos pendientes de recoger.' : tab === 'prestado' ? 'No hay equipos prestados actualmente.' : tab === 'cancelado' ? 'No hay préstamos cancelados.' : 'Aún no hay devoluciones registradas.'}
+                      {loading
+                        ? 'Cargando préstamos…'
+                        : search
+                        ? 'No se encontraron préstamos que coincidan con la búsqueda.'
+                        : tab === 'pendiente'
+                        ? 'Todo al día. No hay equipos pendientes de recoger.'
+                        : tab === 'prestado'
+                        ? 'No hay equipos prestados actualmente.'
+                        : tab === 'cancelado'
+                        ? 'No hay préstamos cancelados.'
+                        : 'Aún no hay devoluciones registradas.'}
                     </td>
                   </tr>
                 )}

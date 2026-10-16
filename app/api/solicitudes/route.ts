@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
 import { notifyAdminsOfRequest } from '@/app/lib/admin-notifications';
@@ -5,9 +6,11 @@ import { notifyAdminsOfRequest } from '@/app/lib/admin-notifications';
 // GET - Listar solicitudes
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
-    const profesor_id = searchParams.get('profesor_id');
+    const profesor_id = session.user.role === 'admin' ? searchParams.get('profesor_id') : String(session.user.id);
 
     let sql = `SELECT s.*,
                       u.nombre as profesor_nombre,
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
       params.push(profesor_id);
     }
 
-    sql += ' ORDER BY s.fecha_solicitud DESC LIMIT 200';
+    sql += ' ORDER BY s.fecha_solicitud DESC';
 
     const result = await query(sql, params);
 
@@ -50,8 +53,12 @@ export async function GET(request: NextRequest) {
 // POST - Crear solicitud (profesor)
 export async function POST(request: NextRequest) {
   try {
-    const { profesor_id, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, seccion, numero_aula } = await request.json();
-    const cantidad = inventario_id ? Number(cantidad_solicitada || 1) : 1;
+    const session = await requireSession(request);
+    if (session.response) return session.response;
+    const { profesor_id: requestedTeacherId, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, seccion, numero_aula } = await request.json();
+    const profesor_id = session.user.role === 'admin' ? Number(requestedTeacherId || session.user.id) : session.user.id;
+    const cantidad = inventario_id ? Number(cantidad_solicitada ?? 1) : 1;
+    if (typeof motivo !== 'string' || !motivo.trim() || motivo.length > (tipo_solicitud === 'aula' ? 255 : 1000)) return NextResponse.json({ error: 'Describe la actividad con un motivo válido.' }, { status: 400 });
     let seccionLimpia: string | null = null;
     let aulaLimpia: string | null = null;
     // La reserva ya identifica el ambiente; la ubicación solo corresponde a equipos.
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
 
-    if (!profesor_id) {
+    if (!Number.isSafeInteger(profesor_id) || profesor_id <= 0) {
       return NextResponse.json({ error: 'Faltan parámetros de profesor' }, { status: 400 });
     }
 
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (tipo_solicitud === 'aula') {
-      const validDate = typeof fecha_reserva === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha_reserva);
+      const validDate = typeof fecha_reserva === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha_reserva) && Number.isFinite(Date.parse(fecha_reserva)) && new Date(fecha_reserva).toISOString().slice(0, 10) === fecha_reserva;
       const validTime = (value: unknown) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
       const start = new Date(`${fecha_reserva}T${hora_inicio}:00-05:00`);
       if (!validDate || !validTime(hora_inicio) || !validTime(hora_fin) || !Number.isFinite(start.getTime()) || hora_inicio >= hora_fin) {
@@ -130,8 +137,8 @@ export async function POST(request: NextRequest) {
         }
 
         const resultDisp = await client.query(
-          `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva, es_recurrente)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)
            RETURNING id`,
           ['Sala de Cómputo', dia_semana, hora_inicio, hora_fin, 'pendiente', profesor_id, motivo, fecha_reserva]
         );
@@ -139,7 +146,7 @@ export async function POST(request: NextRequest) {
         itemNombre = `Aula de Cómputo (${dia_semana} ${fecha_reserva.split('-').reverse().join('/')} ${hora_inicio}-${hora_fin})`;
       } else {
         const inventario = await client.query(
-          'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 FOR UPDATE',
+          'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 AND situacion_administrativa = \'activo\' FOR UPDATE',
           [inventario_id, 'disponible']
         );
 
@@ -178,7 +185,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error al crear solicitud:', error);
     return NextResponse.json(
-      { error: 'Error al crear solicitud: ' + (error as Error).message },
+      { error: 'No se pudo crear la solicitud. Intenta nuevamente.' },
       { status: 500 }
     );
   }

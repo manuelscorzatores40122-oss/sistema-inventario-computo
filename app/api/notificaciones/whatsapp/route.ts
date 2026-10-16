@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 import { verifyToken } from '@/app/lib/auth';
@@ -5,6 +6,8 @@ import { verifyToken } from '@/app/lib/auth';
 // POST - Registrar notificación interna en el sistema
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request, true);
+    if (session.response) return session.response;
     const { usuario_id, mensaje, tipo, referencia_id } = await request.json();
 
     if (!usuario_id || !mensaje) {
@@ -35,15 +38,13 @@ export async function POST(request: NextRequest) {
 // GET - Obtener notificaciones internas para el usuario
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
-    const token = request.cookies.get('auth-token')?.value;
-    const session = token ? verifyToken(token) : null;
-    if (!session || typeof session === 'string' || !session.userId) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-    const usuario_id = session.role === 'admin'
-      ? searchParams.get('usuario_id') || String(session.userId)
-      : String(session.userId);
+
+    const usuario_id = session.user.role === 'admin'
+      ? searchParams.get('usuario_id') || String(session.user.id)
+      : String(session.user.id);
 
     let sql = `
       SELECT nw.id, nw.usuario_id, nw.numero_telefono, nw.mensaje, nw.tipo, nw.referencia_id, nw.estado, nw.fecha_envio,

@@ -1,0 +1,83 @@
+'use client';
+
+import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { FiArrowRight, FiBell, FiCheck, FiCheckCircle, FiClock, FiInbox, FiX } from 'react-icons/fi';
+import type { InboxItem } from '@/app/lib/notification-presentation';
+import { dateLabel } from '@/app/lib/teacher-utils';
+import s from './NotificationCenter.module.css';
+
+export default function NotificationCenter({ items, userId }: { items: InboxItem[]; userId: number }) {
+  const [open, setOpen] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [read, setRead] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const [position, setPosition] = useState({ top: 70, left: 12 });
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const id = useId();
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<{ userId: number; keys: string[] }>).detail;
+      if (detail?.userId === userId) setRead(previous => Array.from(new Set([...previous, ...detail.keys])));
+    };
+    window.addEventListener('inbox-read', sync);
+    return () => window.removeEventListener('inbox-read', sync);
+  }, [userId]);
+  useEffect(() => {
+    let saved: string[] = [];
+    try { const value = JSON.parse(localStorage.getItem(`inbox:${userId}`) || '[]'); if (Array.isArray(value)) saved = value; } catch { /* Sigue funcionando sin almacenamiento local. */ }
+    setRead(saved);
+    const controller = new AbortController();
+    fetch('/api/notificaciones/lecturas', { cache: 'no-store', signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error('No pudimos sincronizar los avisos leídos.');
+      const body = await response.json();
+      setRead(previous => Array.from(new Set([...previous, ...(body.keys || [])])));
+    }).catch(err => { if (!controller.signal.aborted) setError(err.message); });
+    return () => controller.abort();
+  }, [userId]);
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: MouseEvent) => { if (!panel.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); trigger.current?.focus(); } };
+    document.addEventListener('mousedown', dismiss); document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('mousedown', dismiss); document.removeEventListener('keydown', escape); };
+  }, [open]);
+  const unread = items.filter(item => !read.includes(item.key));
+  async function mark(keys: string[]) {
+    const next = Array.from(new Set([...read, ...keys])); setRead(next);
+    window.dispatchEvent(new CustomEvent('inbox-read', { detail: { userId, keys } }));
+    try { localStorage.setItem(`inbox:${userId}`, JSON.stringify(next)); } catch { /* Se sincroniza en el servidor. */ }
+    try {
+      const response = await fetch('/api/notificaciones/lecturas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys }) });
+      if (!response.ok) throw new Error('No pudimos sincronizar la lectura. Se conserva en este navegador.');
+      setError('');
+    } catch (err) { setError(err instanceof Error ? err.message : 'No hay conexión. La lectura se conserva en este navegador.'); }
+  }
+  const visible = unreadOnly ? unread : items;
+  return <>
+    <button ref={trigger} className={s.trigger} aria-label={`Notificaciones${unread.length ? `, ${unread.length} sin leer` : ', al día'}`} aria-expanded={open} aria-controls={id} onClick={() => {
+      const rect = trigger.current?.getBoundingClientRect();
+      if (rect) setPosition({ top: Math.min(rect.bottom + 12, window.innerHeight - 200), left: Math.max(12, Math.min(rect.left, window.innerWidth - 402)) });
+      setOpen(value => !value);
+    }}><FiBell size={18} />{unread.length > 0 && <span className={s.count}>{unread.length > 99 ? '99+' : unread.length}</span>}</button>
+    {open && createPortal(<section ref={panel} id={id} className={s.panel} style={position} aria-label="Centro de notificaciones"><header className={s.header}><div><h2>Notificaciones</h2><p>{unread.length ? `${unread.length} novedades por revisar` : 'Estás al día con tu actividad'}</p></div><button className={s.close} aria-label="Cerrar notificaciones" onClick={() => { setOpen(false); trigger.current?.focus(); }}><FiX /></button></header><div className={s.tools}><div className={s.tabs}><button aria-pressed={!unreadOnly} onClick={() => setUnreadOnly(false)}>Todas</button><button aria-pressed={unreadOnly} onClick={() => setUnreadOnly(true)}>Sin leer ({unread.length})</button></div>{unread.length > 0 && <button className={s.readButton} onClick={() => void mark(unread.map(item => item.key))}><FiCheck size={13} />Marcar leídas</button>}</div>{error && <p role="status" className={s.error}>{error}</p>}
+      {visible.length ? <ul className={s.list}>{visible.map(item => <li key={item.key} className={s.item} data-unread={!read.includes(item.key)}><span className={s.icon} data-tone={item.tone}>{item.tone === 'green' ? <FiCheckCircle size={17} /> : item.tone === 'amber' ? <FiClock size={17} /> : <FiInbox size={17} />}</span><div className={s.copy}><h3>{item.title}{!read.includes(item.key) && <span className={s.dot} aria-label="Sin leer" />}</h3><p>{item.message}</p><time dateTime={item.date}>{dateLabel(item.date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time><div className={s.actions}><Link href={item.href} onClick={() => { void mark([item.key]); setOpen(false); }}>{item.action}<FiArrowRight size={12} /></Link>{!read.includes(item.key) && <button onClick={() => void mark([item.key])}>Marcar leída</button>}</div></div></li>)}</ul> : <div className={s.empty}><FiCheckCircle size={32} /><h3>{unreadOnly ? 'No tienes avisos sin leer' : 'Todo en orden'}</h3><p>Las respuestas y novedades del colegio aparecerán aquí.</p></div>}
+    </section>, document.body)}
+  </>;
+}
+
+export function ActivityToast({ items }: { items: InboxItem[] }) {
+  const seen = useRef<Set<string> | null>(null);
+  const [current, setCurrent] = useState<InboxItem | null>(null);
+  useEffect(() => {
+    if (seen.current === null) { seen.current = new Set(items.map(item => item.key)); return; }
+    const fresh = items.find(item => !seen.current!.has(item.key));
+    items.forEach(item => seen.current!.add(item.key));
+    if (fresh) setCurrent(fresh);
+  }, [items]);
+  useEffect(() => { if (!current) return; const timer = setTimeout(() => setCurrent(null), 12000); return () => clearTimeout(timer); }, [current]);
+  if (!current) return null;
+  return createPortal(<aside className={s.toast} role="status"><span className={s.icon} data-tone={current.tone}><FiBell size={17} /></span><div style={{ flex: 1 }}><strong>{current.title}</strong><p>{current.message}</p><Link href={current.href} onClick={() => setCurrent(null)}>{current.action}<FiArrowRight size={13} /></Link></div><button className={s.close} aria-label="Cerrar aviso" onClick={() => setCurrent(null)}><FiX size={15} /></button></aside>, document.body);
+}

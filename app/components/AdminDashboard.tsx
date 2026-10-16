@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [profesores, setProfesores] = useState(0);
+  const [prestamos, setPrestamos] = useState<{ estado: string; cantidad: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState<{ id: number; nombre: string } | null>(null);
@@ -30,9 +31,10 @@ export default function AdminDashboard() {
 
   const refresh = useCallback(async () => {
     try {
-      const responses = await Promise.all(['/api/solicitudes', '/api/inventario', '/api/usuarios?role=profesor&activo=true'].map(url => fetch(url)));
+      const responses = await Promise.all(['/api/solicitudes', '/api/inventario', '/api/usuarios?role=profesor&activo=true', '/api/prestamos'].map(url => fetch(url, { cache: 'no-store' })));
       if (responses.some(response => !response.ok)) throw new Error('No se pudieron cargar los datos del panel. Intenta nuevamente.');
-      const [requests, inventory, teachers] = await Promise.all(responses.map(response => response.json()));
+      const [requests, inventory, teachers, loans] = await Promise.all(responses.map(response => response.json()));
+      setPrestamos(loans.prestamos || []);
       setSolicitudes(requests.solicitudes || []);
       setItems(inventory.items || []);
       setProfesores(teachers.total ?? teachers.usuarios?.length ?? 0);
@@ -78,10 +80,10 @@ export default function AdminDashboard() {
         <Link href="/admin/perfil" className={styles.profile}><span>{user?.nombre || 'Administrador'}</span><span className={styles.avatar}><FiUser size={18} /></span></Link>
       </header>
       <div className={styles.content}>
-        <div className={styles.heading}><div><span className={styles.eyebrow}>VISTA GENERAL</span><h1>Dashboard</h1><p>Todo lo que necesitas para gestionar tu inventario.</p></div><span className={styles.date}><FiCalendar />{now?.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+        <div className={styles.heading}><div><span className={styles.eyebrow}>ADMINISTRACIÓN · MANUEL SCORZA</span><h1>Centro de operaciones</h1><p>Atiende solicitudes, controla entregas y prepara los recursos del colegio.</p></div><button className={styles.shortcutButton} onClick={() => void refresh()}>Actualizar panel</button></div>
         {error && <div role="alert" className={styles.error}>{error} <button onClick={() => void refresh()}>Reintentar</button></div>}
         <div className={styles.metrics}>
-          {[{ label: 'Solicitudes pendientes', value: pending.length, icon: FiInbox, href: '/admin/solicitudes' }, { label: 'Unidades en inventario', value: total, icon: FiPackage, href: '/admin/inventario' }, { label: 'Profesores activos', value: profesores, icon: FiUsers, href: '/admin/profesores' }].map(({ label, value, icon: Icon, href }) => <Link key={label} href={href} className={styles.metric}><Icon size={30} /><span>{label}</span><strong>{metric(value)}</strong><small>Ver detalle <FiArrowRight /></small></Link>)}
+          {[{ label: 'Solicitudes pendientes', value: pending.length, icon: FiInbox, href: '/admin/solicitudes' }, { label: 'Unidades en inventario', value: total, icon: FiPackage, href: '/admin/inventario' }, { label: 'Préstamos en uso', value: prestamos.filter(p => p.estado === 'prestado').length, icon: FiInbox, href: '/admin/prestamos' }, { label: 'Por entregar', value: prestamos.filter(p => p.estado === 'pendiente').length, icon: FiClock, href: '/admin/prestamos' }, { label: 'Profesores activos', value: profesores, icon: FiUsers, href: '/admin/profesores' }].map(({ label, value, icon: Icon, href }) => <Link key={label} href={href} className={styles.metric}><Icon size={30} /><span>{label}</span><strong>{metric(value)}</strong><small>Ver detalle <FiArrowRight /></small></Link>)}
         </div>
         <div className={styles.grid}>
           <section className={`${styles.card} ${styles.loanShortcut} ${styles.shortcut}`}>
@@ -98,7 +100,7 @@ export default function AdminDashboard() {
             <button type="button" onClick={() => setQuickForm('classroom')} className={styles.shortcutButton}>Separar aula <FiArrowRight /></button>
           </section>
           <section className={styles.card}><div className={styles.cardHeading}><h2>Estado de solicitudes</h2></div><div className={styles.progressList}>{states.map(state => <div key={state.label}><div><span>{state.label}</span><b>{metric(state.value)}</b></div><div className={styles.track}><span style={{ width: `${!loading && !error && solicitudes.length ? state.value / solicitudes.length * 100 : 0}%` }} /></div></div>)}</div><Link className={styles.footerLink} href="/admin/solicitudes">Ver solicitudes <FiArrowRight /></Link></section>
-          <section className={styles.card}><div className={styles.cardHeading}><h2>Disponibilidad de stock</h2></div><div className={styles.donut} style={{ background: `conic-gradient(#ffad4f ${!loading && !error ? percent : 0}%, #ededed 0)` }}><div><strong>{loading || error || !total ? '—' : `${percent}%`}</strong><small>disponible</small></div></div><p className={styles.stockCaption}>{metric(available)} de {metric(total)} unidades</p></section>
+          <section className={styles.card}><div className={styles.cardHeading}><h2>Disponibilidad de stock</h2></div><div className={styles.donut} style={{ background: `conic-gradient(#087f6f ${!loading && !error ? percent : 0}%, #ededed 0)` }}><div><strong>{loading || error || !total ? '—' : `${percent}%`}</strong><small>disponible</small></div></div><p className={styles.stockCaption}>{metric(available)} de {metric(total)} unidades</p></section>
         </div>
         <section className={`${styles.card} ${styles.requests}`}><div className={styles.cardHeading}><div><h2>Solicitudes pendientes <span className={styles.badge}>{metric(pending.length)}</span></h2><p>Revisa las solicitudes de los profesores.</p></div><Link href="/admin/solicitudes">Ver todas <FiArrowRight /></Link></div>
           {loading ? <p className={styles.empty} role="status">Cargando solicitudes…</p> : error ? <p className={styles.empty}>No se pudieron actualizar las solicitudes.</p> : visible.length === 0 ? <div className={styles.empty}><FiCheckCircle size={28} /><p>{search ? 'No hay solicitudes que coincidan con tu búsqueda.' : 'No hay solicitudes pendientes.'}</p></div> : <div className={styles.tableWrap}><table><thead><tr><th>Profesor</th><th>Artículo / espacio</th><th>Cantidad</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>{visible.map(s => <tr key={s.id}><td><span className={styles.initial}>{s.profesor_nombre?.charAt(0).toUpperCase()}</span>{s.profesor_nombre}</td><td>{s.item_nombre || 'Sala de cómputo'}</td><td>{s.cantidad_solicitada}</td><td>{new Date(s.fecha_solicitud).toLocaleDateString('es-PE')}</td><td><div className={styles.actions}><button disabled={busy !== null} onClick={() => void decide(s.id, 'aprobada')}><FiCheckCircle />{busy === s.id ? 'Procesando…' : 'Aprobar'}</button><button disabled={busy !== null} onClick={() => void decide(s.id, 'rechazada')}><FiXCircle />Rechazar</button></div></td></tr>)}</tbody></table></div>}

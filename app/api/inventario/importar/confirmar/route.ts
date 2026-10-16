@@ -132,6 +132,42 @@ export async function POST(request: NextRequest) {
       let omitidos = 0;
       let rechazados = 0;
       const detalles: any[] = [];
+      const auditDetallesToInsert: Array<{
+        fila_excel: number;
+        numero_ugel: string;
+        huella_registro: string;
+        resultado: string;
+        mensaje: string;
+        datos: string;
+      }> = [];
+
+      type ItemParaInsertar = {
+        filaNum: number;
+        numUgel: string;
+        huella: string;
+        filaRaw: any;
+        nombre: string;
+        descripcion: string | null;
+        categoria: string;
+        totalCant: number;
+        disponibleFinal: number;
+        ubicacion: string;
+        estadoFinal: string;
+        marca: string | null;
+        modelo: string | null;
+        condFisica: string;
+        numero_serie: string | null;
+        color: string | null;
+        nivel: string | null;
+        observaciones: string | null;
+        procedencia_entidad: string | null;
+        documento_sustentatorio: string | null;
+        fecha_documento: string | null;
+        adminSit: string;
+        situacion_detalle: string | null;
+      };
+
+      const validItems: ItemParaInsertar[] = [];
 
       for (const fila of filas) {
         const filaNum = fila.fila_excel;
@@ -145,31 +181,33 @@ export async function POST(request: NextRequest) {
             ? fila.errores.join(' | ')
             : 'Fila con cantidad o descripción inválida.';
 
-          await client.query(
-            `INSERT INTO importaciones_inventario_detalle (
-              importacion_id, fila_excel, numero_ugel, huella_registro,
-              resultado, mensaje, datos
-            ) VALUES ($1, $2, $3, $4, 'rechazado', $5, $6)`,
-            [importacionId, filaNum, numUgel, huella, msg, JSON.stringify(fila)]
-          );
+          auditDetallesToInsert.push({
+            fila_excel: filaNum,
+            numero_ugel: numUgel,
+            huella_registro: huella,
+            resultado: 'rechazado',
+            mensaje: msg,
+            datos: JSON.stringify(fila),
+          });
           detalles.push({ fila: filaNum, resultado: 'rechazado', motivo: msg });
           continue;
         }
 
-        // Comprobar colisión por número de serie en BD
+        // Comprobar colisión por número de serie en BD o filas previas del mismo archivo
         const serieNorm = fila.serie_es_valida && fila.numero_serie ? fila.numero_serie.toUpperCase() : null;
         if (serieNorm && seriesExistentes.has(serieNorm)) {
           if (omitirDuplicados) {
             omitidos++;
             const match = seriesExistentes.get(serieNorm)!;
             const msg = `Omitido por serie duplicada con ítem #${match.id} (${match.nombre})`;
-            await client.query(
-              `INSERT INTO importaciones_inventario_detalle (
-                importacion_id, fila_excel, numero_ugel, huella_registro,
-                resultado, mensaje, datos
-              ) VALUES ($1, $2, $3, $4, 'omitido', $5, $6)`,
-              [importacionId, filaNum, numUgel, huella, msg, JSON.stringify(fila)]
-            );
+            auditDetallesToInsert.push({
+              fila_excel: filaNum,
+              numero_ugel: numUgel,
+              huella_registro: huella,
+              resultado: 'omitido',
+              mensaje: msg,
+              datos: JSON.stringify(fila),
+            });
             detalles.push({ fila: filaNum, resultado: 'omitido', motivo: msg });
             continue;
           }
@@ -200,68 +238,140 @@ export async function POST(request: NextRequest) {
 
         const totalCant = Math.floor(fila.cantidad);
 
-        // Inserción en inventario (sin tocar artículos preexistentes)
+        // Anotar en mapa para colisiones internas en el mismo archivo
+        if (serieNorm) {
+          seriesExistentes.set(serieNorm, { id: 0, nombre: fila.nombre });
+        }
+
+        validItems.push({
+          filaNum,
+          numUgel,
+          huella,
+          filaRaw: fila,
+          nombre: fila.nombre,
+          descripcion: fila.observaciones ? `[Obs: ${fila.observaciones}]` : null,
+          categoria: fila.categoria || 'Equipos y Accesorios',
+          totalCant,
+          disponibleFinal,
+          ubicacion: fila.ubicacion || 'Almacén General',
+          estadoFinal,
+          marca: fila.marca || null,
+          modelo: fila.modelo || null,
+          condFisica,
+          numero_serie: fila.numero_serie || null,
+          color: fila.color || null,
+          nivel: fila.nivel || null,
+          observaciones: fila.observaciones || null,
+          procedencia_entidad: fila.procedencia_entidad || null,
+          documento_sustentatorio: fila.documento_sustentatorio || null,
+          fecha_documento: fila.fecha_documento || null,
+          adminSit,
+          situacion_detalle: fila.situacion_detalle || null,
+        });
+      }
+
+      // Inserción en lotes de auditoría de filas omitidas/rechazadas (lotes de 100)
+      const AUDIT_BATCH_SIZE = 100;
+      for (let i = 0; i < auditDetallesToInsert.length; i += AUDIT_BATCH_SIZE) {
+        const batch = auditDetallesToInsert.slice(i, i + AUDIT_BATCH_SIZE);
+        const placeholders: string[] = [];
+        const params: any[] = [];
+        batch.forEach((item, idx) => {
+          const offset = idx * 6;
+          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`);
+          params.push(importacionId, item.fila_excel, item.numero_ugel, item.huella_registro, item.resultado, item.mensaje);
+        });
+        await client.query(
+          `INSERT INTO importaciones_inventario_detalle (
+            importacion_id, fila_excel, numero_ugel, huella_registro, resultado, mensaje
+          ) VALUES ${placeholders.join(', ')}`,
+          params
+        );
+      }
+
+      // Inserción de artículos válidos en lotes de alto rendimiento (75 filas por query para ultra-velocidad)
+      const INSERT_BATCH_SIZE = 75;
+      for (let i = 0; i < validItems.length; i += INSERT_BATCH_SIZE) {
+        const batch = validItems.slice(i, i + INSERT_BATCH_SIZE);
+
+        // 1. Lote de INVENTARIO
+        const invPlaceholders: string[] = [];
+        const invParams: any[] = [];
+        batch.forEach((item, idx) => {
+          const offset = idx * 19;
+          invPlaceholders.push(`(
+            $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5},
+            $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10},
+            $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14}, $${offset + 15},
+            $${offset + 16}, $${offset + 17}, $${offset + 18}, $${offset + 19}
+          )`);
+          invParams.push(
+            item.nombre,
+            item.descripcion,
+            item.categoria,
+            item.totalCant,
+            item.disponibleFinal,
+            item.ubicacion,
+            item.estadoFinal,
+            item.marca,
+            item.modelo,
+            item.condFisica,
+            item.numero_serie,
+            item.color,
+            item.nivel,
+            item.observaciones,
+            item.procedencia_entidad,
+            item.documento_sustentatorio,
+            item.fecha_documento,
+            item.adminSit,
+            item.situacion_detalle
+          );
+        });
+
         const insertInvRes = await client.query(
           `INSERT INTO inventario (
             nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
             ubicacion, estado, marca, modelo, condicion,
             numero_serie, color, nivel, observaciones, procedencia_entidad,
             documento_sustentatorio, fecha_documento, situacion_administrativa, situacion_detalle
-          ) VALUES (
-            $1, $2, $3, $4, $5,
-            $6, $7, $8, $9, $10,
-            $11, $12, $13, $14, $15,
-            $16, $17, $18, $19
-          ) RETURNING id`,
-          [
-            fila.nombre,
-            fila.observaciones ? `[Obs: ${fila.observaciones}]` : null,
-            fila.categoria || 'Equipos y Accesorios',
-            totalCant,
-            disponibleFinal,
-            fila.ubicacion || 'Almacén General',
-            estadoFinal,
-            fila.marca || null,
-            fila.modelo || null,
-            condFisica,
-            fila.numero_serie || null,
-            fila.color || null,
-            fila.nivel || null,
-            fila.observaciones || null,
-            fila.procedencia_entidad || null,
-            fila.documento_sustentatorio || null,
-            fila.fecha_documento || null,
-            adminSit,
-            fila.situacion_detalle || null,
-          ]
+          ) VALUES ${invPlaceholders.join(', ')} RETURNING id`,
+          invParams
         );
 
-        const nuevoId = insertInvRes.rows[0].id;
+        // 2. Lote de MOVIMIENTOS y DETALLES asociados
+        const movPlaceholders: string[] = [];
+        const movParams: any[] = [];
+        const detPlaceholders: string[] = [];
+        const detParams: any[] = [];
 
-        // Registrar movimiento de trazabilidad
+        batch.forEach((item, idx) => {
+          const nuevoId = insertInvRes.rows[idx].id;
+          const movOffset = idx * 4;
+          movPlaceholders.push(`($${movOffset + 1}, 'entrada', $${movOffset + 2}, $${movOffset + 3}, $${movOffset + 4}, CURRENT_TIMESTAMP)`);
+          movParams.push(nuevoId, item.totalCant, adminId, `Importación masiva UGEL: ${fileName} (Fila ${item.filaNum})`);
+
+          const detOffset = idx * 6;
+          detPlaceholders.push(`($${detOffset + 1}, $${detOffset + 2}, $${detOffset + 3}, $${detOffset + 4}, $${detOffset + 5}, 'insertado', 'Registrado correctamente.', $${detOffset + 6})`);
+          detParams.push(importacionId, item.filaNum, item.numUgel, item.huella, nuevoId, JSON.stringify(item.filaRaw));
+
+          insertados++;
+          detalles.push({ fila: item.filaNum, resultado: 'insertado', inventario_id: nuevoId });
+        });
+
         await client.query(
           `INSERT INTO movimientos_inventario (
             inventario_id, tipo_movimiento, cantidad, usuario_id, descripcion, fecha
-          ) VALUES ($1, 'entrada', $2, $3, $4, CURRENT_TIMESTAMP)`,
-          [nuevoId, totalCant, adminId, `Importación masiva UGEL: ${fileName} (Fila ${filaNum})`]
+          ) VALUES ${movPlaceholders.join(', ')}`,
+          movParams
         );
 
-        // Registrar detalle de auditoría
         await client.query(
           `INSERT INTO importaciones_inventario_detalle (
             importacion_id, fila_excel, numero_ugel, huella_registro,
             inventario_id, resultado, mensaje, datos
-          ) VALUES ($1, $2, $3, $4, $5, 'insertado', 'Registrado correctamente.', $6)`,
-          [importacionId, filaNum, numUgel, huella, nuevoId, JSON.stringify(fila)]
+          ) VALUES ${detPlaceholders.join(', ')}`,
+          detParams
         );
-
-        // Registrar en el mapa en memoria para detectar duplicados en filas subsiguientes del archivo
-        if (serieNorm) {
-          seriesExistentes.set(serieNorm, { id: nuevoId, nombre: fila.nombre });
-        }
-
-        insertados++;
-        detalles.push({ fila: filaNum, resultado: 'insertado', inventario_id: nuevoId });
       }
 
       // 8. Actualizar totales maestros y confirmar transacción

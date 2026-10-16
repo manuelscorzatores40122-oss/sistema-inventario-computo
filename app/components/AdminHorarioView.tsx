@@ -387,7 +387,7 @@ export default function AdminHorarioView() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="admin-schedule-view p-4 md:p-6 space-y-6">
       {message && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm font-semibold d-flex align-items-center gap-2 ${message.type === 'success'
@@ -469,7 +469,7 @@ export default function AdminHorarioView() {
                 {autoFollow ? 'Se actualiza automáticamente a la semana actual' : 'Viendo otra semana — presiona "Semana actual"'}
               </p>
             </div>
-            <div className="d-flex align-items-center gap-1">
+            <div className="admin-schedule-controls d-flex align-items-center gap-1">
               <button className="btn-secondary-custom text-xs d-inline-flex align-items-center gap-1" onClick={prevWeek}>
                 <FiChevronLeft size={14} />Semana anterior
               </button>
@@ -480,7 +480,7 @@ export default function AdminHorarioView() {
             </div>
           </div>
 
-          <div className="d-grid" style={{ gridTemplateColumns: '120px repeat(6, 1fr)', gap: '8px', marginTop: '12px' }}>
+          <div className="admin-schedule-scroll"><div className="d-grid" style={{ minWidth: 720, gridTemplateColumns: '120px repeat(6, 1fr)', gap: '8px', marginTop: '12px' }}>
             <div />
 
             {weekDates.map((date) => {
@@ -517,7 +517,7 @@ export default function AdminHorarioView() {
             {displayBlocks.map((bloque, idx) => (
               <FragmentDias key={idx} bloque={bloque} idx={idx} weekDates={weekDates} claseMap={claseMap} openAssign={openAssign} />
             ))}
-          </div>
+          </div></div>
 
           <div className="d-flex align-items-center justify-content-between border-t border-slate-200 pt-3 mt-3">
             <span className="text-xs font-semibold text-slate-500">

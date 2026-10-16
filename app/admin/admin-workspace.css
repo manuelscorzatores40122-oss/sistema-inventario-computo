@@ -1,0 +1,48 @@
+.admin-workspace { --color-primary:#087f6f; --color-primary-dark:#066657; --color-primary-light:#e9f5ee; background:#f5f7f7!important; color:#20383e; }
+.admin-workspace .admin-sidebar { background:#fff; color:#213b40; border-right:1px solid #e1e9e6; box-shadow:none; }
+.admin-workspace .sidebar-header { padding:28px 24px; border-bottom:1px solid #e5ece9; }
+.admin-workspace .admin-sidebar .sidebar-header h2 { color:#203b3c; }
+.admin-workspace .admin-sidebar .sidebar-brand-icon { background:#e5f3ec; color:#087f6f; }
+.admin-workspace .admin-sidebar a { border-radius:8px; }
+.admin-workspace .admin-sidebar a.active { background:#e8f5ed; color:#087f6f; box-shadow:none; }
+.admin-workspace .main-content-offset { min-width:0; }
+.admin-workspace :is(.inventory-panel,.inventory-summary-card,.inventory-table-panel,.teachers-card,.loans-summary-card) { border:1px solid #e1e9e6; border-radius:12px; box-shadow:none; }
+.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button) { background:#087f6f; border-color:#087f6f; color:white; border-radius:8px; }
+.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button):hover { background:#066657; color:white; }
+.admin-workspace :is(.inventory-manager,.loans-manager) { background:#f5f7f7; }
+.admin-workspace :is(h1,h2,h3) { color:#20383e; }
+.admin-workspace :is(input,select,textarea) { min-width:0; }
+.admin-workspace :is(button,a,input,select,textarea):focus-visible { outline:3px solid #63b89d; outline-offset:3px; }
+.admin-workspace .inventory-form-input:focus,.admin-workspace .inventory-form-select:focus { border-color:#6caf97; box-shadow:0 0 0 3px #087f6f15; }
+.admin-mobile-navigation { display:none; }
+.admin-schedule-scroll { max-width:100%; overflow:auto; overscroll-behavior:contain; }
+.admin-schedule-controls { flex-wrap:wrap; }
+.admin-navigation-dialog { width:min(480px,calc(100vw - 24px)); border:1px solid #dfe9e3; border-radius:16px; padding:22px; color:#20383e; }
+.admin-navigation-dialog::backdrop { background:#173c3c66; backdrop-filter:blur(3px); }
+.admin-navigation-dialog header { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:20px; }
+.admin-navigation-dialog h2 { font-size:19px; margin:0; }
+.admin-navigation-dialog header button { border:0; background:#f0f5f2; border-radius:8px; width:38px; height:38px; }
+.admin-navigation-dialog nav { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.admin-navigation-dialog nav a { text-decoration:none; color:#4d6968; font-size:12px; padding:18px 12px; border-radius:10px; border:1px solid #e2ebe6; display:flex; align-items:center; gap:9px; }
+.admin-navigation-dialog nav a[aria-current=page] { background:#e9f5ee; color:#087f6f; border-color:#c0dfcc; }
+@media(max-width:991px) {
+  .admin-workspace { padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
+  .admin-mobile-navigation { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e2eae6; z-index:1050; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); padding:8px 6px max(8px,env(safe-area-inset-bottom)); }
+  .admin-mobile-navigation a,.admin-mobile-navigation button { color:#78908b; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:48px; gap:5px; background:none; border:0; font-size:9px; text-decoration:none; border-radius:8px; }
+  .admin-mobile-navigation a[aria-current=page] { background:#e9f5ee; color:#087f6f; font-weight:700; }
+  .admin-workspace .mobile-top-bar { background:white; color:#20383e; border-bottom:1px solid #e2eae6; }
+  .admin-workspace .mobile-top-bar-title { color:#20383e; }
+  .admin-workspace :is(.inventory-manager-header,.loans-manager-header) { flex-wrap:wrap; gap:16px; }
+}
+@media(max-width:575px) {
+  .admin-workspace .loans-search { min-width:0!important; width:100%; max-width:100%; }
+  .admin-workspace .inventory-list-toolbar>div { min-width:0; width:100%; }
+  .admin-workspace .loans-header-actions { width:100%; flex-wrap:wrap; }
+  .admin-workspace .loans-manager .inventory-list-toolbar>div:first-child { flex-wrap:wrap; gap:8px; }
+  .admin-workspace .mobile-top-bar-logout { color:#557f70; border-color:#dae7df; }
+  .admin-workspace :is(.inventory-manager-inner,.loans-manager-inner) { padding-left:14px; padding-right:14px; }
+  .admin-workspace .inventory-manager-header h1 { font-size:25px; }
+  .admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select) { font-size:16px; min-height:44px; }
+  .admin-workspace :is(.inventory-panel,.inventory-table-panel) { max-width:100%; }
+  .admin-workspace :is(.inventory-table-wrap,.table-responsive) { overflow:auto; overscroll-behavior:contain; }
+}

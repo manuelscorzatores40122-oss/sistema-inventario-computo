@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/app/lib/auth';
+import { requireSession } from '@/app/lib/session';
 import { getClient } from '@/app/lib/db';
 import { notifyAdminsOfRequest } from '@/app/lib/admin-notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const token = request.cookies.get('auth-token')?.value;
-  const actor = token ? verifyToken(token) : null;
-  if (!actor || typeof actor === 'string' || !actor.userId) {
-    return NextResponse.json({ error: 'Inicia sesión para cancelar la solicitud' }, { status: 401 });
-  }
-  const client = await getClient();
+  let client;
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
+    const actor = { userId: session.user.id };
+    client = await getClient();
     await client.query('BEGIN');
     const result = await client.query('SELECT * FROM solicitudes WHERE id = $1 AND profesor_id = $2 FOR UPDATE', [params.id, actor.userId]);
     const sol = result.rows[0];
@@ -26,10 +25,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     await client.query('COMMIT');
     return NextResponse.json({ message: 'Solicitud cancelada' });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error('Error al cancelar solicitud:', error);
     return NextResponse.json({ error: 'No se pudo cancelar la solicitud. Inténtalo nuevamente.' }, { status: 500 });
   } finally {
-    client.release();
+    client?.release();
   }
 }

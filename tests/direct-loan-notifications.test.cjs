@@ -27,7 +27,8 @@ function setup({ stock = 5, teacher = true, failNotice = false, stocks = {}, fai
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.resolve(__dirname, '../app/api/prestamos/route.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText, { exports: exported, console: { error() {} }, require(name) {
-    if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
+    if (name === '@/app/lib/session') return { requireSession: async () => ({ user: { id: 1, role: 'admin', activo: true }, response: null }) };
+      if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
     if (name === '@/app/lib/db') return { getClient: async () => client };
     throw new Error(name);
   } });

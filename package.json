@@ -7,7 +7,11 @@
     "dev": "next dev -p 3011",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "node --test tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs",
+    "test:teacher-ui": "node tests/teacher-browser-smoke.cjs",
+    "test:admin-ui": "node tests/admin-browser-smoke.cjs"
   },
   "dependencies": {
     "@vercel/postgres": "^0.8.0",
@@ -31,6 +35,8 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
     "typescript": "^5.0.0"
   }
 }

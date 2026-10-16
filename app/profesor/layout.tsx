@@ -1,7 +1,4 @@
-import SolicitudApprovalNotice from '@/app/components/SolicitudApprovalNotice';
-import ProfesorHeader from '@/app/components/ProfesorHeader';
-import ProfesorBottomNav from '@/app/components/ProfesorBottomNav';
-import ProfesorMobileTopBar from '@/app/components/ProfesorMobileTopBar';
+import TeacherWorkspace from '@/app/components/teacher/TeacherWorkspace';
 
 export default function ProfesorLayout({
   children,
@@ -9,16 +6,6 @@ export default function ProfesorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="profesor-shell min-vh-100" style={{ paddingBottom: '75px' }}>
-      <div className="d-lg-none">
-        <ProfesorMobileTopBar />
-      </div>
-      <div className="d-none d-lg-block">
-        <ProfesorHeader />
-      </div>
-      <div className="profesor-content">{children}</div>
-      <ProfesorBottomNav />
-      <SolicitudApprovalNotice />
-    </div>
+    <TeacherWorkspace>{children}</TeacherWorkspace>
   );
 }

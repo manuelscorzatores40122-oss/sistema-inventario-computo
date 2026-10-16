@@ -1,3 +1,4 @@
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 import { verifyToken } from '@/app/lib/auth';
@@ -6,15 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth-token')?.value;
-    const session = token ? verifyToken(token) : null;
+    const session = await requireSession(request);
+    if (session.response) return session.response;
 
-    if (!session || typeof session === 'string' || !session.userId) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
 
-    const userId = Number(session.userId);
-    const isAdmin = session.role === 'admin';
+    const userId = Number(session.user.id);
+    const isAdmin = session.user.role === 'admin';
 
     let sql = '';
     const params: any[] = [userId];

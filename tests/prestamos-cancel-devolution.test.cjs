@@ -38,7 +38,8 @@ function setup(currentState = 'pendiente') {
       exports: exported,
       console,
       require(name) {
-        if (name === 'next/server') {
+        if (name === '@/app/lib/session') return { requireSession: async () => ({ user: { id: 1, role: 'admin', activo: true }, response: null }) };
+      if (name === 'next/server') {
           return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
         }
         if (name === '@/app/lib/db') {

@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS inventario (
   fecha_documento DATE,
   situacion_administrativa VARCHAR(20) NOT NULL DEFAULT 'activo',
   situacion_detalle VARCHAR(255),
+  imagen_url VARCHAR(500),
+  imagen_public_id VARCHAR(255),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,6 +74,7 @@ CREATE TABLE IF NOT EXISTS disponibilidad (
   reservado_por INTEGER REFERENCES usuarios(id),
   motivo_reserva VARCHAR(255),
   fecha_reserva TIMESTAMP,
+  es_recurrente BOOLEAN DEFAULT true,
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -110,6 +113,16 @@ CREATE TABLE IF NOT EXISTS prestamos (
   estado VARCHAR(20) DEFAULT 'prestado',
   fecha_prestamo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_devolucion TIMESTAMP,
+  solicitud_id INTEGER REFERENCES solicitudes(id),
+  devolucion_observacion TEXT,
+  devolucion_estado VARCHAR(50) DEFAULT 'bueno',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de notificaciones WhatsApp
+CREATE TABLE IF NOT EXISTS configuracion (
+  clave VARCHAR(100) PRIMARY KEY,
+  valor TEXT NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -124,6 +137,14 @@ CREATE TABLE IF NOT EXISTS notificaciones_whatsapp (
   estado VARCHAR(50) DEFAULT 'pendiente',
   fecha_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_entrega TIMESTAMP
+);
+
+-- Índices
+CREATE TABLE IF NOT EXISTS notificaciones_lecturas (
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  notification_key VARCHAR(80) NOT NULL,
+  leida_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (usuario_id, notification_key)
 );
 
 -- Índices

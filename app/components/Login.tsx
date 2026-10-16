@@ -96,7 +96,7 @@ export default function Login({ register = false }: { register?: boolean }) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      document.cookie = `auth-token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+      // La cookie de sesión HttpOnly la establece el servidor.
 
       const targetPath = data.user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard';
       window.location.href = targetPath;
@@ -150,7 +150,7 @@ export default function Login({ register = false }: { register?: boolean }) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="login-form">
+          {!registered && <form onSubmit={handleSubmit} className="login-form">
             {isRegister && (
               <>
                 <div className="form-group">
@@ -171,21 +171,21 @@ export default function Login({ register = false }: { register?: boolean }) {
                   <label htmlFor="telefono">Teléfono / WhatsApp</label>
                   <div className="input-with-icon">
                     <FiUser className="input-icon" />
-                    <input id="telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Ej. 987654321" />
+                    <input id="telefono" type="tel" maxLength={20} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Ej. 987654321" />
                   </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="area">Área / Asignatura o Grado</label>
                   <div className="input-with-icon">
                     <FiUser className="input-icon" />
-                    <input id="area" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ej. Primaria 4° A / Matemática" />
+                    <input id="area" maxLength={255} value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ej. Primaria 4° A / Matemática" />
                   </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="correoPersonal">Correo Personal (Opcional)</label>
                   <div className="input-with-icon">
                     <FiUser className="input-icon" />
-                    <input id="correoPersonal" type="email" value={correoPersonal} onChange={(e) => setCorreoPersonal(e.target.value)} placeholder="contacto@email.com" />
+                    <input id="correoPersonal" type="email" maxLength={255} value={correoPersonal} onChange={(e) => setCorreoPersonal(e.target.value)} placeholder="contacto@email.com" />
                   </div>
                 </div>
               </>
@@ -200,6 +200,9 @@ export default function Login({ register = false }: { register?: boolean }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Ingresa tu DNI"
+                  maxLength={isRegister ? 8 : 255}
+                  inputMode={isRegister ? "numeric" : undefined}
+                  pattern={isRegister ? "[0-9]{8}" : undefined}
                   autoComplete="username"
                   required
                 />
@@ -217,6 +220,7 @@ export default function Login({ register = false }: { register?: boolean }) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete={isRegister ? "new-password" : "current-password"}
+                  maxLength={128}
                   minLength={isRegister ? 6 : undefined}
                   required
                 />
@@ -226,7 +230,7 @@ export default function Login({ register = false }: { register?: boolean }) {
             <button type="submit" disabled={loading} className="login-submit-btn">
               {loading ? (isRegister ? 'Enviando solicitud...' : 'Verificando...') : (isRegister ? 'Solicitar Cuenta' : 'Iniciar sesión')}
             </button>
-          </form>
+          </form>}
 
           <p className="login-register-link">
             {isRegister ? '¿Ya tienes una cuenta aprobada? ' : '¿Eres un docente nuevo? '}

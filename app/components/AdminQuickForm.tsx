@@ -68,7 +68,7 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
       try {
         const responses = await Promise.all([
           fetch('/api/usuarios?role=profesor&activo=true', { signal: controller.signal }),
-          fetch(isLoan ? '/api/inventario?estado=disponible' : '/api/disponibilidad?estado=disponible', { signal: controller.signal }),
+          fetch(isLoan ? '/api/inventario?estado=disponible&simple=true' : '/api/disponibilidad?estado=disponible', { signal: controller.signal }),
         ]);
         if (responses.some(response => !response.ok)) throw new Error('No se pudieron cargar las opciones. Cierra el formulario e intenta de nuevo.');
         const [users, resources] = await Promise.all(responses.map(response => response.json()));
@@ -110,7 +110,7 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
         method: isLoan ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isLoan
           ? { profesor_id: Number(teacher), articulos: loanItems.map(row => ({ inventario_id: Number(row.resource), cantidad: row.quantity, detalle: row.detail.trim() })) }
-          : { estado: 'separado', reservado_por: Number(teacher), motivo_reserva: detail.trim() }),
+          : { estado: 'separado', reservado_por: Number(teacher), motivo_reserva: detail.trim(), es_recurrente: true, sala_nombre: 'Horario de Clases' }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'No se pudo guardar. Intenta nuevamente.');

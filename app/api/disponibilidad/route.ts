@@ -1,9 +1,13 @@
+import { saveAvailability } from '@/app/lib/availability';
+import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 
 // GET - Obtener disponibilidad
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
     const { searchParams } = new URL(request.url);
     const reservado_por = searchParams.get('reservado_por');
     const dia_semana = searchParams.get('dia_semana');
@@ -52,47 +56,5 @@ export async function GET(request: NextRequest) {
 
 // POST - Crear disponibilidad de sala (admin)
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      sala_nombre = 'Horario de Clases',
-      dia_semana,
-      hora_inicio,
-      hora_fin,
-      estado = 'disponible',
-      reservado_por,
-      motivo_reserva,
-      fecha_reserva = null,
-      es_recurrente = true,
-    } = body;
-
-    if (!sala_nombre || !dia_semana || !hora_inicio || !hora_fin) {
-      return NextResponse.json(
-        { error: 'Campos requeridos: sala_nombre, dia_semana, hora_inicio, hora_fin' },
-        { status: 400 }
-      );
-    }
-
-    const finalEstado = reservado_por ? 'separado' : estado;
-    // Si es horario recurrente de clases semanal, fecha_reserva debe ser NULL para que aplique a todas las semanas
-    const finalFechaReserva = (sala_nombre === 'Horario de Clases' && es_recurrente) ? null : fecha_reserva;
-
-    const result = await query(
-      `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva, es_recurrente)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [sala_nombre, dia_semana, hora_inicio, hora_fin, finalEstado, reservado_por ?? null, motivo_reserva ?? null, finalFechaReserva, es_recurrente]
-    );
-
-    return NextResponse.json({
-      message: 'Disponibilidad actualizada',
-      disponibilidad: result.rows[0],
-    });
-  } catch (error) {
-    console.error('Error al guardar disponibilidad:', error);
-    return NextResponse.json(
-      { error: 'Error al guardar disponibilidad' },
-      { status: 500 }
-    );
-  }
+  return saveAvailability(request);
 }
