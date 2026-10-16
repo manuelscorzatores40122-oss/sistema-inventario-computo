@@ -2,7 +2,7 @@ export type InboxItem = { key: string; title: string; message: string; date: str
 export function presentNotification(row: { id: number; mensaje: string; tipo: string; referencia_id?: number | null; fecha_envio: string }, admin: boolean): InboxItem {
   const types: Record<string, [string, InboxItem['tone'], string, string]> = {
     solicitud_aprobada: ['Tu solicitud fue aprobada', 'green', '/profesor/solicitudes', 'Ver respuesta'],
-    solicitud_rechazada: ['Hay una respuesta a tu solicitud', 'red', '/profesor/solicitudes', 'Leer comentario'],
+    solicitud_rechazada: ['Tu solicitud fue rechazada', 'red', '/profesor/solicitudes', 'Leer comentario'],
     solicitud_cancelada: ['Solicitud cancelada', 'amber', admin ? '/admin/solicitudes' : '/profesor/solicitudes', 'Ver solicitud'],
     solicitud_creada: ['Nueva solicitud de recursos', 'blue', '/admin/solicitudes', 'Revisar solicitud'],
     registro_profesor: ['Un docente solicita acceso', 'amber', '/admin/solicitudes#cuentas', 'Revisar cuenta'],

@@ -182,9 +182,10 @@ export async function PUT(
         const itemName = sol.item_nombre || 'Aula de Cómputo';
         const msgEstado = nextEstado === 'aprobada' ? 'aprobado' : (nextEstado === 'rechazada' ? 'desaprobado' : 'cancelado');
         
-        let mensaje = `Solicitud del ${itemType} (${itemName}) ${msgEstado}`;
+        let mensaje = `Tu solicitud #${sol.id} del ${itemType} (${itemName}) fue ${msgEstado}.`;
+        if (sol.motivo?.trim()) mensaje += ` Tu mensaje: ${sol.motivo.trim()}.`;
         if (comentarios && comentarios.trim() !== '') {
-          mensaje += ` - Motivo/Nota: ${comentarios}`;
+          mensaje += ` Respuesta de administración: ${comentarios.trim()}`;
         }
 
         const telefonoParaNotif = sol.telefono || '-';

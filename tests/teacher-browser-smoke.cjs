@@ -29,6 +29,7 @@ async function main() {
     const request = route.request(); const url = new URL(request.url());
     let body = {};
     if (url.pathname === '/api/profesor/resumen') body = data;
+    else if (url.pathname === '/api/notificaciones') body = { notificaciones: data.notifications };
     else if (url.pathname === '/api/notificaciones/lecturas') body = request.method() === 'GET' ? { keys: [] } : { message: 'Lectura guardada' };
     else if (url.pathname === '/api/solicitudes' && request.method() === 'POST') {
       const input = request.postDataJSON(); writes.push(input);
@@ -94,6 +95,15 @@ async function main() {
   await page.getByRole('button', { name: 'Marcar leídas', exact: true }).click();
   await page.getByRole('button', { name: 'Sin leer (0)', exact: true }).click();
   await page.getByText('No tienes avisos sin leer', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Cerrar notificaciones', exact: true }).click();
+  for (const estado of ['aprobada', 'rechazada']) {
+    const mensaje = 'Equipo: Proyector multimedia. Tu mensaje: Presentación en clase. Respuesta de administración: ' + (estado === 'aprobada' ? 'Recoge el equipo en sala.' : 'Equipo reservado para otra clase.');
+    data.notifications.unshift({ id: estado === 'aprobada' ? 401 : 402, tipo: 'solicitud_' + estado, referencia_id: 101, mensaje, fecha_envio: new Date().toISOString() });
+    data.requests.find(row => row.id === 101).estado = estado;
+    await page.getByRole('status').filter({ hasText: mensaje }).waitFor({ timeout: 8000 });
+    await page.getByRole('status').getByText('Tu solicitud fue ' + estado, { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Cerrar aviso', exact: true }).click();
+  }
   assert.deepEqual(errors, []);
   console.log('Interfaz docente: 25 combinaciones de ruta/ancho sin desbordes; solicitud, cancelación, préstamos, reserva, perfil y avisos correctos.');
   await browser.close();

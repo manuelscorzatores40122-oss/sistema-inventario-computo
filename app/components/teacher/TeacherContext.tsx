@@ -20,6 +20,7 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const inFlight = useRef<Promise<void> | null>(null);
   const router = useRouter();
+  const noticeIds = useRef(new Set<number>());
   const refresh = useCallback(() => {
     if (inFlight.current) return inFlight.current;
     setRefreshing(true);
@@ -29,6 +30,7 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
         const body = await response.json();
         if (response.status === 401 || response.status === 403) { router.replace('/auth/login'); return; }
         if (!response.ok) throw new Error(body.error || 'No pudimos actualizar tu información.');
+        (body.notifications || []).forEach((notice: TeacherNotice) => noticeIds.current.add(notice.id));
         setData(body);
         setError('');
         try { localStorage.setItem('user', JSON.stringify(body.user)); } catch { /* La sesión usa la cookie del servidor. */ }
@@ -49,6 +51,38 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
     window.addEventListener('teacher-requests-updated', update);
     return () => { window.clearInterval(timer); window.removeEventListener('focus', update); window.removeEventListener('teacher-requests-updated', update); };
   }, [refresh]);
+  // Los avisos se consultan por separado para no descargar todo el catálogo cada pocos segundos.
+  const userId = data?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    let stopped = false;
+    let checking = false;
+    const controller = new AbortController();
+    const checkNotices = async () => {
+      if (checking || document.visibilityState !== 'visible') return;
+      checking = true;
+      try {
+        const response = await fetch('/api/notificaciones', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const body = await response.json();
+        if (stopped || !Array.isArray(body.notificaciones)) return;
+        const notifications: TeacherNotice[] = body.notificaciones;
+        const changed = notifications.some(notice => !noticeIds.current.has(notice.id) && ['solicitud_aprobada', 'solicitud_rechazada', 'solicitud_cancelada'].includes(notice.tipo));
+        notifications.forEach(notice => noticeIds.current.add(notice.id));
+        setData(previous => previous ? { ...previous, notifications } : previous);
+        if (changed) void refresh();
+      } catch { /* Se reintenta sin interrumpir el formulario del profesor. */ }
+      finally { checking = false; }
+    };
+    const timer = window.setInterval(() => void checkNotices(), 3000);
+    window.addEventListener('focus', checkNotices);
+    document.addEventListener('visibilitychange', checkNotices);
+    return () => {
+      stopped = true; controller.abort(); window.clearInterval(timer);
+      window.removeEventListener('focus', checkNotices);
+      document.removeEventListener('visibilitychange', checkNotices);
+    };
+  }, [userId, refresh]);
   return <TeacherContext.Provider value={{ data, loading, refreshing, error, refresh }}>{children}</TeacherContext.Provider>;
 }
 export function useTeacher() {
