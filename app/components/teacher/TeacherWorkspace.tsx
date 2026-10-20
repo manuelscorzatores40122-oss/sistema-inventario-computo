@@ -47,7 +47,13 @@ function Workspace({ children }: { children: ReactNode }) {
       <main id="teacher-content" className={s.content}>
         {error && data && <Notice tone="warning">{error} Mostramos la última información disponible. <button className={s.textLink} style={{ border: 0, background: 'none' }} onClick={() => void refresh()}>Reintentar</button></Notice>}
         {children}
-        <footer className={s.footer}><span>I.E. Manuel Scorza · Gestión de recursos educativos</span><span><FiHelpCircle size={12} /> Para entregas y devoluciones, acércate al centro de cómputo.</span><DeveloperCredit placement="teacher" /></footer>
+        <div className={s.footer}>
+          <div className={s.footerMeta}>
+            <span>I.E. Manuel Scorza · Gestión de recursos educativos</span>
+            <span><FiHelpCircle size={12} /> Para entregas y devoluciones, acércate al centro de cómputo.</span>
+          </div>
+          <DeveloperCredit placement="teacher" />
+        </div>
       </main>
     </div>
     {data && <ActivityToast items={notices} />}

@@ -5,9 +5,18 @@ const repository = 'https://github.com/manuelscorzatores40122-oss/sistema-invent
 
 export default function DeveloperCredit({ placement = 'admin' }: { placement?: 'admin' | 'teacher' }) {
   return (
-    <section className={`${styles.credit} ${placement === 'admin' ? styles.admin : styles.teacher}`} aria-label="Créditos del sistema">
-      <div>
-        <span className={styles.label}>Desarrolladores</span>
+    <footer className={`${styles.credit} ${placement === 'admin' ? styles.admin : styles.teacher}`} aria-label="Pie de página y créditos del sistema">
+      <div className={styles.inner}>
+        <div className={styles.heading}>
+          <img className={styles.logo} src="/logo.png" alt="" />
+          <div className={styles.headingCopy}>
+            <strong className={styles.systemName}>Sistema de Inventario</strong>
+            <span className={styles.label}>Desarrollado por estudiantes de Ingeniería de Software</span>
+          </div>
+          <a className={styles.repository} href={repository} target="_blank" rel="noopener noreferrer">
+            <FaGithub aria-hidden="true" /> <span>Ver código fuente</span>
+          </a>
+        </div>
         <div className={styles.people}>
           <div className={styles.person}>
             <strong>Yerson Darwin</strong>
@@ -24,11 +33,11 @@ export default function DeveloperCredit({ placement = 'admin' }: { placement?: '
             </div>
           </div>
         </div>
-        <span className={styles.note}>Estudiantes de Ingeniería de Software</span>
+        <div className={styles.bottom}>
+          <span>© {new Date().getFullYear()} · I.E. Manuel Scorza</span>
+          <span>Gestión de recursos educativos</span>
+        </div>
       </div>
-      <div className={styles.links}>
-        <a href={repository} target="_blank" rel="noopener noreferrer"><FaGithub aria-hidden="true" /> Código del sistema</a>
-      </div>
-    </section>
+    </footer>
   );
 }
