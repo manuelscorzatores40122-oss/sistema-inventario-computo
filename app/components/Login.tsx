@@ -110,6 +110,7 @@ export default function Login({ register = false }: { register?: boolean }) {
   };
 
   return (
+    <div className="login-page">
     <main className="login-container">
       <div className="login-image-section">
         <div 
@@ -239,14 +240,19 @@ export default function Login({ register = false }: { register?: boolean }) {
             <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Solicita tu cuenta aquí'}</Link>
           </p>}
 
-          <footer className="login-footer">
-            <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">
-              ← Volver al portal
-            </a>
-            <span className="footer-text">© {new Date().getFullYear()} I.E. Manuel Scorza · Todos los derechos reservados</span>
-          </footer>
         </div>
       </div>
     </main>
+    <footer className="login-site-footer">
+      <div className="login-site-identity">
+        <strong>I.E. Manuel Scorza</strong>
+        <span>Sistema de inventario y gestión de recursos educativos</span>
+      </div>
+      <div className="login-site-legal">
+        <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">Volver al portal</a>
+        <span>© {new Date().getFullYear()} · Todos los derechos reservados</span>
+      </div>
+    </footer>
+    </div>
   );
 }
