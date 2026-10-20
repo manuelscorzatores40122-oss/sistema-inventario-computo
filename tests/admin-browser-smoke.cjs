@@ -25,8 +25,8 @@ async function main() {
     });
     const page = await context.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
     const output = process.env.TEST_SCREENSHOTS || path.join(process.cwd(), 'test-results'); fs.mkdirSync(output, { recursive: true });
-    for (const width of [1440, 390, 320]) {
-      await page.setViewportSize({ width, height: 900 });
+    for (const width of [1440, 1366, 1280, 1100, 1024, 992, 991, 820, 768, 390, 320]) {
+      await page.setViewportSize({ width, height: width >= 768 ? 600 : 740 });
       for (const view of ['dashboard', 'inventario', 'solicitudes', 'prestamos', 'profesores', 'horario', 'historial', 'perfil']) {
         await page.goto(`${base}/admin/${view}`); await page.getByRole('heading', { level: 1 }).first().waitFor();
         await page.waitForLoadState('networkidle');
@@ -44,7 +44,7 @@ async function main() {
     await page.waitForURL('**/admin/profesores');
     assert.ok(page.url().endsWith('/admin/profesores'));
     assert.deepEqual(errors, []);
-    console.log('Administración: 24 combinaciones de ruta/ancho, sin desbordes ni errores de React; menú móvil completo correcto. Solo lecturas.');
+    console.log('Administración: 88 combinaciones de ruta/ancho, sin desbordes ni errores de React; menú móvil completo correcto. Solo lecturas.');
   } finally { await browser?.close(); await pool.end(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

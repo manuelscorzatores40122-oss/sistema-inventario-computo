@@ -35,3 +35,14 @@
 .toast a { display:inline-flex; gap:6px; align-items:center; color:#087f6f; font-size:11px; text-decoration:none; font-weight:700; }
 .panel :is(a,button):focus-visible,.trigger:focus-visible { outline:3px solid #65b697; outline-offset:2px; }
 @media(max-width:767px) { .panel { left:12px!important; right:12px!important; top:76px!important; width:auto; } .list { max-height:calc(100dvh - 270px); } .toast { right:14px; bottom:95px; } .tabs button,.actions button,.readButton { min-height:36px; } }
+
+.panel { display:flex; flex-direction:column; max-height:calc(100dvh - 100px); }
+.list { min-height:0; flex:1 1 auto; }
+.header,.tools { flex-shrink:0; }
+.tools,.actions { flex-wrap:wrap; }
+.toast { max-height:calc(100dvh - 120px); overflow-y:auto; overflow-wrap:anywhere; }
+.close { flex-shrink:0; }
+@media (max-height:500px) {
+  .panel { top:12px!important; max-height:calc(100dvh - 24px); }
+  .list { max-height:none; }
+}

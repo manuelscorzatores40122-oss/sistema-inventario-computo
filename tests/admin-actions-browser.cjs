@@ -101,7 +101,7 @@ async function main() {
   });
   try {
     const context = await browser.newContext({
-      viewport: { width: 1440, height: 1000 },
+      viewport: { width: 1024, height: 600 },
       locale: "es-PE",
       reducedMotion: "reduce",
     });
@@ -224,7 +224,7 @@ async function main() {
       .first()
       .waitFor();
     await page.screenshot({
-      path: path.join(output, "admin-dashboard-tareas-1440.png"),
+      path: path.join(output, "admin-dashboard-tareas-1024.png"),
       fullPage: true,
     });
     const menu = page.getByRole("navigation", {
@@ -297,7 +297,7 @@ async function main() {
       .waitFor({ state: "visible" });
     await page.waitForLoadState("networkidle");
     await page.screenshot({
-      path: path.join(output, "admin-almanaque-1440.png"),
+      path: path.join(output, "admin-almanaque-1024.png"),
       fullPage: true,
     });
     await page

@@ -320,3 +320,47 @@
 .equipment:disabled { border-color:#cbd6d1; }
 .equipment:disabled .equipmentFoot { color:#52676d; }
 .shell input::placeholder,.shell textarea::placeholder { color:#61736f; opacity:1; }
+
+/* El calendario responde al espacio de su panel, incluso dentro de un modal. */
+.almanac { container-type:inline-size; min-width:0; max-width:100%; }
+.almanacHeader { flex-wrap:wrap; }
+.almanacHeader>div:first-child { min-width:0; flex:1 1 150px; }
+.almanacControls { flex-shrink:0; }
+.almanacDate small { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+@container (max-width:480px) {
+  .almanacHeader { gap:10px; margin-bottom:16px; }
+  .almanacHeader h2 { font-size:19px; }
+  .almanacDate { min-height:58px; padding:4px 2px; }
+  .almanacDate small { display:none; }
+  .almanacGrid { gap:3px; }
+  .almanacWeekday { letter-spacing:0; font-size:10px; }
+}
+.sidebar { overflow-y:auto; overscroll-behavior:contain; }
+.sidebar>* { flex-shrink:0; }
+.pageHeading>div,.headingActions,.catalogLayout>*,.columns>*,.bookingColumns>*,.monthAgenda>* { min-width:0; }
+.headingActions,.cardHead,.requestFooter,.weekNav { flex-wrap:wrap; }
+.formGrid,.detailGrid,.timeChoices { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dialog { max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; }
+.dialogHead { position:sticky; top:0; z-index:5; background:white; }
+.dialogHead h2 { min-width:0; overflow-wrap:anywhere; }
+.dialogHead button { flex-shrink:0; }
+.bookingFooter { position:static; flex-wrap:wrap; }
+@media (min-width:768px) and (max-width:1199px) {
+  .catalogLayout,.columns,.monthAgenda { grid-template-columns:minmax(0,1fr); }
+  .sticky { position:static; }
+  .stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .pageHeading { flex-wrap:wrap; }
+}
+@media (max-height:700px) {
+  .sidebar { padding-top:16px; }
+  .sidebarHelp { padding:12px; }
+  .dialogHead { padding-block:12px; }
+}
+@media (max-width:575px) {
+  .bookingSteps { flex-wrap:wrap; }
+  .pagination { flex-wrap:wrap; }
+  .detailGrid { grid-template-columns:minmax(0,1fr); }
+}
+
+
+@media(max-width:420px) { .formGrid { grid-template-columns:minmax(0,1fr); } }

@@ -45,10 +45,10 @@ async function main() {
   page.on('pageerror', err => errors.push(err.message));
   const output = process.env.TEST_SCREENSHOTS || path.join(process.cwd(), 'test-results'); fs.mkdirSync(output, { recursive: true });
   const routes = ['dashboard', 'solicitar-articulo', 'solicitudes', 'horario', 'perfil'];
-  for (const width of [1440, 768, 390, 360, 320]) {
-    await page.setViewportSize({ width, height: width > 800 ? 1000 : 844 });
+  for (const width of (process.env.TEST_VIEWPORT_WIDTHS ? process.env.TEST_VIEWPORT_WIDTHS.split(',').map(Number) : [1440, 1366, 1280, 1100, 1024, 992, 991, 820, 768, 390, 360, 320])) {
+    await page.setViewportSize({ width, height: width >= 768 ? 600 : 740 });
     for (const route of routes) {
-      await page.goto(`${base}/profesor/${route}`); await page.getByRole('heading', { level: 1 }).waitFor();
+      await page.goto(`${base}/profesor/${route}`); await page.getByRole('heading', { level: 1 }).waitFor({ state: 'attached' });
       await page.getByText('Cargando información…', { exact: true }).waitFor({ state: 'hidden' });
       const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
       assert.ok(overflow.scroll <= overflow.client + 1, `Desborde en ${route} a ${width}px: ${JSON.stringify(overflow)}`);
@@ -70,6 +70,18 @@ async function main() {
   await page.getByRole('tab', { name: /Mis préstamos/ }).click(); await page.getByText('PRÉSTAMO #201', { exact: true }).waitFor();
   await page.goto(`${base}/profesor/horario`); await page.getByRole('button', { name: 'Solicitar reserva' }).click();
   await page.getByRole('dialog').getByRole('heading', { name: /octubre|noviembre|diciembre|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre/i }).waitFor();
+  for (const viewport of [{width:1366,height:768},{width:1280,height:600},{width:1024,height:600},{width:820,height:600},{width:390,height:740},{width:667,height:375}]) {
+    await page.setViewportSize(viewport);
+    const dialog = page.getByRole('dialog');
+    const geometry = await dialog.evaluate(el => ({ width:el.clientWidth, scroll:el.scrollWidth, top:el.getBoundingClientRect().top, bottom:el.getBoundingClientRect().bottom, height:innerHeight }));
+    assert.ok(geometry.scroll <= geometry.width + 1, 'Reserva desborda: ' + JSON.stringify({viewport,geometry}));
+    assert.ok(geometry.top >= 0 && geometry.bottom <= geometry.height + 1, 'Reserva fuera de pantalla');
+    await dialog.getByRole('button', {name:'Enviar solicitud',exact:true}).scrollIntoViewIfNeeded();
+    await dialog.getByRole('button', {name:'Cerrar ventana',exact:true}).scrollIntoViewIfNeeded();
+    await dialog.evaluate(el => el.scrollTop=0);
+    await page.screenshot({path:path.join(output, 'reserva-responsive-' + viewport.width + '.png')});
+  }
+  await page.setViewportSize({width:390,height:844});
   data.schedule.push({ id: 900, dia_semana: 'Lunes', hora_inicio: '08:00', hora_fin: '08:45', fecha_reserva: future, estado: 'separado', reservado_por: 999, motivo_reserva: 'Clase programada' });
   // La siguiente carga usa una reserva ajena para comprobar exclusión de turnos en el formulario.
   await page.getByRole('button', { name: 'Cerrar ventana' }).click();
@@ -105,7 +117,7 @@ async function main() {
     await page.getByRole('button', { name: 'Cerrar aviso', exact: true }).click();
   }
   assert.deepEqual(errors, []);
-  console.log('Interfaz docente: 25 combinaciones de ruta/ancho sin desbordes; solicitud, cancelación, préstamos, reserva, perfil y avisos correctos.');
+  console.log('Interfaz docente: tamaños configurados sin desbordes; solicitud, cancelación, préstamos, reserva, perfil y avisos correctos.');
   await browser.close();
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

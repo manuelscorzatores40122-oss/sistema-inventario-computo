@@ -46,3 +46,12 @@
   .admin-workspace :is(.inventory-panel,.inventory-table-panel) { max-width:100%; }
   .admin-workspace :is(.inventory-table-wrap,.table-responsive) { overflow:auto; overscroll-behavior:contain; }
 }
+
+.admin-workspace :is(.inventory-manager-inner,.loans-manager-inner,.inventory-list-toolbar,.loans-header-actions) { min-width:0; max-width:100%; }
+.admin-workspace :is(.inventory-list-toolbar,.loans-header-actions) { flex-wrap:wrap; }
+.admin-workspace :is(.inventory-table-wrap,.table-responsive) { max-width:100%; overflow-x:auto; }
+.admin-navigation-dialog { max-height:calc(100dvh - 24px); overflow-y:auto; }
+@media (min-width:992px) and (max-width:1199px) {
+  .admin-workspace :is(.inventory-manager-header,.loans-manager-header) { flex-wrap:wrap; }
+  .admin-workspace .loans-search { min-width:0!important; }
+}
