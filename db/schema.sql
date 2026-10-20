@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS inventario (
   procedencia_entidad VARCHAR(255),
   documento_sustentatorio VARCHAR(255),
   fecha_documento DATE,
+  fecha_ingreso DATE,
   situacion_administrativa VARCHAR(20) NOT NULL DEFAULT 'activo',
   situacion_detalle VARCHAR(255),
   imagen_url VARCHAR(500),

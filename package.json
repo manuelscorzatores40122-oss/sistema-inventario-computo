@@ -9,22 +9,26 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --incremental false",
-    "test": "node --test tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs tests/admin-calendar.test.cjs tests/access-performance.test.cjs tests/account-inbox.test.cjs",
+    "test": "node --test tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs tests/admin-calendar.test.cjs tests/access-performance.test.cjs tests/account-inbox.test.cjs tests/equipment-tracking.test.cjs",
     "test:teacher-ui": "node tests/teacher-browser-smoke.cjs",
     "test:admin-ui": "node tests/admin-browser-smoke.cjs",
     "test:admin-actions": "node tests/admin-actions-browser.cjs",
     "test:account-flow": "node tests/account-flow-integration.cjs",
     "test:summary-read": "node tests/summary-read-integration.cjs",
     "test:auth-ui": "node tests/auth-browser.cjs",
-    "test:account-inbox-ui": "node tests/account-inbox-browser.cjs"
+    "test:account-inbox-ui": "node tests/account-inbox-browser.cjs",
+    "test:equipment-tracking": "node tests/equipment-tracking-browser.cjs"
   },
   "dependencies": {
     "@vercel/postgres": "^0.8.0",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "bootstrap": "^5.3.8",
     "cloudinary": "^2.11.0",
     "clsx": "^2.0.0",
+    "jsbarcode": "^3.12.3",
     "jsonwebtoken": "^9.0.3",
     "jwt-decode": "^4.0.0",
     "next": "^14.0.0",
@@ -36,6 +40,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/jsbarcode": "^3.11.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",

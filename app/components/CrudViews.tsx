@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import EquipmentTools from './equipment/EquipmentTools';
+import EquipmentRecord from './equipment/EquipmentRecord';
 import teacherStyles from './TeachersDirectory.module.css';
 import RequestListControls from './RequestListControls';
 import AdminQuickForm from './AdminQuickForm';
@@ -375,6 +377,8 @@ export function AdminInventarioView() {
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedEstado, setSelectedEstado] = useState<string>('todos');
   const [equipmentPage, setEquipmentPage] = useState(1);
+  const [labelIds, setLabelIds] = useState<number[]>([]);
+  const [recordId, setRecordId] = useState<number | null>(null);
   useEffect(() => { setEquipmentPage(1); }, [search, selectedCategoria, selectedEstado]);
   const [showForm, setShowForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -807,6 +811,8 @@ export function AdminInventarioView() {
           onConfirm={() => void deleteItem(editingId)} />}
 
         {/* Filter and Table Panel */}
+        <EquipmentTools items={items} selected={labelIds} onClear={() => setLabelIds([])} />
+        {recordId !== null && <EquipmentRecord key={recordId} id={recordId} onClose={() => setRecordId(null)} onUpdated={() => void fetchItems()} />}
         <div className={`${panel} inventory-list-panel p-4 space-y-4`}>
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -890,7 +896,7 @@ export function AdminInventarioView() {
             <table className="inventory-table inventory-equipment-table">
               <thead>
                 <tr>
-                  <th>Equipo y código</th>
+                  <th><input type="checkbox" aria-label="Seleccionar equipos de esta página" disabled={!visibleEquipment.length} checked={visibleEquipment.length > 0 && visibleEquipment.every(item => labelIds.includes(item.id))} onChange={event => setLabelIds(previous => event.target.checked ? Array.from(new Set([...previous, ...visibleEquipment.map(item => item.id)])) : previous.filter(id => !visibleEquipment.some(item => item.id === id)))} /> Equipo y código</th>
                   <th>Categoría / Marca</th>
                   <th>Estado físico</th>
                   <th>Unidades disponibles</th>
@@ -908,6 +914,7 @@ export function AdminInventarioView() {
                   visibleEquipment.map((item) => (
                     <tr key={item.id}>
                       <td data-label="Equipo">
+                        <label className="d-flex align-items-center gap-2 mb-2"><input type="checkbox" checked={labelIds.includes(item.id)} aria-label={`Seleccionar ${item.nombre} para etiquetas`} onChange={event => setLabelIds(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} /><span className="text-xs">Etiqueta de barras</span></label>
                         <div className="inventory-item-name">
                           <span className="inventory-item-icon" style={{ overflow: 'hidden', padding: item.imagen_url ? 0 : undefined }}>
                             {item.imagen_url ? (
@@ -917,7 +924,7 @@ export function AdminInventarioView() {
                             )}
                           </span>
                           <div>
-                            <strong>{item.nombre}</strong>
+                            <button type="button" className="btn btn-link p-0 text-start fw-bold" style={{color:'#243a59',fontSize:'inherit'}} onClick={() => setRecordId(item.id)} aria-label={`Ver ficha de ${item.nombre}`}>{item.nombre}</button>
                             <small className="d-block text-slate-500">
                               {[
                                 item.codigo_patrimonial ? `Patr: ${item.codigo_patrimonial}` : null,

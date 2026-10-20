@@ -74,6 +74,7 @@ export async function PUT(
         await client.query(
           `UPDATE prestamos
            SET estado = 'prestado',
+               fecha_prestamo = CURRENT_TIMESTAMP,
                updated_at = CURRENT_TIMESTAMP
            WHERE id = $1`,
           [params.id]

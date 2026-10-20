@@ -98,7 +98,9 @@ export default function Login({ register = false }: { register?: boolean }) {
       
       // La cookie de sesión HttpOnly la establece el servidor.
 
-      const targetPath = data.user.role === 'admin' ? '/admin/dashboard' : '/profesor/dashboard';
+      const equipment = new URLSearchParams(window.location.search).get('equipo');
+      const equipmentId = equipment && /^[1-9]\d*$/.test(equipment) && Number.isSafeInteger(Number(equipment)) ? Number(equipment) : null;
+      const targetPath = data.user.role === 'admin' ? (equipmentId ? `/admin/equipos/${equipmentId}` : '/admin/dashboard') : '/profesor/dashboard';
       window.location.href = targetPath;
       
     } catch (err) {

@@ -8,8 +8,8 @@ type Teacher = { id: number; nombre: string; apellido: string; dni?: string | nu
 type Equipment = { id: number; nombre: string; cantidad_disponible: number };
 type Slot = { id: number; sala_nombre: string; dia_semana: string; hora_inicio: string; hora_fin: string };
 
-export default function AdminQuickForm({ type, onClose, onSaved }: {
-  type: 'loan' | 'classroom'; onClose: () => void; onSaved: () => void;
+export default function AdminQuickForm({ type, onClose, onSaved, initialEquipmentId }: {
+  type: 'loan' | 'classroom'; onClose: () => void; onSaved: () => void; initialEquipmentId?: number;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const submitting = useRef(false);
@@ -26,7 +26,7 @@ export default function AdminQuickForm({ type, onClose, onSaved }: {
   const [activeTeacher, setActiveTeacher] = useState(-1);
   const [resource, setResource] = useState('');
   const nextRow = useRef(1);
-  const [loanItems, setLoanItems] = useState([{ key: 0, resource: '', quantity: 1, detail: '' }]);
+  const [loanItems, setLoanItems] = useState([{ key: 0, resource: initialEquipmentId ? String(initialEquipmentId) : '', quantity: 1, detail: '' }]);
   const updateLoanItem = (key: number, patch: Partial<{ resource: string; quantity: number; detail: string }>) => {
     setLoanItems(rows => rows.map(row => row.key === key ? { ...row, ...patch } : row));
   };

@@ -23,9 +23,12 @@ export async function middleware(request: NextRequest) {
   if (api && ['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/logout', '/api/webhook'].includes(path)) return NextResponse.next();
   let session = null;
   try { session = await readSession(request.cookies.get('auth-token')?.value || (api ? request.headers?.get('authorization')?.replace(/^Bearer\s+/i, '') : '') || ''); } catch { /* Rechazar tokens mal formados. */ }
-  if (!session) return api
-    ? NextResponse.json({ error: 'Inicia sesión para continuar.' }, { status: 401 })
-    : NextResponse.redirect(new URL('/auth/login', request.url));
+  if (!session) {
+    if (api) return NextResponse.json({ error: 'Inicia sesión para continuar.' }, { status: 401 });
+    const login = new URL('/auth/login', request.url);
+    if (/^\/admin\/equipos\/[1-9]\d*$/.test(path)) login.searchParams.set('equipo', path.split('/').at(-1)!);
+    return NextResponse.redirect(login);
+  }
   if (!api) {
     if (path.startsWith('/admin') && session.role !== 'admin') return NextResponse.redirect(new URL('/profesor/dashboard', request.url));
     if (path.startsWith('/profesor') && session.role !== 'profesor') return NextResponse.redirect(new URL('/admin/dashboard', request.url));

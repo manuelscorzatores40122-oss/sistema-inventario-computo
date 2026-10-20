@@ -29,6 +29,7 @@ import {
   type TeacherRow,
 } from "./admin/useAdminData";
 import s from "./admin/AdminWorkspace.module.css";
+import OverdueLoans from "./equipment/OverdueLoans";
 type Action =
   | { type: "request"; row: RequestRow }
   | { type: "delivery" | "return"; row: LoanRow }
@@ -102,6 +103,7 @@ export default function AdminDashboard() {
                 : "Solicitud rechazada.",
       );
       setAction(null);
+      document.dispatchEvent(new Event("inventory-loans-changed"));
       await refresh();
       window.dispatchEvent(new Event("admin-requests-updated"));
       window.dispatchEvent(new Event("admin-users-updated"));
@@ -147,6 +149,7 @@ export default function AdminDashboard() {
           {notice}
         </div>
       )}
+      <OverdueLoans />
       <div className={s.metrics}>
         {[
           {
