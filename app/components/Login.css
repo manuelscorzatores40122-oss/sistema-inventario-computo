@@ -156,8 +156,9 @@
 
 .login-submit-btn:hover:not(:disabled) { background: #1e559b; transform: translateY(-1px); }
 .login-submit-btn:disabled { opacity: .65; cursor: wait; }
-.login-footer { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 26px; font-size: .72rem; }
-.back-link, .footer-text { color: rgba(255, 255, 255, .62); }
+.login-footer { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 26px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .18); font-size: .72rem; text-align: center; }
+.back-link, .footer-text { color: rgba(255, 255, 255, .72); }
+.footer-text { line-height: 1.5; }
 .back-link { font-weight: 700; text-decoration: none; }
 .back-link:hover { color: #fff; }
 

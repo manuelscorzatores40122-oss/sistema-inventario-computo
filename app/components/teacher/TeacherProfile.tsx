@@ -6,6 +6,7 @@ import { logout } from '@/app/lib/logout';
 import { useTeacher } from './TeacherContext';
 import { DataBoundary, Notice, PageHeading } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
+import DeveloperContacts from '../DeveloperContacts';
 
 export default function TeacherProfile() {
   const { data, refresh } = useTeacher();
@@ -47,6 +48,7 @@ export default function TeacherProfile() {
           <form className={s.card} onSubmit={event => void save(event, 'password')}><div className={s.cardHead}><div><h2>Seguridad de la cuenta</h2><p>Elige una contraseña personal que puedas recordar.</p></div><FiShield color="#698b79" size={19} /></div><div className={s.cardBody}>{notice?.section === 'password' && <Notice tone={notice.tone}>{notice.message}</Notice>}<input autoComplete="username" value={user?.email || ''} readOnly className="visually-hidden" tabIndex={-1} aria-label="Usuario de la cuenta" /><div className={s.field}><label htmlFor="profile-current-password">Contraseña actual</label><input id="profile-current-password" type="password" autoComplete="current-password" required maxLength={128} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></div><div className={s.formGrid}><div className={s.field}><label htmlFor="profile-new-password">Nueva contraseña</label><input id="profile-new-password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={event => setPassword(event.target.value)} /><small>Usa al menos 8 caracteres.</small></div><div className={s.field}><label htmlFor="profile-confirm-password">Repite la nueva contraseña</label><input id="profile-confirm-password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirm} onChange={event => setConfirm(event.target.value)} /></div></div><button type="submit" className={s.secondary} disabled={!!busy}><FiKey size={15} />{busy === 'password' ? 'Actualizando…' : 'Cambiar contraseña'}</button></div></form>
         </div>
       </div>
+      <DeveloperContacts />
     </DataBoundary>
   </>;
 }

@@ -1,0 +1,38 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 20px;
+  color: #718096;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  font-size: 11px;
+}
+
+.admin {
+  margin: 14px 32px 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.teacher {
+  margin-top: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px 10px 0 0;
+}
+
+@media (max-width: 760px) {
+  .admin {
+    margin: 8px 14px 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    padding: 13px 15px;
+  }
+}

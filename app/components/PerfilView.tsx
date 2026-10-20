@@ -16,6 +16,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import './PerfilView.css';
+import DeveloperContacts from './DeveloperContacts';
 
 type UsuarioInfo = {
   id: number;
@@ -327,6 +328,7 @@ export default function PerfilView() {
         </dialog>
 
       </div>
+      <DeveloperContacts />
     </div>
   );
 }

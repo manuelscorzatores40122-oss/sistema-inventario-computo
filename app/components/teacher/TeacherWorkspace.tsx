@@ -3,12 +3,12 @@
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiArrowUpRight, FiBookOpen, FiCalendar, FiChevronRight, FiGrid, FiHelpCircle, FiInbox, FiLogOut, FiPackage, FiUser } from 'react-icons/fi';
+import { FiArrowUpRight, FiBookOpen, FiCalendar, FiChevronRight, FiGrid, FiInbox, FiLogOut, FiPackage, FiUser } from 'react-icons/fi';
 import { logout } from '@/app/lib/logout';
 import { dateLabel, schoolDate } from '@/app/lib/teacher-utils';
 import { presentNotification } from '@/app/lib/notification-presentation';
 import NotificationCenter, { ActivityToast } from '../NotificationCenter';
-import DeveloperCredit from '../DeveloperCredit';
+import SystemFooter from '../SystemFooter';
 import { TeacherProvider, useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
@@ -47,13 +47,7 @@ function Workspace({ children }: { children: ReactNode }) {
       <main id="teacher-content" className={s.content}>
         {error && data && <Notice tone="warning">{error} Mostramos la última información disponible. <button className={s.textLink} style={{ border: 0, background: 'none' }} onClick={() => void refresh()}>Reintentar</button></Notice>}
         {children}
-        <div className={s.footer}>
-          <div className={s.footerMeta}>
-            <span>I.E. Manuel Scorza · Gestión de recursos educativos</span>
-            <span><FiHelpCircle size={12} /> Para entregas y devoluciones, acércate al centro de cómputo.</span>
-          </div>
-          <DeveloperCredit placement="teacher" />
-        </div>
+        <SystemFooter placement="teacher" />
       </main>
     </div>
     {data && <ActivityToast items={notices} />}

@@ -239,12 +239,12 @@ export default function Login({ register = false }: { register?: boolean }) {
             <Link href={isRegister ? '/auth/login' : '/auth/register'}>{isRegister ? 'Inicia sesión' : 'Solicita tu cuenta aquí'}</Link>
           </p>}
 
-          <div className="login-footer">
+          <footer className="login-footer">
             <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">
               ← Volver al portal
             </a>
-            <span className="footer-text">© {new Date().getFullYear()} I.E. Manuel Scorza</span>
-          </div>
+            <span className="footer-text">© {new Date().getFullYear()} I.E. Manuel Scorza · Todos los derechos reservados</span>
+          </footer>
         </div>
       </div>
     </main>
