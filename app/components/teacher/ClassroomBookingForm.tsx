@@ -1,10 +1,13 @@
 'use client';
 
+import { timeLabel } from '@/app/lib/time-label';
+
 import { useState, type FormEvent, type Dispatch, type SetStateAction } from 'react';
 import { FiCalendar, FiCheck, FiClock, FiInfo, FiSend } from 'react-icons/fi';
 import { dateLabel, isFutureSlot, overlaps, reservationsForDate, schoolDate } from '@/app/lib/teacher-utils';
 import { useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
+import Time12Input from './Time12Input';
 import MonthCalendar from './MonthCalendar';
 import s from './TeacherWorkspace.module.css';
 
@@ -43,20 +46,20 @@ export default function ClassroomBookingForm({ slot, setSlot, reason, setReason,
             const taken = overlaps(block.hora_inicio, block.hora_fin, occupied);
             const past = !isFutureSlot(slot.date, block.hora_inicio);
             const selected = !custom && slot.start === block.hora_inicio && slot.end === block.hora_fin;
-            return <button type="button" key={block.hora_inicio} disabled={taken || past} aria-pressed={selected} onClick={() => { setCustom(false); setSlot({ ...slot, start: block.hora_inicio, end: block.hora_fin }); }}><span>{selected ? <FiCheck size={14} /> : <FiClock size={14} />}{block.hora_inicio} – {block.hora_fin}</span><small>{taken ? 'Ocupado' : past ? 'Finalizado' : 'Disponible'}</small></button>;
+            return <button type="button" key={block.hora_inicio} disabled={taken || past} aria-pressed={selected} onClick={() => { setCustom(false); setSlot({ ...slot, start: block.hora_inicio, end: block.hora_fin }); }}><span>{selected ? <FiCheck size={14} /> : <FiClock size={14} />}{timeLabel(block.hora_inicio)} – {timeLabel(block.hora_fin)}</span><small>{taken ? 'Ocupado' : past ? 'Finalizado' : 'Disponible'}</small></button>;
           })}</div>
           <button type="button" className={s.customTimeToggle} aria-expanded={custom} onClick={() => {
             if (custom) chooseDate(slot.date);
             else setCustom(true);
           }}>{custom ? 'Usar un turno de clase' : 'Necesito otro horario'}</button>
-          {custom && <div className={s.formGrid}><div className={s.field}><label htmlFor="reserve-start">Hora de inicio</label><input id="reserve-start" type="time" required value={slot.start} onChange={event => setSlot({ ...slot, start: event.target.value })} /></div><div className={s.field}><label htmlFor="reserve-end">Hora de fin</label><input id="reserve-end" type="time" required value={slot.end} onChange={event => setSlot({ ...slot, end: event.target.value })} /></div></div>}
+          {custom && <div className={s.formGrid}><div className={s.field}><label htmlFor="reserve-start">Hora de inicio</label><Time12Input id="reserve-start" value={slot.start} onChange={value => setSlot({ ...slot, start: value })} /></div><div className={s.field}><label htmlFor="reserve-end">Hora de fin</label><Time12Input id="reserve-end" value={slot.end} onChange={value => setSlot({ ...slot, end: value })} /></div></div>}
           {slot.start && (!validTime || !future || conflict) && <Notice tone="warning">{!validTime ? 'La hora de fin debe ser posterior al inicio.' : !future ? 'Este horario ya pasó. Selecciona uno futuro.' : 'Este horario está ocupado. Selecciona otro turno.'}</Notice>}
           {!slot.start && <Notice tone="warning">No hay turnos de clase libres en esta fecha. Elige otro día o consulta un horario personalizado.</Notice>}
-          {occupied.length > 0 && <details className={s.occupiedDetails}><summary>Ver horas ocupadas ({occupied.length})</summary>{occupied.map(row => <p key={row.id}><strong>{row.hora_inicio.slice(0, 5)} – {row.hora_fin.slice(0, 5)}</strong> · {row.estado === 'pendiente' ? 'En revisión' : 'Reservado'}</p>)}</details>}
+          {occupied.length > 0 && <details className={s.occupiedDetails}><summary>Ver horas ocupadas ({occupied.length})</summary>{occupied.map(row => <p key={row.id}><strong>{timeLabel(row.hora_inicio)} – {timeLabel(row.hora_fin)}</strong> · {row.estado === 'pendiente' ? 'En revisión' : 'Reservado'}</p>)}</details>}
           <div className={s.field}><label htmlFor="reserve-reason">Actividad y sección</label><textarea id="reserve-reason" required maxLength={255} rows={3} placeholder="Ej. Investigación de Ciencias con 4.º A." value={reason} onChange={event => setReason(event.target.value)} /><small>{reason.length}/255 caracteres</small></div>
         </div>
       </div>
-      <div className={s.bookingReview}><FiInfo size={18} /><div><strong>{validTime ? `${slot.start} – ${slot.end} · ${duration} minutos` : 'Selecciona una hora disponible'}</strong><p>Sala de cómputo. Tu reserva quedará confirmada cuando administración la apruebe.</p></div></div>
+      <div className={s.bookingReview}><FiInfo size={18} /><div><strong>{validTime ? `${timeLabel(slot.start)} – ${timeLabel(slot.end)} · ${duration} minutos` : 'Selecciona una hora disponible'}</strong><p>Sala de cómputo. Tu reserva quedará confirmada cuando administración la apruebe.</p></div></div>
     </fieldset>
     <div className={s.bookingFooter}><button type="button" className={s.secondary} onClick={onClose} disabled={busy}>Volver al calendario</button><button className={s.button} type="submit" disabled={busy || !validTime || !future || conflict || !reason.trim()}><FiSend size={15} />{busy ? 'Enviando solicitud…' : 'Enviar solicitud'}</button></div>
   </form>;

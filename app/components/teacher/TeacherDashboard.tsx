@@ -1,5 +1,7 @@
 'use client';
 
+import { timeLabel } from '@/app/lib/time-label';
+
 import Link from 'next/link';
 import { FiArrowRight, FiArrowUpRight, FiCalendar, FiCheck, FiClock, FiInbox, FiMonitor, FiPackage, FiPlus } from 'react-icons/fi';
 import { dateLabel, reservationsForDate, schoolDate, weekday, addDays } from '@/app/lib/teacher-utils';
@@ -41,7 +43,7 @@ export default function TeacherDashboard() {
         </div>
         <div className={s.stack}>
           <section className={s.card}><div className={s.cardHead}><div><h2>Tu agenda de cómputo</h2><p>Próximos siete días</p></div><FiCalendar color="#718b7e" size={18} /></div><div className={s.cardBody}>
-            {agenda.length ? agenda.slice(0, 4).map(row => <div className={s.row} key={`${row.id}-${row.date}`}><div className={s.rowCopy}><small>{weekday(row.date)} · {dateLabel(row.date)}</small><strong>{row.hora_inicio.slice(0, 5)} – {row.hora_fin.slice(0, 5)}</strong><small>{row.motivo_reserva || 'Sala de cómputo'}</small></div><Status value={row.estado === 'separado' ? 'aprobada' : row.estado} /></div>) : <EmptyState title="Tu agenda está libre" description="Elige un turno disponible para trabajar en la sala." />}
+            {agenda.length ? agenda.slice(0, 4).map(row => <div className={s.row} key={`${row.id}-${row.date}`}><div className={s.rowCopy}><small>{weekday(row.date)} · {dateLabel(row.date)}</small><strong>{timeLabel(row.hora_inicio)} – {timeLabel(row.hora_fin)}</strong><small>{row.motivo_reserva || 'Sala de cómputo'}</small></div><Status value={row.estado === 'separado' ? 'aprobada' : row.estado} /></div>) : <EmptyState title="Tu agenda está libre" description="Elige un turno disponible para trabajar en la sala." />}
             <Link href="/profesor/horario" className={`${s.secondary} ${s.full}`}><FiCalendar size={15} />Consultar horario</Link>
           </div></section>
           <section className={s.card}><div className={s.cardHead}><div><h2>{collect.length ? 'Tienes equipos por recoger' : 'Mis préstamos'}</h2><p>{collect.length ? 'La administración ya aprobó tu equipo.' : 'Controla los equipos a tu cargo.'}</p></div><FiPackage color="#718b7e" size={18} /></div><div className={s.cardBody}>
