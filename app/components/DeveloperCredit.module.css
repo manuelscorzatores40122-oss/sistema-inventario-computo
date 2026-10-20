@@ -1,0 +1,14 @@
+.credit { display:flex; align-items:center; justify-content:space-between; gap:16px; color:#d9e2f5; background:#202e56; border:1px solid #344471; border-radius:14px; padding:15px 18px; font-size:12px; }
+.credit>div:first-child { display:grid; gap:2px; min-width:0; }
+.credit strong { color:white; overflow-wrap:anywhere; }
+.label { color:#b8c7e2; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; }
+.note { color:#c7d3e8; font-size:11px; }
+.links { display:flex; flex-wrap:wrap; gap:8px; }
+.links a { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:8px 12px; border:1px solid #60739c; border-radius:8px; color:white; font-weight:700; white-space:nowrap; }
+.links a:hover { color:white; background:#334879; }
+.admin { margin:10px 32px 22px; }
+.teacher { margin:18px 0 4px; }
+@media(max-width:575px) {
+  .credit { align-items:flex-start; flex-direction:column; gap:10px; }
+  .admin { margin:8px 14px 18px; }
+}
