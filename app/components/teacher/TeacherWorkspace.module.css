@@ -463,3 +463,94 @@
 .bottomNav a[aria-current=page] { color:#315779; background:#eaf0f7; }
 @container(max-width:480px) { .almanacDate { min-height:56px; padding:4px 2px; } .almanacHeader h2 { font-size:19px; } }
 @media(max-width:767px) { .content { padding-top:20px; } .taskLaunchers { grid-template-columns:1fr; gap:10px; } .taskLauncher { padding:16px; } .stats { margin-bottom:16px; } .stat { padding:14px; border-bottom:1px solid #dce2ea; } .stat:nth-child(2n) { border-right:0; } .stat:nth-last-child(-n+2) { border-bottom:0; } .catalog { grid-template-columns:1fr; } .equipment { grid-template-columns:78px minmax(0,1fr); } .equipmentImage { min-height:120px; } .pageHeading { padding-bottom:15px; } .almanac { padding:14px; } }
+
+/* Tema exclusivo del espacio docente. Los componentes compartidos del
+   administrador conservan sus estilos al no estar dentro de .shell. */
+.shell { --ink:#202c4c; --muted:#52617d; --brand:#4051ad; --soft:#e9edff; --line:#d2dcf0; background:#edf1fa; }
+.shell .sidebar { background:#202e56; border-color:#344471; }
+.shell .nav a[aria-current=page] { background:#40548c; border-left-color:#83e0d5; color:#fff; }
+.shell .nav a[aria-current=page]::after { background:#83e0d5; }
+.shell .sidebarHelp { background:#2c416e; border-color:#4b6090; }
+.shell .topbar { background:#202e56; border-bottom:3px solid #55c3b8; color:#fff; }
+.shell .breadcrumb,.shell .today { color:#d4def6; }
+.shell .breadcrumb strong,.shell .mobileBrand { color:#fff; }
+.shell .mobileBrand small { color:#c9d8f7; }
+.shell .topbar .avatar { background:#b4eee6; color:#134e4c; border:2px solid #d3fff8; }
+.shell .pageHeading { background:#334789; border:1px solid #405798; border-radius:22px; padding:26px 28px; box-shadow:0 8px 22px #283c7012; }
+.shell .pageHeading h1 { color:#fff; font-size:clamp(26px,2.5vw,34px); }
+.shell .pageHeading p { color:#e0e9ff; font-size:14px; line-height:1.65; max-width:640px; }
+.shell .pageHeading .eyebrow { color:#b9f3e9; }
+.shell .headingActions .secondary { background:#f3f6ff; border-color:#d4def5; color:#283c79; }
+.shell .headingActions .button { background:#b4eee6; border-color:#b4eee6; color:#174f4c; }
+.shell .stats { background:transparent; border:0; gap:12px; overflow:visible; }
+.shell .stat { border:1px solid #d2dcf0; border-radius:16px; padding:18px; box-shadow:0 3px 9px #293e6308; background:#e5edff; color:#284384; }
+.shell .stat:nth-child(1) { background:#fff1d9; border-color:#efd6a7; color:#7e4b0d; }
+.shell .stat:nth-child(2) { background:#e9e5ff; border-color:#d5cdf5; color:#51418d; }
+.shell .stat:nth-child(3) { background:#dcf3ed; border-color:#b9e0d6; color:#195f54; }
+.shell .stat .statTop,.shell .stat .statTop svg,.shell .stat small { color:inherit; }
+.shell .stat strong { font-size:32px; font-weight:750; margin:12px 0 6px; }
+.shell .stat:hover { box-shadow:0 5px 14px #283c7018; }
+.shell .taskLaunchers { gap:14px; }
+.shell .taskLauncher { border:1px solid #bfc9ef; border-radius:18px; background:#e1e8ff; padding:22px; color:#293e80; }
+.shell .taskLauncher:nth-child(2) { background:#d7f0eb; border-color:#afd9cf; color:#155d53; }
+.shell .taskLauncher h2,.shell .taskLauncher small,.shell .taskLauncher>svg { color:inherit; }
+.shell .taskLauncher p { color:#43577d; line-height:1.55; }
+.shell .taskLauncher:nth-child(2) p { color:#346258; }
+.shell .taskLauncherIcon { width:52px; height:52px; border-radius:16px; background:#4051ad; color:#fff; }
+.shell .taskLauncher:nth-child(2) .taskLauncherIcon { background:#197b6b; color:#fff; }
+.shell .taskLauncher:hover { box-shadow:0 5px 16px #283c7018; }
+.shell .card,.shell .requestCard { border-radius:18px; border-color:#ccd8ec; box-shadow:0 4px 12px #25386107; }
+.shell .cardHead { padding:18px 20px; background:#e9eefc; border-bottom-color:#d1dcf1; }
+.shell .cardHead h2 { color:#293e77; font-size:16px; font-weight:700; }
+.shell .cardHead p { color:#52617d; font-size:12px; }
+.shell .cardBody { padding-top:14px; }
+.shell .resourceIcon { background:#e4eaff; color:#4051ad; border-radius:12px; }
+.shell .button { background:#4051ad; border-color:#4051ad; border-radius:12px; min-height:44px; font-size:13px; }
+.shell .button:hover { background:#303f8e; border-color:#303f8e; color:#fff; }
+.shell .secondary { background:#edf1ff; color:#334687; border-color:#c3d0ed; border-radius:12px; min-height:44px; font-size:13px; }
+.shell .input,.shell .field input,.shell .field select,.shell .field textarea,.shell .search input { background:#f8faff; border-color:#bdcce7; border-radius:12px; min-height:44px; }
+.shell .chips button { background:#e6ecfa; color:#3b4e78; border-color:#cdd8ec; border-radius:10px; min-height:40px; }
+.shell .chips button[aria-pressed=true] { background:#4051ad; color:#fff; border-color:#4051ad; }
+.shell .equipment { border-radius:16px; border-color:#c7d6ed; }
+.shell .equipmentImage { background:#dce7fa; color:#425faa; }
+.shell .equipment:nth-child(even) .equipmentImage { background:#d9eee8; color:#297766; }
+.shell .equipmentCopy { background:#f8faff; }
+.shell .equipment[aria-pressed=true] { border:2px solid #4051ad; box-shadow:0 0 0 2px #d6def8; }
+.shell .equipment[aria-pressed=true] .equipmentCopy { background:#edf0ff; }
+.shell .selection,.shell .bookingSelectedDate,.shell .bookingReview { background:#e0f3ed; border-color:#bddfd3; color:#245e52; border-radius:12px; }
+.shell .tabs { border-bottom-color:#c6d2eb; }
+.shell .requestCard { border-left:4px solid #8c9ddd; background:#fbfcff; }
+.shell .profileSummary { background:#e4eafb; border:1px solid #c8d5ef; border-radius:20px; }
+.shell .profileSummary .avatar { background:#4051ad; color:#fff; }
+.shell .almanacHeader { background:#e6ecfc; padding:16px; border-radius:12px; border-bottom:0; }
+.shell .almanacHeader h2 { color:#2b407d; }
+.shell .almanacWeekday { background:#dce5fb; color:#3d507d; }
+.shell .almanacDate:not(:disabled):not([data-outside=true]):not([aria-pressed=true]) { background:#f2f7fd; }
+.shell .almanacDate[aria-pressed=true],.shell .almanacDate[aria-pressed=true][data-outside=true] { background:#4051ad; color:#fff; box-shadow:inset 0 0 0 2px #4051ad; }
+.shell .almanacDate[aria-current=date]:not([aria-pressed=true]) strong { background:#d4f2e7; color:#1a6656; border-color:#75bba6; }
+.shell .timeChoices button[aria-pressed=true] { background:#d9eee8; color:#195d50; border-color:#6aaf9a; }
+.shell .dialog { border-radius:20px; }
+.shell .dialogHead { background:#e4ebfd; border-bottom-color:#ccd8f1; }
+.shell .dialogHead h2 { color:#293e77; }
+.shell .bottomNav { background:#202e56; border-top:1px solid #394c7c; box-shadow:0 -5px 20px #202e5618; }
+.shell .bottomNav a { color:#e0e8ff; border-radius:13px; min-height:50px; font-size:10px; }
+.shell .bottomNav a[aria-current=page] { background:#b4eee6; color:#174f4c; }
+@media(max-width:767px) {
+  .shell .content { padding:16px 14px 118px; }
+  .shell .topbar { padding:0 14px; height:68px; }
+  .shell .pageHeading { padding:22px 20px; border-radius:20px; gap:16px; margin-bottom:18px; }
+  .shell .pageHeading h1 { font-size:28px; }
+  .shell .headingActions { justify-content:flex-start; flex-wrap:wrap; }
+  .shell .stats { gap:10px; margin-bottom:18px; }
+  .shell .stat { padding:15px 13px; border:1px solid #d2dcf0; min-height:140px; }
+  .shell .statTop { font-size:12px; align-items:flex-start; }
+  .shell .statTop svg { flex-shrink:0; }
+  .shell .stat small { font-size:11px; line-height:1.5; display:block; }
+  .shell .taskLauncher { padding:18px 15px; gap:12px; }
+  .shell .taskLauncher h2 { font-size:18px; }
+  .shell .taskLauncherIcon { width:44px; height:48px; border-radius:14px; }
+  .shell .cardHead { padding:16px; align-items:flex-start; flex-wrap:wrap; }
+  .shell .cardBody { padding:12px 16px 18px; }
+  .shell .bottomNav { padding:8px 8px max(8px,env(safe-area-inset-bottom)); }
+  .shell .almanacHeader { padding:12px; }
+}
