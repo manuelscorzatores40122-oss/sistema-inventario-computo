@@ -59,8 +59,7 @@ export default function AdminSidebar() {
         <NotificacionesBell />
       </div>
       <nav className={s.navigation} aria-label="Menú de administración">
-        <p>ESPACIO DE TRABAJO</p>
-        {menu.map(([href, label, Icon]) => (
+        {[{title:"GESTIÓN DIARIA",items:menu.slice(0,4)},{title:"RECURSOS DEL COLEGIO",items:menu.slice(4,6)},{title:"CONSULTAS Y CUENTA",items:menu.slice(6)}].map(group => <div key={group.title} className={s.navGroup}><p>{group.title}</p>{group.items.map(([href, label, Icon]) => (
           <Link
             key={href}
             href={href}
@@ -69,7 +68,7 @@ export default function AdminSidebar() {
             <Icon size={19} />
             <span>{label}</span>
           </Link>
-        ))}
+        ))}</div>)}
       </nav>
       <footer className={s.sidebarFooter}>
         <span>Inventario · Sala de cómputo</span>

@@ -233,7 +233,7 @@ async function main() {
     const color = await menu
       .getByRole("link", { name: "Inventario", exact: true })
       .evaluate((el) => getComputedStyle(el).color);
-    assert.equal(color, "rgb(54, 89, 78)");
+    assert.equal(color, "rgb(209, 217, 229)");
     await page
       .getByRole("button", { name: "Revisar", exact: true })
       .first()

@@ -1,6 +1,6 @@
 .trigger { position:relative; display:inline-grid; place-items:center; width:40px; height:40px; background:white; border:1px solid #dfe8e3; border-radius:10px; color:#355d52; cursor:pointer; }
-.count { position:absolute; top:-5px; right:-6px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; background:#087f6f; color:white; display:grid; place-items:center; font-size:9px; font-weight:700; border:2px solid white; }
-.panel { position:fixed; width:390px; max-width:calc(100vw - 24px); background:white; color:#213d3b; border:1px solid #e0e9e3; box-shadow:0 16px 65px #133e3226; border-radius:16px; z-index:2000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
+.count { position:absolute; top:-5px; right:-6px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; background:#315779; color:white; display:grid; place-items:center; font-size:9px; font-weight:700; border:2px solid white; }
+.panel { position:fixed; width:390px; max-width:calc(100vw - 24px); background:white; color:#213d3b; border:1px solid #e0e9e3; box-shadow:0 16px 65px #133e3226; border-radius:8px; z-index:2000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
 .header { display:flex; justify-content:space-between; align-items:center; gap:15px; padding:21px 21px 15px; }
 .header h2 { font-size:17px; font-weight:700; margin:0 0 4px; color:#213d3b; }
 .header p { font-size:11px; color:#7c9188; margin:0; }
@@ -8,8 +8,8 @@
 .tools { padding:0 21px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #e8eee9; }
 .tabs { display:flex; gap:4px; background:#f1f6f2; border-radius:7px; padding:3px; }
 .tabs button { background:none; border:0; color:#72877c; font-size:11px; padding:7px 10px; border-radius:5px; cursor:pointer; }
-.tabs button[aria-pressed=true] { background:white; color:#087f6f; box-shadow:0 1px 5px #183e3210; font-weight:700; }
-.readButton { display:inline-flex; align-items:center; gap:4px; border:0; background:none; color:#087f6f; font-weight:600; font-size:10px; padding:6px 0; cursor:pointer; }
+.tabs button[aria-pressed=true] { background:white; color:#315779; box-shadow:0 1px 5px #183e3210; font-weight:700; }
+.readButton { display:inline-flex; align-items:center; gap:4px; border:0; background:none; color:#315779; font-weight:600; font-size:10px; padding:6px 0; cursor:pointer; }
 .list { padding:0; margin:0; list-style:none; max-height:min(520px,60dvh); overflow:auto; overscroll-behavior:contain; }
 .item { display:flex; align-items:flex-start; gap:12px; padding:18px 21px; border-bottom:1px solid #edf2ee; }
 .item[data-unread=true] { background:#f8fcf9; }
@@ -19,20 +19,20 @@
 .icon[data-tone=red] { background:#fff0ec; color:#b56456; }
 .copy { min-width:0; flex:1; }
 .copy h3 { font-size:12px; font-weight:700; margin:1px 0 7px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
-.dot { width:6px; height:6px; border-radius:50%; background:#087f6f; flex-shrink:0; }
+.dot { width:6px; height:6px; border-radius:50%; background:#315779; flex-shrink:0; }
 .copy p { font-size:11px; line-height:1.65; color:#72877e; margin:0 0 7px; overflow-wrap:anywhere; }
 .copy time { display:block; color:#99a79e; font-size:10px; }
 .actions { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:10px; }
-.actions a { display:inline-flex; align-items:center; gap:5px; color:#087f6f; font-size:11px; font-weight:700; text-decoration:none; }
+.actions a { display:inline-flex; align-items:center; gap:5px; color:#315779; font-size:11px; font-weight:700; text-decoration:none; }
 .actions button { background:none; border:0; font-size:10px; color:#8b9c90; padding:4px; cursor:pointer; }
 .empty { padding:42px 25px; text-align:center; color:#92a999; }
 .empty h3 { color:#36584b; font-size:14px; margin:13px 0 6px; }
 .empty p { font-size:12px; color:#8b9f92; margin:0; }
 .error { padding:10px 20px; background:#fff4df; font-size:11px; color:#937137; }
-.toast { position:fixed; right:25px; bottom:25px; z-index:1600; width:360px; max-width:calc(100vw - 28px); padding:18px; background:white; border:1px solid #dfe9e2; box-shadow:0 8px 40px #1b463520; border-radius:13px; display:flex; align-items:flex-start; gap:12px; color:#284b3e; font-family:Arial,Helvetica,sans-serif; }
+.toast { position:fixed; right:25px; bottom:25px; z-index:1600; width:360px; max-width:calc(100vw - 28px); padding:18px; background:white; border:1px solid #dfe9e2; box-shadow:0 8px 40px #1b463520; border-radius:8px; display:flex; align-items:flex-start; gap:12px; color:#284b3e; font-family:Arial,Helvetica,sans-serif; }
 .toast strong { display:block; font-size:12px; margin:0 0 5px; }
 .toast p { color:#7a9082; font-size:11px; margin:0 0 10px; line-height:1.6; }
-.toast a { display:inline-flex; gap:6px; align-items:center; color:#087f6f; font-size:11px; text-decoration:none; font-weight:700; }
+.toast a { display:inline-flex; gap:6px; align-items:center; color:#315779; font-size:11px; text-decoration:none; font-weight:700; }
 .panel :is(a,button):focus-visible,.trigger:focus-visible { outline:3px solid #65b697; outline-offset:2px; }
 @media(max-width:767px) { .panel { left:12px!important; right:12px!important; top:76px!important; width:auto; } .list { max-height:calc(100dvh - 270px); } .toast { right:14px; bottom:95px; } .tabs button,.actions button,.readButton { min-height:36px; } }
 
@@ -46,3 +46,13 @@
   .panel { top:12px!important; max-height:calc(100dvh - 24px); }
   .list { max-height:none; }
 }
+
+.panel,.toast { font-family:Inter,'Segoe UI',Arial,sans-serif; color:#243a59; border-color:#dfe5ee; box-shadow:0 16px 48px #152b4924; }
+.header { background:#f8faff; border-bottom:1px solid #e7ecf4; margin-bottom:14px; }
+.header h2,.copy h3 { color:#243a59; }
+.header p,.copy p,.copy time,.toast p { color:#586d87; }
+.tabs { background:#edf2f9; }
+.tabs button[aria-pressed=true],.actions a,.readButton,.toast a { color:#315779; }
+.item[data-unread=true] { background:#f2f6ff; }
+.dot,.count { background:#315779; }
+.trigger { color:#365980; border-color:#d6dfec; }

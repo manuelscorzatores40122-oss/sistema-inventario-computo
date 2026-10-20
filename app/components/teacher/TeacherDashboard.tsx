@@ -26,7 +26,10 @@ export default function TeacherDashboard() {
     <PageHeading eyebrow="Tu espacio, al día" title={`Hola, ${data?.user.nombre?.split(' ')[0] || 'docente'}`} description="Prepara tu próxima clase. Tus recursos y actividades, en un solo lugar." actions={<RefreshButton />} />
     <DataBoundary>
       <section className={s.stats} aria-label="Resumen de mi actividad">{stats.map(item => <Link key={item.label} className={s.stat} href={item.href}><div className={s.statTop}><span>{item.label}</span><item.icon size={17} /></div><strong>{item.value.toString().padStart(2, '0')}</strong><small>{item.note}</small></Link>)}</section>
-      <section className={s.hero} aria-labelledby="teacher-hero"><div className={s.heroCopy}><span className={s.eyebrow}>RECURSOS PARA ENSEÑAR MEJOR</span><h2 id="teacher-hero">Prepara los recursos de tu próxima clase.</h2><p>Consulta lo que está disponible, solicita un equipo o encuentra un turno en la sala de cómputo.</p><Link href="/profesor/solicitar-articulo" className={s.button}><FiPlus size={16} />Solicitar un equipo <FiArrowUpRight size={16} /></Link></div><div className={s.heroArt} aria-hidden="true"><div className={s.monitor}><FiBookMark /></div></div></section>
+      <section className={s.taskLaunchers} aria-label="Prepara tu clase">
+        <Link className={s.taskLauncher} href="/profesor/horario"><span className={s.taskLauncherIcon}><FiCalendar size={26} /></span><div><small>PLANIFICACIÓN</small><h2>Reserva la sala</h2><p>Elige un día y encuentra tu próximo turno.</p></div><FiArrowUpRight size={22} /></Link>
+        <Link className={s.taskLauncher} href="/profesor/solicitar-articulo"><span className={s.taskLauncherIcon}><FiMonitor size={26} /></span><div><small>RECURSOS PARA TU CLASE</small><h2>Solicita un equipo</h2><p>{available.length} recursos con unidades disponibles.</p></div><FiArrowUpRight size={22} /></Link>
+      </section>
       <div className={s.columns}>
         <div className={s.stack}>
           <section className={s.card}><div className={s.cardHead}><div><h2>Mis solicitudes recientes</h2><p>Conoce en qué etapa está cada solicitud.</p></div><Link href="/profesor/solicitudes" className={s.textLink}>Ver todas <FiArrowRight /></Link></div><div className={s.cardBody}>
@@ -50,4 +53,3 @@ export default function TeacherDashboard() {
     </DataBoundary>
   </>;
 }
-function FiBookMark() { return <div style={{ textAlign: 'center' }}><FiCheck size={28} /><div style={{ width: 65, height: 4, background: '#87ae8c', borderRadius: 4, marginTop: 6 }} /></div>; }

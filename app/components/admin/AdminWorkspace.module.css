@@ -1,9 +1,9 @@
 .page {
-  --ink: #173c3b;
-  --muted: #526d69;
-  --line: #dce7e1;
-  --brand: #087f6f;
-  --soft: #eff6f2;
+  --ink: #192b47;
+  --muted: #596a80;
+  --line: #dfe5ee;
+  --brand: #2959bd;
+  --soft: #edf2fc;
   color: var(--ink);
   padding: 32px;
   max-width: 1600px;
@@ -52,7 +52,7 @@
 .eyebrow {
   font-size: 10px;
   letter-spacing: 1.6px;
-  color: #087465;
+  color: #2959bd;
   font-weight: 800;
 }
 .actions {
@@ -72,7 +72,7 @@
   padding: 10px 15px;
   border-radius: 9px;
   border: 1px solid transparent;
-  background: #087f6f;
+  background: #2959bd;
   color: #fff;
   text-decoration: none;
   font-weight: 650;
@@ -90,12 +90,12 @@
   color: #a13d29;
 }
 .button:hover {
-  background: #066656;
+  background: #204795;
   color: white;
 }
 .secondary:hover {
   background: #edf5ef;
-  color: #173c3b;
+  color: #192b47;
 }
 .page button:disabled {
   opacity: 0.5;
@@ -129,7 +129,7 @@
 }
 .metric small {
   font-size: 11px;
-  color: #087465;
+  color: #2959bd;
 }
 .metric[data-alert="true"] {
   border-top: 3px solid #c78b32;
@@ -162,7 +162,7 @@
 }
 .panelHead a {
   font-size: 12px;
-  color: #087465;
+  color: #2959bd;
 }
 .panelBody {
   padding: 22px;
@@ -184,7 +184,7 @@
   font-size: 12px;
 }
 .tabs button[aria-pressed="true"] {
-  background: #087f6f;
+  background: #2959bd;
   color: white;
 }
 .search {
@@ -192,7 +192,7 @@
   align-items: center;
   gap: 9px;
   background: #f5f8f6;
-  border: 1px solid #dce7e1;
+  border: 1px solid #dfe5ee;
   border-radius: 8px;
   padding: 9px 12px;
   margin: 16px;
@@ -257,7 +257,7 @@
 }
 .notice {
   padding: 14px 18px;
-  background: #e8f5ed;
+  background: #edf2fc;
   border: 1px solid #c4dfcd;
   border-radius: 9px;
   margin-bottom: 18px;
@@ -305,7 +305,7 @@
 }
 .agendaTime {
   font-size: 14px !important;
-  color: #087465;
+  color: #2959bd;
 }
 .scheduleRow {
   padding: 20px 22px;
@@ -321,7 +321,7 @@
 .form {
   display: grid;
   gap: 18px;
-  color: #173c3b;
+  color: #192b47;
 }
 .form label {
   display: grid;
@@ -337,7 +337,7 @@
   border: 1px solid #ceded4;
   border-radius: 8px;
   padding: 11px 12px;
-  color: #173c3b;
+  color: #192b47;
   background: white;
   min-height: 44px;
   font-size: 16px;
@@ -353,7 +353,7 @@
 .form p {
   font-size: 12px;
   margin: 0;
-  color: #526d69;
+  color: #596a80;
 }
 .form footer {
   display: flex;
@@ -377,7 +377,7 @@
   font-size: 11px;
 }
 .slots button[aria-pressed="true"] {
-  background: #087f6f;
+  background: #2959bd;
   color: white;
 }
 .templateRow {
@@ -387,7 +387,7 @@
   align-items: end;
 }
 .detail {
-  border: 1px solid #dce7e1;
+  border: 1px solid #dfe5ee;
   background: #f4f8f5;
   padding: 16px;
   border-radius: 9px;
@@ -402,11 +402,11 @@
   inset: 0 auto 0 0;
   width: 260px;
   background: #fff;
-  border-right: 1px solid #dce7e1;
+  border-right: 1px solid #dfe5ee;
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  color: #173c3b;
+  color: #192b47;
   font-size: 13px;
 }
 .brand {
@@ -414,19 +414,19 @@
   align-items: center;
   gap: 12px;
   padding: 26px 22px;
-  color: #173c3b;
+  color: #192b47;
   text-decoration: none;
   font-weight: 750;
   font-size: 17px;
 }
 .brand:hover {
-  color: #087f6f;
+  color: #2959bd;
 }
 .brand small {
   display: block;
   font-size: 11px;
   font-weight: 400;
-  color: #526d69;
+  color: #596a80;
   margin-top: 5px;
 }
 .identity {
@@ -447,7 +447,7 @@
 }
 .identity small {
   display: block;
-  color: #526d69;
+  color: #596a80;
   margin-top: 3px;
   font-size: 11px;
 }
@@ -459,7 +459,7 @@
   height: 36px;
   border-radius: 12px;
   background: #e5f3eb;
-  color: #087465;
+  color: #2959bd;
   font-weight: 750;
 }
 .navigation {
@@ -490,7 +490,7 @@
 }
 .navigation a:hover {
   background: #f0f6f2;
-  color: #087465;
+  color: #2959bd;
 }
 .navigation a[aria-current="page"] {
   color: #076656;
@@ -507,7 +507,7 @@
 }
 .sidebarFooter > span {
   font-size: 10px;
-  color: #526d69;
+  color: #596a80;
 }
 .sidebarFooter button {
   display: flex;
@@ -630,3 +630,57 @@
   .identity { padding-block:12px; }
   .navigation { padding-block:10px; }
 }
+
+/* Área administrativa institucional: indicadores compactos y bandejas de trabajo. */
+.page { font-family:'Segoe UI',Arial,sans-serif; padding-top:24px; --ink:#223148; --muted:#58677c; --brand:#315779; --line:#d5dde6; }
+.heading { padding-bottom:18px; margin-bottom:20px; border-bottom:1px solid #d5dde6; }
+.heading h1 { font-size:clamp(24px,2.2vw,30px); color:#223148; }
+.eyebrow { color:#65758b; letter-spacing:.1em; }
+.sidebar { background:#1e2938; color:#f4f6fa; border-right-color:#354152; font-family:'Segoe UI',Arial,sans-serif; }
+.brand,.brand:hover { color:#fff; }
+.brand { padding:20px; font-size:16px; }
+.brand small,.identity small,.navigation p,.sidebarFooter>span { color:#b9c4d4; }
+.identity { border-color:#394657; padding-block:14px; }
+.avatar { background:#4b607b; color:#fff; border-radius:6px; }
+.navigation { padding:10px 12px; }
+.navGroup { margin-bottom:18px; }
+.navGroup:last-child { margin-bottom:0; }
+.navigation p { margin:10px 10px 8px; font-size:9px; letter-spacing:.1em; }
+.navigation a { color:#d1d9e5; border-radius:5px; padding:10px 12px; min-height:40px; font-weight:500; font-size:12px; margin:2px 0; }
+.navigation a:hover { background:#303e50; color:white; }
+.navigation a[aria-current=page] { background:#35485f; border-color:transparent; color:white; box-shadow:inset 3px 0 #b6c9df; }
+.sidebarFooter { border-color:#394657; padding-block:14px; }
+.sidebarFooter button { color:#d1d9e5; }
+.metrics { gap:0; background:#fff; border:1px solid #d5dde6; border-radius:7px; overflow:hidden; margin-bottom:20px; }
+.metric { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:17px 18px; border:0; border-right:1px solid #dce2ea; border-radius:0; box-shadow:none; text-align:left; }
+.metric:last-child { border-right:0; }
+.metric[data-alert=true] { border-top:0; }
+.metric>svg { display:none; }
+.metric>span { grid-column:1; font-size:12px; font-weight:600; }
+.metric strong { grid-column:2; grid-row:1 / span 2; align-self:center; font-size:30px; font-weight:650; font-variant-numeric:tabular-nums; }
+.metric small { grid-column:1; font-size:10px; color:#536b89; }
+.panel { border-color:#d5dde6; border-radius:7px; box-shadow:0 2px 4px #233a5004; }
+.panelHead { padding:16px 20px; background:#f7f9fb; border-color:#d9e1eb; }
+.panelHead h2 { font-size:16px; font-weight:650; color:#253b57; }
+.panelHead p { font-size:11px; }
+.panelBody { padding:18px 20px; }
+.button,.secondary,.danger { min-height:40px; border-radius:5px; padding:9px 14px; box-shadow:none; font-size:12px; }
+.button { background:#315779; }
+.button:hover { background:#24435f; }
+.secondary { border-color:#c6d1df; color:#395471; }
+.secondary:hover { background:#edf2f7; color:#24435f; }
+.tabs { padding:0 16px; background:#fff; gap:4px; border-bottom:1px solid #d6dfe9; }
+.tabs button { border-radius:0; border-bottom:3px solid transparent; padding:14px 12px 11px; background:transparent; color:#58677c; font-weight:500; }
+.tabs button[aria-pressed=true] { color:#2c4e74; border-bottom-color:#315779; background:#f0f4f9; font-weight:650; }
+.search { margin:12px 16px; background:#fff; border-color:#cbd6e3; border-radius:5px; }
+.row { padding:14px 20px; border-color:#e0e6ee; }
+.row:nth-child(even) { background:#fafbfc; }
+.row strong { font-weight:600; }
+.tag { background:#edf1f6; color:#4d6380; border-radius:3px; font-size:9px; }
+.form :is(input,select,textarea) { border-color:#c5cfdb; background:#fff; border-radius:5px; }
+.form :is(input,select,textarea):focus { outline:2px solid #9cb2cc; outline-offset:1px; }
+.slots button { border-color:#cbd5e2; background:#f5f7fa; color:#3d5774; border-radius:4px; }
+.slots button[aria-pressed=true] { background:#315779; color:#fff; }
+.page button:disabled { opacity:1; background:#edf0f5; color:#64748b; border-color:#d6dfe9; box-shadow:none; }
+@media(max-width:1100px) { .metric { border-bottom:1px solid #dce2ea; } .metric:nth-child(2n) { border-right:0; } .metric:nth-last-child(-n+2) { border-bottom:0; } }
+@media(max-width:600px) { .metric { padding:14px 12px; grid-template-columns:1fr; } .metric strong { grid-column:1; grid-row:2; font-size:26px; } .metric small { font-size:9px; } .panelHead { padding:15px 16px; } }
