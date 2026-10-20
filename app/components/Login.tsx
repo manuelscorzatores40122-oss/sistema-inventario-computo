@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
+import { FaGithub, FaWhatsapp } from 'react-icons/fa';
 import './Login.css';
 
 export default function Login({ register = false }: { register?: boolean }) {
@@ -244,13 +245,30 @@ export default function Login({ register = false }: { register?: boolean }) {
       </div>
     </main>
     <footer className="login-site-footer">
-      <div className="login-site-identity">
-        <strong>I.E. Manuel Scorza</strong>
-        <span>Sistema de inventario y gestión de recursos educativos</span>
+      <div className="login-footer-main">
+        <div className="login-site-identity">
+          <strong>I.E. Manuel Scorza</strong>
+          <span>Sistema de inventario y gestión de recursos educativos</span>
+        </div>
+        <div className="login-site-legal">
+          <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">Volver al portal</a>
+          <span>© {new Date().getFullYear()} · Todos los derechos reservados</span>
+        </div>
       </div>
-      <div className="login-site-legal">
-        <a href="https://manuel-scorza-web-olive.vercel.app/" className="back-link">Volver al portal</a>
-        <span>© {new Date().getFullYear()} · Todos los derechos reservados</span>
+      <div className="login-developers">
+        <span className="login-developers-label">Desarrollado por</span>
+        <div className="login-developers-list">
+          <div className="login-developer">
+            <strong>Yerson Darwin</strong>
+            <a href="https://github.com/darwin810" target="_blank" rel="noopener noreferrer" aria-label="GitHub de Yerson Darwin"><FaGithub aria-hidden="true" /> GitHub</a>
+            <a href="https://wa.me/51952112451" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp de Yerson Darwin"><FaWhatsapp aria-hidden="true" /> +51 952 112 451</a>
+          </div>
+          <div className="login-developer">
+            <strong>Hugo Ronal</strong>
+            <a href="https://github.com/marchaasillohugoronl-cyber" target="_blank" rel="noopener noreferrer" aria-label="GitHub de Hugo Ronal"><FaGithub aria-hidden="true" /> GitHub</a>
+            <a href="https://wa.me/51916352548" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp de Hugo Ronal"><FaWhatsapp aria-hidden="true" /> +51 916 352 548</a>
+          </div>
+        </div>
       </div>
     </footer>
     </div>
