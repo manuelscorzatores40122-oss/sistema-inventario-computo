@@ -8,7 +8,6 @@ import { logout } from '@/app/lib/logout';
 import { dateLabel, schoolDate } from '@/app/lib/teacher-utils';
 import { presentNotification } from '@/app/lib/notification-presentation';
 import NotificationCenter, { ActivityToast } from '../NotificationCenter';
-import SystemFooter from '../SystemFooter';
 import { TeacherProvider, useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
@@ -47,7 +46,6 @@ function Workspace({ children }: { children: ReactNode }) {
       <main id="teacher-content" className={s.content}>
         {error && data && <Notice tone="warning">{error} Mostramos la última información disponible. <button className={s.textLink} style={{ border: 0, background: 'none' }} onClick={() => void refresh()}>Reintentar</button></Notice>}
         {children}
-        <SystemFooter placement="teacher" />
       </main>
     </div>
     {data && <ActivityToast items={notices} />}
