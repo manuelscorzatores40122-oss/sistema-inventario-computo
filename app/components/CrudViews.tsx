@@ -262,7 +262,7 @@ function StockMeter({ disponible, total }: { disponible: number; total: number }
         <div className={`stock-bar-fill ${colorClass}`} style={{ width: `${percent}%` }}></div>
       </div>
       <span className="text-xs font-semibold text-slate-700">
-        {disponible} / {total}
+        {disponible} de {total}
       </span>
     </div>
   );
@@ -374,6 +374,8 @@ export function AdminInventarioView() {
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedEstado, setSelectedEstado] = useState<string>('todos');
+  const [equipmentPage, setEquipmentPage] = useState(1);
+  useEffect(() => { setEquipmentPage(1); }, [search, selectedCategoria, selectedEstado]);
   const [showForm, setShowForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -461,6 +463,7 @@ export function AdminInventarioView() {
       const matchSearch =
         !q ||
         item.nombre.toLowerCase().includes(q) ||
+        [item.codigo_patrimonial, item.numero_serie, item.marca, item.modelo].some(value => value?.toLowerCase().includes(q)) ||
         (item.descripcion && item.descripcion.toLowerCase().includes(q)) ||
         (item.ubicacion && item.ubicacion.toLowerCase().includes(q)) ||
         item.categoria.toLowerCase().includes(q) ||
@@ -470,6 +473,10 @@ export function AdminInventarioView() {
       return matchSearch && matchCat && matchEstado;
     });
   }, [items, search, selectedCategoria, selectedEstado, statusFilter]);
+
+  const equipmentPages = Math.max(1, Math.ceil(filteredItems.length / 20));
+  const currentEquipmentPage = Math.min(equipmentPage, equipmentPages);
+  const visibleEquipment = filteredItems.slice((currentEquipmentPage - 1) * 20, currentEquipmentPage * 20);
 
   const stats = useMemo(() => {
     const totalTipos = items.length;
@@ -753,12 +760,13 @@ export function AdminInventarioView() {
               <div><label className={label}>Marca</label><input className={input} value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Ej. Epson, HP, Samsung" /></div>
               <div><label className={label}>Modelo</label><input className={input} value={form.modelo} onChange={(e) => setForm({ ...form, modelo: e.target.value })} placeholder="Ej. EB-X39, ProBook" /></div>
               <div>
-                <label className={label}>Condición física</label>
-                <select className={input} value={form.condicion} onChange={(e) => setForm({ ...form, condicion: e.target.value })}>
-                  <option value="bueno">Bueno (Operativo)</option>
-                  <option value="regular">Regular (Desgaste leve)</option>
-                  <option value="malo">Malo / Requiere servicio</option>
+                <label className={label} htmlFor="equipment-condition">Estado físico del equipo</label>
+                <select id="equipment-condition" aria-describedby="equipment-condition-help" className={input} value={form.condicion} onChange={(e) => setForm({ ...form, condicion: e.target.value })}>
+                  <option value="bueno">En buen estado</option>
+                  <option value="regular">Con desgaste</option>
+                  <option value="malo">Necesita reparación</option>
                 </select>
+                <small id="equipment-condition-help" className="inventory-field-help">Describe cómo se conserva el equipo. La cantidad disponible indica cuántas unidades quedan para prestar.</small>
               </div>
               <div>
                 <label className={label}>Situación administrativa</label>
@@ -805,7 +813,7 @@ export function AdminInventarioView() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
                 <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                  Mostrando {filteredItems.length} de {items.length} artículos
+                  {filteredItems.length} equipos encontrados · {items.length} registrados
                 </span>
               </div>
 
@@ -838,7 +846,8 @@ export function AdminInventarioView() {
                 <FiSearch className="text-slate-400" size={16} style={{ marginLeft: '8px' }} />
                 <input
                   className={`${input} w-full`}
-                  placeholder="Buscar"
+                  placeholder="Buscar por equipo, código, serie o marca"
+                  aria-label="Buscar equipos"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -876,16 +885,17 @@ export function AdminInventarioView() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="inventory-table">
+          <p className="inventory-field-help">Estado físico: cómo se conserva el equipo. Disponibles: unidades que quedan para prestar.</p>
+          <div className="overflow-x-auto inventory-equipment-scroll" tabIndex={0} role="region" aria-label="Listado de equipos, desplaza para ver todas las columnas">
+            <table className="inventory-table inventory-equipment-table">
               <thead>
                 <tr>
-                  <th>Artículo / Código</th>
+                  <th>Equipo y código</th>
                   <th>Categoría / Marca</th>
-                  <th>Condición</th>
-                  <th>Stock / Nivel</th>
+                  <th>Estado físico</th>
+                  <th>Unidades disponibles</th>
                   <th>Ubicación</th>
-                  <th>Estado</th>
+                  <th>Para préstamo</th>
                   <th className="text-right">Acciones</th>
                 </tr>
               </thead>
@@ -895,9 +905,9 @@ export function AdminInventarioView() {
                 ) : filteredItems.length === 0 ? (
                   <tr><td className="text-center py-6 text-slate-500" colSpan={7}>{items.length ? 'No hay resultados con estos filtros. Prueba otra búsqueda.' : 'Aún no hay artículos. Usa «Nuevo artículo» para comenzar.'}</td></tr>
                 ) : (
-                  filteredItems.map((item) => (
+                  visibleEquipment.map((item) => (
                     <tr key={item.id}>
-                      <td>
+                      <td data-label="Equipo">
                         <div className="inventory-item-name">
                           <span className="inventory-item-icon" style={{ overflow: 'hidden', padding: item.imagen_url ? 0 : undefined }}>
                             {item.imagen_url ? (
@@ -924,7 +934,7 @@ export function AdminInventarioView() {
                         </div>
                         {item.descripcion && <div className="text-xs text-slate-500 mt-0.5">{item.descripcion}</div>}
                       </td>
-                      <td>
+                      <td data-label="Categoría y marca">
                         <span className="category-chip">{item.categoria}</span>
                         {(item.marca || item.modelo) && (
                           <div className="text-xs text-slate-500 mt-1">
@@ -932,26 +942,26 @@ export function AdminInventarioView() {
                           </div>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Estado físico">
                         <span className={`badge rounded-pill text-xs px-2 py-1 ${
-                          item.condicion === 'malo' ? 'bg-danger text-white' : item.condicion === 'regular' ? 'bg-warning text-dark' : 'bg-success text-white'
+                          item.condicion === 'malo' ? 'bg-danger text-white' : item.condicion === 'regular' ? 'bg-warning text-dark' : item.condicion === 'bueno' ? 'bg-success text-white' : 'bg-secondary text-white'
                         }`}>
-                          {item.condicion === 'malo' ? 'Malo / Reparar' : item.condicion === 'regular' ? 'Regular' : 'Bueno (Operativo)'}
+                          {item.condicion === 'malo' ? 'Necesita reparación' : item.condicion === 'regular' ? 'Con desgaste' : item.condicion === 'bueno' ? 'En buen estado' : 'Sin registrar'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Unidades disponibles">
                         <StockMeter disponible={item.cantidad_disponible} total={item.cantidad_total} />
                       </td>
-                      <td className="text-sm text-slate-700 font-medium">
+                      <td data-label="Ubicación" className="text-sm text-slate-700 font-medium">
                         <span className="d-inline-flex align-items-center gap-1">
                           <FiMapPin size={13} className="text-slate-400" />
                           {item.ubicacion || 'Sin especificar'}
                         </span>
                       </td>
-                      <td>
-                        <StatusBadge value={item.estado} />
+                      <td data-label="Para préstamo">
+                        <span className={`status-badge ${item.estado}`}>{item.condicion === 'malo' ? 'Requiere revisión' : item.estado === 'disponible' ? (item.cantidad_disponible > 0 ? 'Se puede solicitar' : 'Sin unidades libres') : item.estado === 'mantenimiento' ? 'En mantenimiento' : item.estado === 'agotado' ? 'Sin unidades libres' : item.estado === 'no_prestable' ? 'Uso interno' : item.estado}</span>
                       </td>
-                      <td className="text-right space-x-2">
+                      <td data-label="Acciones" className="text-right space-x-2">
                         <button className={`${secondaryButton} d-inline-flex align-items-center gap-1`} onClick={() => edit(item)}><FiEdit2 size={13} />Editar</button>
                         <button className={`${dangerButton} d-inline-flex align-items-center gap-1`} onClick={() => remove(item.id)}><FiTrash2 size={13} />Eliminar</button>
                       </td>
@@ -962,7 +972,8 @@ export function AdminInventarioView() {
             </table>
           </div>
         </div>
-        <p className="inventory-list-footnote">El stock se actualiza al registrar préstamos y devoluciones.</p>
+        <nav className="inventory-pagination" aria-label="Páginas de equipos"><span>Página {currentEquipmentPage} de {equipmentPages} · Hasta 20 equipos por página</span><div><button type="button" className={secondaryButton} disabled={currentEquipmentPage <= 1} onClick={() => setEquipmentPage(currentEquipmentPage - 1)}>Anterior</button><button type="button" className={secondaryButton} disabled={currentEquipmentPage >= equipmentPages} onClick={() => setEquipmentPage(currentEquipmentPage + 1)}>Siguiente</button></div></nav>
+        <p className="inventory-list-footnote">Las unidades disponibles se actualizan al registrar préstamos y devoluciones.</p>
       </div>
     </div>
   );

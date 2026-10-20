@@ -1,21 +1,32 @@
 {
-  "name": "Sistema de Inventario",
+  "id": "/",
+  "name": "Inventario del Colegio",
   "short_name": "Inventario",
-  "description": "Sistema de autenticación e inventarios para el colegio",
+  "description": "Equipos, préstamos y reservas de la sala de cómputo.",
+  "lang": "es",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#f3f5f9",
+  "theme_color": "#1e2938",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -6524,3 +6524,12 @@ body {
     transition: none;
   }
 }
+/* Shared install and connection notice, above mobile navigation. */
+.pwa-notice { position:fixed; z-index:1090; right:18px; bottom:20px; width:min(390px,calc(100vw - 28px)); display:flex; align-items:flex-start; gap:12px; padding:18px; border:1px solid #cbd5e1; border-radius:14px; background:#fff; color:#243a59; box-shadow:0 8px 32px #1e293822; font:14px/1.5 'Segoe UI',sans-serif; }
+.pwa-notice>svg { flex-shrink:0; margin-top:4px; }
+.pwa-notice p { margin:4px 0 10px; color:#52657b; }
+.pwa-notice button { border:0; border-radius:8px; background:#315779; color:white; padding:10px 14px; font-weight:600; min-height:44px; }
+.pwa-notice .pwa-dismiss { background:#eef2f6; color:#334155; padding:8px; min-width:40px; flex-shrink:0; }
+.pwa-notice button:focus-visible { outline:3px solid #315779; outline-offset:3px; }
+@media(max-width:991px) { .pwa-notice { bottom:calc(88px + env(safe-area-inset-bottom)); right:14px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; } }

@@ -57,10 +57,10 @@
 }
 
 .admin-workspace { font-family:Inter,'Segoe UI',Arial,sans-serif; --color-primary:#315779; --color-primary-dark:#24435f; --color-primary-light:#edf2fc; }
-.admin-workspace :is(.inventory-panel,.inventory-summary-card,.inventory-table-panel,.teachers-card,.loans-summary-card) { border-color:#dfe5ee; box-shadow:0 3px 12px #203a5b06; border-radius:7px; }
-.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button) { background:#315779; border-color:#315779; border-radius:5px; }
+.admin-workspace :is(.inventory-panel,.inventory-summary-card,.inventory-table-panel,.teachers-card,.loans-summary-card) { border-color:#dfe5ee; box-shadow:0 3px 12px #203a5b06; border-radius:12px; }
+.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button) { background:#315779; border-color:#315779; border-radius:8px; }
 .admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button):hover { background:#24435f; }
-.admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select) { border-color:#cad5e4; color:#243a59; border-radius:5px; }
+.admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select) { border-color:#cad5e4; color:#243a59; border-radius:8px; }
 .admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select):focus { border-color:#6589cb; box-shadow:0 0 0 3px #31577912; }
 .admin-workspace table thead th { background:#eef2f8; color:#4b607c; border-bottom-color:#d4deec; font-weight:700; }
 .admin-workspace table tbody td { border-color:#e6ebf3; color:#2d425e; }
@@ -72,3 +72,37 @@
 .admin-workspace table tbody td { padding:12px 14px; font-size:13px; vertical-align:middle; }
 .admin-workspace table tbody tr:nth-child(even) { background:#f8fafc; }
 .admin-workspace :is(.inventory-panel,.inventory-table-panel) { box-shadow:none; }
+.admin-workspace .inventory-field-help { display:block; margin:8px 0; color:#52657b; font-size:12px; line-height:1.6; }
+.admin-workspace .inventory-equipment-scroll { overflow:auto; border:1px solid #dfe5ee; border-radius:12px; }
+.admin-workspace .inventory-equipment-table { margin:0; min-width:850px; width:100%; }
+.admin-workspace .inventory-equipment-table th { white-space:nowrap; }
+.admin-workspace .inventory-equipment-table td:first-child { min-width:240px; max-width:350px; overflow-wrap:anywhere; }
+.admin-workspace .inventory-equipment-table tbody tr:hover { background:#edf3f9; }
+.admin-workspace .inventory-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:16px 0; color:#52657b; font-size:13px; }
+.admin-workspace .inventory-pagination>div { display:flex; gap:8px; }
+.admin-workspace .inventory-pagination button { min-height:42px; }
+.admin-workspace button:disabled { cursor:not-allowed; }
+.admin-workspace .inventory-list-panel .btn.rounded-pill { border-radius:8px!important; }
+.admin-workspace .inventory-list-panel .btn-primary { background:#315779; border-color:#315779; }
+.admin-workspace .inventory-equipment-table .status-badge { border-radius:6px; white-space:normal; line-height:1.5; }
+.admin-workspace .inventory-equipment-table .stock-bar-bg { display:none; }
+.admin-workspace .inventory-equipment-table [data-label="Unidades disponibles"] span { white-space:nowrap; }
+@media(max-width:767px) {
+  .admin-workspace .inventory-equipment-scroll { border:0; overflow:visible; }
+  .admin-workspace .inventory-equipment-table { min-width:0; display:block; }
+  .admin-workspace .inventory-equipment-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .admin-workspace .inventory-equipment-table tbody { display:grid; gap:14px; }
+  .admin-workspace .inventory-equipment-table tbody tr { display:block; border:1px solid #dfe5ee; border-radius:12px; background:#fff; overflow:hidden; }
+  .admin-workspace .inventory-equipment-table tbody td { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-bottom:1px solid #edf1f5; }
+  .admin-workspace .inventory-equipment-table tbody td[data-label]::before { content:attr(data-label); color:#52657b; font-size:11px; font-weight:600; flex:0 0 40%; }
+  .admin-workspace .inventory-equipment-table tbody td[data-label="Categoría y marca"] { display:grid; grid-template-columns:40% minmax(0,1fr); gap:4px 12px; }
+  .admin-workspace .inventory-equipment-table tbody td[data-label="Categoría y marca"]::before { grid-row:1 / 3; }
+  .admin-workspace .inventory-equipment-table tbody td[data-label="Categoría y marca"]>div { grid-column:2; }
+  .admin-workspace .inventory-equipment-table .category-chip { justify-self:start; overflow-wrap:anywhere; }
+  .admin-workspace .inventory-equipment-table tbody td:first-child { display:block; min-width:0; max-width:none; background:#f4f7fa; padding:14px 12px; }
+  .admin-workspace .inventory-equipment-table tbody td:first-child::before,
+  .admin-workspace .inventory-equipment-table tbody td:last-child::before { display:none; }
+  .admin-workspace .inventory-equipment-table tbody td:last-child { justify-content:flex-end; flex-wrap:wrap; border-bottom:0; }
+  .admin-workspace .inventory-equipment-table tbody td:last-child button { min-height:44px; }
+  .admin-workspace .inventory-list-panel { padding:14px!important; }
+}
