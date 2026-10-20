@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
   FiCalendar,
@@ -41,6 +41,20 @@ export default function AdminCalendar() {
     [formError, setFormError] = useState("");
   const schedule = data?.schedule || [],
     agenda = reservationsForDate(schedule, date);
+  const openedReservation = useRef(false);
+  useEffect(() => {
+    if (!data || openedReservation.current) return;
+    const id = new URLSearchParams(window.location.search).get("reserva");
+    const reservation = data.schedule.find(row => String(row.id) === id);
+    if (!reservation?.fecha_reserva) return;
+    openedReservation.current = true;
+    const selected = reservation.fecha_reserva.slice(0, 10);
+    setDate(selected);
+    setMonth(selected.slice(0, 7) + "-01");
+    setMessage(reservation.estado === "separado"
+      ? "Reserva aprobada y registrada en el calendario. Estás viendo el día solicitado."
+      : "Estás viendo el día de la solicitud seleccionada.");
+  }, [data]);
   const teachers = (data?.teachers || []).filter((t) => t.activo);
   const fixed = schedule.filter(
     (r) => r.estado === "separado" && !r.fecha_reserva,

@@ -1492,7 +1492,7 @@ export function AdminSolicitudesView() {
       const sol = solicitudes.find(s => s.id === id);
       if (sol && (sol.item_nombre?.includes('Aula de Cómputo') || (sol as any).disponibilidad_id)) {
         setTimeout(() => {
-          window.location.href = '/admin/horario';
+          window.location.href = `/admin/horario?reserva=${(sol as any).disponibilidad_id}`;
         }, 500);
       } else if (sol && sol.inventario_id) {
         setTimeout(() => {

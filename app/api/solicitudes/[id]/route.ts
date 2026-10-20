@@ -2,6 +2,7 @@ import { requireSession } from '@/app/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/app/lib/db';
 import { verifyToken } from '@/app/lib/auth';
+import { timeLabel } from '@/app/lib/time-label';
 
 export async function GET(
   request: NextRequest,
@@ -74,6 +75,8 @@ export async function PUT(
 
     try {
       await client.query('BEGIN');
+      // Same lock order as calendar edits and cancellations: calendar, then rows.
+      await client.query('SELECT pg_advisory_xact_lock(3011, 1)');
 
       const solicitud = await client.query(
         `SELECT s.*,
@@ -147,9 +150,29 @@ export async function PUT(
             [sol.inventario_id, sol.profesor_id, nextCantidad, `Generado desde solicitud #${params.id}`, params.id]
           );
         } else if (sol.disponibilidad_id) {
-          // Aula request approved
+          const reservation = await client.query(
+            'SELECT * FROM disponibilidad WHERE id = $1 FOR UPDATE', [sol.disponibilidad_id]
+          );
+          const slot = reservation.rows[0];
+          if (!slot || slot.estado !== 'pendiente' || slot.reservado_por !== sol.profesor_id) {
+            await client.query('ROLLBACK');
+            return NextResponse.json({ error: 'La reserva cambió o ya no está disponible. Actualiza las solicitudes.' }, { status: 409 });
+          }
+          const conflict = await client.query(
+            `SELECT id, hora_inicio, hora_fin FROM disponibilidad
+             WHERE id <> $1 AND estado IN ('separado', 'pendiente')
+             AND ((fecha_reserva IS NULL AND dia_semana = $2) OR fecha_reserva::date = $3::date)
+             AND hora_inicio < $5 AND hora_fin > $4
+             ORDER BY hora_inicio LIMIT 1`,
+            [slot.id, slot.dia_semana, slot.fecha_reserva, slot.hora_inicio, slot.hora_fin]
+          );
+          if (conflict.rows.length) {
+            const occupied = conflict.rows[0];
+            await client.query('ROLLBACK');
+            return NextResponse.json({ error: `No se puede aprobar: el aula está ocupada de ${timeLabel(occupied.hora_inicio)} a ${timeLabel(occupied.hora_fin)}. Revisa el calendario y solicita otro horario.` }, { status: 409 });
+          }
           await client.query(
-            "UPDATE disponibilidad SET estado = 'separado' WHERE id = $1",
+            "UPDATE disponibilidad SET estado = 'separado', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             [sol.disponibilidad_id]
           );
         }

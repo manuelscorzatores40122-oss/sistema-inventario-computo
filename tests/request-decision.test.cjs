@@ -5,12 +5,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function setup(actor, currentState, { conflict = false, aula = false } = {}) {
+function setup(actor, currentState, { conflict = false, aula = false, missing = false } = {}) {
   const calls = [];
   const client = {
     async query(sql, params) {
       calls.push({sql, params});
       if (sql.includes('SELECT s.*')) return { rows: [{ id: 8, estado: currentState, profesor_id: 4, inventario_id: aula ? null : 2, disponibilidad_id: aula ? 20 : null, cantidad_solicitada: 1, cantidad_disponible: 5, item_nombre: 'Proyector' }] };
+      if (sql.includes('SELECT * FROM disponibilidad')) return { rows: missing ? [] : [{ id: 20, estado: 'pendiente', reservado_por: 4, dia_semana: 'Lunes', fecha_reserva: '2099-10-26', hora_inicio: '07:00', hora_fin: '11:00' }] };
+      if (sql.includes('SELECT id, hora_inicio, hora_fin FROM disponibilidad')) return { rows: conflict ? [{ id: 21, hora_inicio: '09:00', hora_fin: '10:00' }] : [] };
       if (sql.includes('UPDATE inventario') && conflict) return { rows: [] };
       return { rows: [{ id: 8 }] };
     }, release() {},
@@ -19,6 +21,7 @@ function setup(actor, currentState, { conflict = false, aula = false } = {}) {
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.resolve(__dirname, '../app/api/solicitudes/[id]/route.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText, { exports: exported, console, require(name) {
+    if (name === '@/app/lib/time-label') { const helper = {}; vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/lib/time-label.ts', 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText, {exports:helper}); return helper; }
     if (name === '@/app/lib/session') return { requireSession: async () => actor?.role === 'admin' ? { user: { id: actor.userId, role: actor.role }, response: null } : { user: null, response: { status: 403 } } };
     if (name === 'next/server') return { NextResponse: { json: (body, options) => ({body, status: options?.status || 200}) } };
     if (name === '@/app/lib/db') return { getClient: async () => client };
@@ -66,5 +69,25 @@ test('aprobar o rechazar usa el administrador autenticado y notifica al profesor
     assert.equal(notice.params[0], 4);
     assert.equal(notice.params[3], `solicitud_${state}`);
     assert.equal(calls.at(-1).sql, 'COMMIT');
+  }
+});
+
+
+test('aprobar aula confirma el calendario y avisa; cruces o reservas ausentes revierten sin aprobar', async () => {
+  for (const options of [{}, {conflict:true}, {missing:true}]) {
+    const {calls, decide} = setup({role:'admin',userId:1}, 'pendiente', {aula:true,...options});
+    const response = await decide('aprobada');
+    const blocked = options.conflict || options.missing;
+    assert.equal(response.status, blocked ? 409 : 200);
+    assert.ok(calls[1].sql.includes('pg_advisory_xact_lock'));
+    assert.equal(calls.at(-1).sql, blocked ? 'ROLLBACK' : 'COMMIT');
+    assert.equal(calls.some(c => c.sql.includes('UPDATE solicitudes')), !blocked);
+    assert.equal(calls.some(c => c.sql.includes('INSERT INTO notificaciones')), !blocked);
+    if (options.conflict) assert.match(response.body.error, /9:00 a\. m\. a 10:00 a\. m\./);
+    if (!blocked) {
+      assert.ok(calls.some(c => c.sql.includes("UPDATE disponibilidad SET estado = 'separado'")));
+      const check = calls.find(c => c.sql.includes('SELECT id, hora_inicio, hora_fin'));
+      assert.deepEqual(Array.from(check.params), [20, 'Lunes', '2099-10-26', '07:00', '11:00']);
+    }
   }
 });
