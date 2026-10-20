@@ -71,20 +71,22 @@ export default function NotificationCenter({ items, userId }: { items: InboxItem
       setError('');
     } catch (err) { setError(err instanceof Error ? err.message : 'No hay conexión. La lectura se conserva en este navegador.'); }
   }
-  async function dismiss(key: string) {
-    const next = Array.from(new Set([...dismissed, key]));
+  async function dismissAll() {
+    const keys = activeItems.map(item => item.key);
+    if (!keys.length) return;
+    const next = Array.from(new Set([...dismissed, ...keys]));
     setDismissed(next);
     setError('');
-    window.dispatchEvent(new CustomEvent('inbox-dismissed', { detail: { userId, key, dismissed: true } }));
+    keys.forEach(key => window.dispatchEvent(new CustomEvent('inbox-dismissed', { detail: { userId, key, dismissed: true } })));
     try { localStorage.setItem(`inbox-dismissed:${userId}`, JSON.stringify(next)); } catch { /* Se sincroniza con el servidor. */ }
     try {
-      const response = await fetch('/api/notificaciones/lecturas', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
-      if (!response.ok) throw new Error('No pudimos borrar el aviso. Intenta nuevamente.');
+      const response = await fetch('/api/notificaciones/lecturas', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys }) });
+      if (!response.ok) throw new Error('No pudimos borrar las notificaciones. Intenta nuevamente.');
     } catch (err) {
-      setDismissed(previous => previous.filter(value => value !== key));
-      window.dispatchEvent(new CustomEvent('inbox-dismissed', { detail: { userId, key, dismissed: false } }));
-      try { localStorage.setItem(`inbox-dismissed:${userId}`, JSON.stringify(dismissed.filter(value => value !== key))); } catch { /* La lista se actualiza al sincronizar. */ }
-      setError(err instanceof Error ? err.message : 'No hay conexión. No se pudo borrar el aviso.');
+      setDismissed(previous => previous.filter(value => !keys.includes(value)));
+      keys.forEach(key => window.dispatchEvent(new CustomEvent('inbox-dismissed', { detail: { userId, key, dismissed: false } })));
+      try { localStorage.setItem(`inbox-dismissed:${userId}`, JSON.stringify(dismissed)); } catch { /* La lista se actualiza al sincronizar. */ }
+      setError(err instanceof Error ? err.message : 'No hay conexión. No se pudieron borrar las notificaciones.');
     }
   }
   const visible = unreadOnly ? unread : activeItems;
@@ -94,9 +96,55 @@ export default function NotificationCenter({ items, userId }: { items: InboxItem
       if (rect) setPosition({ top: Math.min(rect.bottom + 12, window.innerHeight - 200), left: Math.max(12, Math.min(rect.left, window.innerWidth - 402)) });
       setOpen(value => !value);
     }}><FiBell size={18} />{unread.length > 0 && <span className={s.count}>{unread.length > 99 ? '99+' : unread.length}</span>}</button>
-    {open && createPortal(<section ref={panel} id={id} className={s.panel} style={position} aria-label="Centro de notificaciones"><header className={s.header}><div><h2>Notificaciones</h2><p>{unread.length ? `${unread.length} novedades por revisar` : 'Estás al día con tu actividad'}</p></div><button className={s.close} aria-label="Cerrar notificaciones" onClick={() => { setOpen(false); trigger.current?.focus(); }}><FiX /></button></header><div className={s.tools}><div className={s.tabs}><button aria-pressed={!unreadOnly} onClick={() => setUnreadOnly(false)}>Todas</button><button aria-pressed={unreadOnly} onClick={() => setUnreadOnly(true)}>Sin leer ({unread.length})</button></div>{unread.length > 0 && <button className={s.readButton} onClick={() => void mark(unread.map(item => item.key))}><FiCheck size={13} />Marcar leídas</button>}</div>{error && <p role="status" className={s.error}>{error}</p>}
-      {visible.length ? <ul className={s.list}>{visible.map(item => <li key={item.key} className={s.item} data-unread={!read.includes(item.key)}><span className={s.icon} data-tone={item.tone}>{item.tone === 'green' ? <FiCheckCircle size={17} /> : item.tone === 'amber' ? <FiClock size={17} /> : <FiInbox size={17} />}</span><div className={s.copy}><h3>{item.title}{!read.includes(item.key) && <span className={s.dot} aria-label="Sin leer" />}</h3><p>{item.message}</p><time dateTime={item.date}>{dateLabel(item.date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time><div className={s.actions}><Link href={item.href} onClick={() => { void mark([item.key]); setOpen(false); }}>{item.action}<FiArrowRight size={12} /></Link><div className={s.itemTools}>{!read.includes(item.key) && <button onClick={() => void mark([item.key])}><FiCheck size={13} />Marcar leída</button>}<button className={s.deleteButton} aria-label={`Borrar notificación: ${item.title}`} title="Borrar notificación" onClick={() => void dismiss(item.key)}><FiTrash2 size={15} /></button></div></div></div></li>)}</ul> : <div className={s.empty}><FiCheckCircle size={32} /><h3>{unreadOnly ? 'No tienes avisos sin leer' : 'Todo en orden'}</h3><p>Las respuestas y novedades del colegio aparecerán aquí.</p></div>}
-    </section>, document.body)}
+    {open && createPortal(
+      <section ref={panel} id={id} className={s.panel} style={position} aria-label="Centro de notificaciones">
+        <header className={s.header}>
+          <div>
+            <h2>Notificaciones</h2>
+            <p>{unread.length ? `${unread.length} novedades por revisar` : 'Estás al día con tu actividad'}</p>
+          </div>
+          <div className={s.headerActions}>
+            {activeItems.length > 0 && <button className={s.clearButton} onClick={() => void dismissAll()}><FiTrash2 size={15} />Borrar todas</button>}
+            <button className={s.close} aria-label="Cerrar notificaciones" onClick={() => { setOpen(false); trigger.current?.focus(); }}><FiX /></button>
+          </div>
+        </header>
+        <div className={s.tools}>
+          <div className={s.tabs}>
+            <button aria-pressed={!unreadOnly} onClick={() => setUnreadOnly(false)}>Todas</button>
+            <button aria-pressed={unreadOnly} onClick={() => setUnreadOnly(true)}>Sin leer ({unread.length})</button>
+          </div>
+          {unread.length > 0 && <button className={s.readButton} onClick={() => void mark(unread.map(item => item.key))}><FiCheck size={13} />Marcar leídas</button>}
+        </div>
+        {error && <p role="status" className={s.error}>{error}</p>}
+        {visible.length ? (
+          <ul className={s.list}>
+            {visible.map(item => (
+              <li key={item.key} className={s.item} data-unread={!read.includes(item.key)}>
+                <span className={s.icon} data-tone={item.tone}>
+                  {item.tone === 'green' ? <FiCheckCircle size={17} /> : item.tone === 'amber' ? <FiClock size={17} /> : <FiInbox size={17} />}
+                </span>
+                <div className={s.copy}>
+                  <h3>{item.title}{!read.includes(item.key) && <span className={s.dot} aria-label="Sin leer" />}</h3>
+                  <p>{item.message}</p>
+                  <time dateTime={item.date}>{dateLabel(item.date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+                  <div className={s.actions}>
+                    <Link href={item.href} onClick={() => { void mark([item.key]); setOpen(false); }}>{item.action}<FiArrowRight size={12} /></Link>
+                    {!read.includes(item.key) && <button onClick={() => void mark([item.key])}><FiCheck size={13} />Marcar leída</button>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className={s.empty}>
+            <FiCheckCircle size={32} />
+            <h3>{unreadOnly ? 'No tienes avisos sin leer' : 'Todo en orden'}</h3>
+            <p>Las respuestas y novedades del colegio aparecerán aquí.</p>
+          </div>
+        )}
+      </section>,
+      document.body,
+    )}
   </>;
 }
 

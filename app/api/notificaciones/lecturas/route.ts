@@ -20,13 +20,15 @@ export async function DELETE(request: NextRequest) {
     const session = await requireSession(request);
     if (session.response) return session.response;
     const body = await request.json().catch(() => null);
-    const key = body?.key;
-    if (typeof key !== 'string' || !/^[a-z0-9-]{1,70}$/.test(key)) {
+    const requestedKeys = Array.isArray(body?.keys) ? body.keys : [body?.key];
+    const keys = Array.from(new Set(requestedKeys));
+    if (!keys.length || keys.length > 200 || keys.some(key => typeof key !== 'string' || !/^[a-z0-9-]{1,70}$/.test(key))) {
       return NextResponse.json({ error: 'Notificación inválida.' }, { status: 400 });
     }
     await query(`INSERT INTO notificaciones_lecturas (usuario_id, notification_key)
-      VALUES ($1, $2) ON CONFLICT (usuario_id, notification_key) DO NOTHING`, [session.user.id, `dismissed-${key}`]);
-    return NextResponse.json({ message: 'Notificación borrada.' }, { headers: { 'Cache-Control': 'no-store' } });
+      SELECT $1, 'dismissed-' || notification_key FROM unnest($2::text[]) AS keys(notification_key)
+      ON CONFLICT (usuario_id, notification_key) DO NOTHING`, [session.user.id, keys]);
+    return NextResponse.json({ message: 'Notificaciones borradas.' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error al borrar notificación:', error);
     return NextResponse.json({ error: 'No pudimos borrar la notificación.' }, { status: 500 });
