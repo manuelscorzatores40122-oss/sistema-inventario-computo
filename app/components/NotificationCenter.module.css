@@ -25,6 +25,10 @@
 .actions { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:10px; }
 .actions a { display:inline-flex; align-items:center; gap:5px; color:#315779; font-size:11px; font-weight:700; text-decoration:none; }
 .actions button { background:none; border:0; font-size:10px; color:#8b9c90; padding:4px; cursor:pointer; }
+.itemTools { display:flex; align-items:center; gap:7px; }
+.itemTools button { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:30px; padding:5px 7px; border-radius:6px; }
+.itemTools .deleteButton { width:32px; height:32px; padding:0; color:#a34545; background:#fff4f2; border:1px solid #f0d8d4; }
+.itemTools .deleteButton:hover { color:#8f2f2f; background:#ffe8e4; border-color:#e7b8b1; }
 .empty { padding:42px 25px; text-align:center; color:#92a999; }
 .empty h3 { color:#36584b; font-size:14px; margin:13px 0 6px; }
 .empty p { font-size:12px; color:#8b9f92; margin:0; }

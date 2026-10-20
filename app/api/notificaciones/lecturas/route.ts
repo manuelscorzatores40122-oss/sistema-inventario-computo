@@ -6,9 +6,31 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireSession(request);
     if (session.response) return session.response;
-    const result = await query('SELECT notification_key FROM notificaciones_lecturas WHERE usuario_id = $1 ORDER BY leida_at DESC LIMIT 1000', [session.user.id]);
-    return NextResponse.json({ keys: result.rows.map(row => row.notification_key) }, { headers: { 'Cache-Control': 'no-store' } });
+    const result = await query('SELECT notification_key FROM notificaciones_lecturas WHERE usuario_id = $1 ORDER BY leida_at DESC LIMIT 2000', [session.user.id]);
+    const storedKeys = result.rows.map(row => row.notification_key as string);
+    return NextResponse.json({
+      keys: storedKeys.filter(key => !key.startsWith('dismissed-')),
+      dismissedKeys: storedKeys.filter(key => key.startsWith('dismissed-')).map(key => key.slice('dismissed-'.length)),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { console.error('Error al consultar lecturas:', error); return NextResponse.json({ error: 'No pudimos sincronizar tus lecturas.' }, { status: 500 }); }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await requireSession(request);
+    if (session.response) return session.response;
+    const body = await request.json().catch(() => null);
+    const key = body?.key;
+    if (typeof key !== 'string' || !/^[a-z0-9-]{1,70}$/.test(key)) {
+      return NextResponse.json({ error: 'Notificación inválida.' }, { status: 400 });
+    }
+    await query(`INSERT INTO notificaciones_lecturas (usuario_id, notification_key)
+      VALUES ($1, $2) ON CONFLICT (usuario_id, notification_key) DO NOTHING`, [session.user.id, `dismissed-${key}`]);
+    return NextResponse.json({ message: 'Notificación borrada.' }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('Error al borrar notificación:', error);
+    return NextResponse.json({ error: 'No pudimos borrar la notificación.' }, { status: 500 });
+  }
 }
 export async function POST(request: NextRequest) {
   try {
