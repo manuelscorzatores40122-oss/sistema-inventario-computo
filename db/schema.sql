@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS prestamos (
   fecha_devolucion TIMESTAMP,
   solicitud_id INTEGER REFERENCES solicitudes(id),
   devolucion_observacion TEXT,
-  devolucion_estado VARCHAR(50) DEFAULT 'bueno',
+  devolucion_estado VARCHAR(50) DEFAULT 'bueno'
+    CHECK (devolucion_estado IN ('bueno', 'regular', 'malo', 'pendiente', 'aprobada', 'rechazada')),
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

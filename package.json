@@ -14,6 +14,7 @@
     "test:admin-ui": "node tests/admin-browser-smoke.cjs",
     "test:admin-actions": "node tests/admin-actions-browser.cjs",
     "test:account-flow": "node tests/account-flow-integration.cjs",
+    "test:system-real": "node tests/system-real-integration.cjs",
     "test:summary-read": "node tests/summary-read-integration.cjs",
     "test:auth-ui": "node tests/auth-browser.cjs",
     "test:account-inbox-ui": "node tests/account-inbox-browser.cjs",
