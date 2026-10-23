@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'El email ya está registrado' },
-        { status: 400 }
+        { error: 'El DNI o usuario ya tiene una cuenta. Busca el registro existente para activarlo o editarlo.' },
+        { status: 409 }
       );
     }
 
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
       usuario: user,
     });
   } catch (error: any) {
+    if (error instanceof SyntaxError) return NextResponse.json({ error: 'El formulario no tiene un formato válido.' }, { status: 400 });
     if (error?.code === '23505') return NextResponse.json({ error: 'El DNI o usuario ya existe.' }, { status: 409 });
     if (error?.code === '22001') return NextResponse.json({ error: 'Un dato supera el tamaño permitido. Revisa el teléfono y el usuario.' }, { status: 400 });
     console.error('Error al crear usuario:', error);

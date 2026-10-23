@@ -8,6 +8,7 @@ export function validateAccountInput(body: Record<string, unknown>, publicRegist
   }
   const password = body.password || (publicRegistration ? '' : identifier);
   if (typeof password !== 'string' || password.length < 6 || password.length > 128) return 'La contraseña debe contener entre 6 y 128 caracteres.';
+  if (new TextEncoder().encode(password).length > 72) return 'La contraseña es demasiado larga: admite hasta 72 bytes (las tildes y emojis ocupan más espacio).';
   if (body.telefono != null && (typeof body.telefono !== 'string' || body.telefono.trim().length > 20)) return 'El teléfono admite hasta 20 caracteres. Revisa el número ingresado.';
   if (body.area != null && (typeof body.area !== 'string' || body.area.trim().length > 255)) return 'El área o asignatura admite hasta 255 caracteres.';
   if (body.correo_personal != null && (typeof body.correo_personal !== 'string' || body.correo_personal.trim().length > 255 ||

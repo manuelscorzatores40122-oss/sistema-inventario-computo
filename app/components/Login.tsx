@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FiUser, FiLock, FiLogIn, FiAlertTriangle } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiAlertTriangle, FiEye, FiEyeOff } from 'react-icons/fi';
 import './Login.css';
+import { validateAccountInput } from '@/app/lib/account-validation';
 
 export default function Login({ register = false }: { register?: boolean }) {
   const [nombre, setNombre] = useState('');
@@ -34,6 +35,8 @@ export default function Login({ register = false }: { register?: boolean }) {
   const isRegister = register && !registered;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +58,13 @@ export default function Login({ register = false }: { register?: boolean }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
+    if (isRegister) {
+      const validationError = validateAccountInput({ dni: email.trim(), nombre, apellido, password, telefono, correo_personal: correoPersonal, area }, true);
+      if (validationError) { setError(validationError); return; }
+      if (password !== confirmPassword) { setError('Las claves no coinciden. Revisa ambos campos.'); return; }
+    }
     setLoading(true);
 
     try {
@@ -89,6 +98,7 @@ export default function Login({ register = false }: { register?: boolean }) {
       if (isRegister) {
         setRegistered(true);
         setPassword('');
+        setConfirmPassword('');
         setLoading(false);
         return;
       }
@@ -217,7 +227,7 @@ export default function Login({ register = false }: { register?: boolean }) {
                 <FiLock className="input-icon" />
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -226,8 +236,14 @@ export default function Login({ register = false }: { register?: boolean }) {
                   minLength={isRegister ? 6 : undefined}
                   required
                 />
+                <button type="button" className="login-password-toggle" aria-label={showPassword ? 'Ocultar clave' : 'Mostrar clave'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <FiEyeOff /> : <FiEye />}</button>
               </div>
+              {isRegister && <small className="login-field-help">Elige una clave de al menos 6 caracteres. La usarás cuando aprueben tu cuenta.</small>}
             </div>
+            {isRegister && <div className="form-group">
+              <label htmlFor="confirmPassword">Confirmar contraseña</label>
+              <div className="input-with-icon"><FiLock className="input-icon" /><input id="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} maxLength={128} required placeholder="Repite tu clave" /></div>
+            </div>}
 
             <button type="submit" disabled={loading} className="login-submit-btn">
               {loading ? (isRegister ? 'Enviando solicitud...' : 'Verificando...') : (isRegister ? 'Solicitar Cuenta' : 'Iniciar sesión')}

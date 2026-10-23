@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, mocks = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText,
-    { exports, console: { error() {} }, require(name) { if (name in mocks) return mocks[name]; if (name === 'next/server') return { NextResponse: { json: (body, opts) => ({ body, status: opts?.status || 200 }) } }; throw Error(name); } });
+    { exports, TextEncoder, console: { error() {} }, require(name) { if (name in mocks) return mocks[name]; if (name === 'next/server') return { NextResponse: { json: (body, opts) => ({ body, status: opts?.status || 200 }) } }; throw Error(name); } });
   return exports;
 }
 const validation = load('app/lib/account-validation.ts');
@@ -41,4 +41,31 @@ test('crear una cuenta con correo largo no lo fuerza dentro de la columna DNI de
   const auth = load('app/lib/auth.ts', { './db': { query: async (sql, params) => { inserted = params; return { rows: [{ id: 8 }] }; } }, bcryptjs: { default: { genSalt: async () => 'salt', hash: async () => 'hash' } }, jsonwebtoken: { default: {} } });
   await auth.createUser('administracion.del.colegio@example.com', 'Admin', 'Colegio', 'Prueba1234', 'admin');
   assert.equal(inserted[8], null); assert.equal(inserted[0], 'administracion.del.colegio@example.com');
+});
+
+test('bcrypt rechaza claves superiores a 72 bytes sin truncarlas', () => {
+  assert.equal(validation.validateAccountInput({ ...valid, password: 'a'.repeat(72) }, true), null);
+  assert.ok(validation.validateAccountInput({ ...valid, password: 'a'.repeat(73) }, true));
+  assert.ok(validation.validateAccountInput({ ...valid, password: '\u00e9'.repeat(37) }, true));
+});
+
+test('alta administrativa informa duplicado y permite la clave inicial para DNI', async () => {
+  let duplicate = true;
+  let args;
+  const route = load('app/api/usuarios/route.ts', {
+    '@/app/lib/account-validation': validation,
+    '@/app/lib/session': { requireSession: async () => ({}) },
+    '@/app/lib/db': { query: async () => ({ rows: [] }) },
+    '@/app/lib/auth': {
+      getUserByEmail: async () => duplicate ? { id: 1 } : null,
+      createUser: async (...values) => { args = values; return { id: 2 }; }
+    }
+  });
+  const request = { json: async () => ({ ...valid, password: '' }) };
+  assert.equal((await route.POST(request)).status, 409);
+  duplicate = false;
+  assert.equal((await route.POST(request)).status, 200);
+  assert.equal(args[3], valid.dni);
+  assert.equal(args[7], true);
+  assert.equal((await route.POST({ json: async () => null })).status, 400);
 });

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     await client.query('COMMIT');
     return NextResponse.json({ message: 'Tu solicitud fue recibida. Administración revisará tus datos y habilitará tu acceso.', user }, { status: 201 });
   } catch (error: any) {
-    if (client) await client.query('ROLLBACK');
+    if (client) { try { await client.query('ROLLBACK'); } catch (rollbackError) { console.error('No se pudo revertir el registro:', rollbackError); } }
     console.error('Error al registrar cuenta docente:', error);
     if (error instanceof SyntaxError) return NextResponse.json({ error: 'El formulario no tiene un formato válido.' }, { status: 400 });
     if (error?.code === '23505') return NextResponse.json({ error: 'El DNI o usuario ya está registrado. Contacta a administración para recuperar tu acceso.' }, { status: 409 });
