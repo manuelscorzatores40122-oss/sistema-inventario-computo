@@ -8,6 +8,9 @@ export async function requireSession(request: NextRequest, adminOnly = false) {
     return { user: null, response: NextResponse.json({ error: 'Tu sesión venció. Inicia sesión nuevamente.' }, { status: 401 }) };
   }
   const user = await getUserById(claims.userId);
+  if (user && (claims.sessionVersion ?? 0) !== (user.session_version ?? 0)) {
+    return { user: null, response: NextResponse.json({ error: 'Tu sesión venció. Inicia sesión nuevamente.' }, { status: 401 }) };
+  }
   if (!user || !user.activo || user.role !== claims.role || (adminOnly && user.role !== 'admin')) {
     return { user: null, response: NextResponse.json({ error: 'No tienes permiso para realizar esta operación.' }, { status: 403 }) };
   }

@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import './PerfilView.css';
 import DeveloperContacts from './DeveloperContacts';
+import RecoveryCodeCard from './RecoveryCodeCard';
 
 type UsuarioInfo = {
   id: number;
@@ -330,6 +331,7 @@ export default function PerfilView() {
         </dialog>
 
       </div>
+      {/^\d{8}$/.test(user.dni || user.email) && <RecoveryCodeCard />}
       <DeveloperContacts />
     </div>
   );

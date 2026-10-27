@@ -82,10 +82,12 @@ export async function PUT(
            correo_personal = COALESCE($8, correo_personal),
            dni = CASE WHEN $1::text IS NOT NULL AND $1::text ~ '^[0-9]{8}$' THEN $1 ELSE dni END,
            area = COALESCE($11, area),
+           codigo_recuperacion_hash = CASE WHEN $12::boolean THEN NULL ELSE codigo_recuperacion_hash END,
+           session_version = session_version + CASE WHEN $12::boolean THEN 1 ELSE 0 END,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $9
         RETURNING id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo, fecha_creacion, updated_at`,
-      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, correo_personal ?? null, params.id, Object.prototype.hasOwnProperty.call(body, 'telefono'), area ?? null]
+      [email, nombre, apellido, hashedPassword, role, telefono ?? null, activo, correo_personal ?? null, params.id, Object.prototype.hasOwnProperty.call(body, 'telefono'), area ?? null, !!password && session.user.role === 'admin']
     );
 
     if (result.rows.length === 0) {

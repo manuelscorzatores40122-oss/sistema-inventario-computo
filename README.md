@@ -126,7 +126,17 @@ Cada solicitud ofrece **Ver detalles**, tanto en pendientes como en cuentas revi
 
 Desde la ficha se puede pasar a aprobar o rechazar una cuenta pendiente. La decisión requiere confirmación; aprobar habilita el acceso con la contraseña que eligió el docente durante el registro. Rechazar conserva la revisión y mantiene la cuenta sin acceso.
 
-La recuperación de contraseña actual remite a administración. Conocer el DNI de otra persona no constituye un mecanismo de recuperación automática.
+### Recuperación automática por DNI y código personal
+
+1. Con la sesión iniciada, abrir **Mi perfil → Código de recuperación**.
+2. Confirmar la contraseña actual, generar el código y guardarlo en un lugar privado. Solo se muestra al generarlo; al reemplazarlo, el anterior queda invalidado.
+3. Si se olvida la contraseña, abrir **Olvidé mi contraseña** en el login (`/auth/recuperar`).
+4. Indicar el DNI de 8 dígitos, el código guardado y la contraseña nueva dos veces.
+5. Iniciar sesión con la nueva contraseña y generar otro código para el futuro.
+
+Este mecanismo no utiliza correo, fecha de nacimiento ni servicios externos. El DNI solo no permite cambiar una contraseña. El código es aleatorio y de un solo uso; la base conserva únicamente su huella. El restablecimiento cierra las sesiones anteriores y los intentos se limitan en PostgreSQL a cinco por cuenta cada quince minutos.
+
+Para instalaciones existentes, aplicar `db/migrations/2026-10-27_recuperacion-cuenta.sql` antes de desplegar el código. La migración conserva las contraseñas actuales. Los usuarios sin un código previamente generado necesitan un restablecimiento inicial del administrador; desde su perfil podrán habilitar después la recuperación automática.
 
 ## Notificaciones y seguimiento
 

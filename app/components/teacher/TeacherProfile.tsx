@@ -7,6 +7,7 @@ import { useTeacher } from './TeacherContext';
 import { DataBoundary, Notice, PageHeading } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
 import DeveloperContacts from '../DeveloperContacts';
+import RecoveryCodeCard from '../RecoveryCodeCard';
 
 export default function TeacherProfile() {
   const { data, refresh } = useTeacher();
@@ -111,6 +112,7 @@ export default function TeacherProfile() {
           </form>
         </div>
       </div>
+      <RecoveryCodeCard />
       <DeveloperContacts />
     </DataBoundary>
   </>;

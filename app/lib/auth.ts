@@ -22,9 +22,9 @@ export const comparePassword = async (
   return bcrypt.compare(password, hashedPassword);
 };
 
-export const generateToken = (userId: number, role: string) => {
+export const generateToken = (userId: number, role: string, sessionVersion = 0) => {
   return jwt.sign(
-    { userId, role },
+    { userId, role, sessionVersion },
     jwtSecret(),
     { expiresIn: '1d' }
   );
@@ -40,7 +40,7 @@ export const verifyToken = (token: string) => {
 
 export const getUserById = async (id: number) => {
   const result = await query(
-    'SELECT id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo FROM usuarios WHERE id = $1',
+    'SELECT id, email, nombre, apellido, role, telefono, correo_personal, dni, area, activo, session_version FROM usuarios WHERE id = $1',
     [id]
   );
   return result.rows[0];
@@ -97,7 +97,7 @@ export async function requireAdminSession(request: {
     return { success: false, error: 'No autenticado. Inicie sesión para continuar.', status: 401 };
   }
 
-  const decoded = verifyToken(token) as { userId?: number; role?: string; exp?: number } | null;
+  const decoded = verifyToken(token) as { userId?: number; role?: string; exp?: number; sessionVersion?: number } | null;
   if (!decoded || !decoded.userId) {
     return { success: false, error: 'Sesión inválida o expirada.', status: 401 };
   }
@@ -114,6 +114,10 @@ export async function requireAdminSession(request: {
 
   if (!dbUser.activo) {
     return { success: false, error: 'La cuenta de administrador se encuentra desactivada.', status: 403 };
+  }
+
+  if ((decoded.sessionVersion ?? 0) !== (dbUser.session_version ?? 0)) {
+    return { success: false, error: 'Tu sesión venció. Inicia sesión nuevamente.', status: 401 };
   }
 
   if (dbUser.role !== 'admin') {

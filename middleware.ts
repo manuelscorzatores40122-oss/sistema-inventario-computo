@@ -39,6 +39,7 @@ export async function middleware(request: NextRequest) {
     const ownUser = path === `/api/usuarios/${session.userId}`;
     const allowed = (read && /^(\/api\/(inventario(?:\/\d+)?|disponibilidad(?:\/\d+)?|solicitudes(?:\/\d+)?|prestamos|horario\/template|notificaciones(?:\/whatsapp|\/resumen)?|profesor\/resumen))$/.test(path)) ||
       (ownUser && ['GET', 'PUT'].includes(request.method)) ||
+      (path === '/api/auth/recovery-code' && ['GET', 'POST'].includes(request.method)) ||
       (path === '/api/notificaciones/lecturas' && ['GET', 'POST'].includes(request.method)) ||
       (path === '/api/solicitudes' && request.method === 'POST') ||
       (/^\/api\/(solicitudes|disponibilidad)\/\d+\/cancelar$/.test(path) && request.method === 'POST');

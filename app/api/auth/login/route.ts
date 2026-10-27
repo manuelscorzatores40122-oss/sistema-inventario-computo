@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = generateToken(user.id, user.role);
+    const token = generateToken(user.id, user.role, user.session_version ?? 0);
 
     const response = NextResponse.json({
       token,

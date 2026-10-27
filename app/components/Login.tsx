@@ -245,6 +245,7 @@ export default function Login({ register = false }: { register?: boolean }) {
               <div className="input-with-icon"><FiLock className="input-icon" /><input id="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} maxLength={128} required placeholder="Repite tu clave" /></div>
             </div>}
 
+            {!isRegister && <p className="login-forgot-link"><Link href="/auth/recuperar">Olvidé mi contraseña</Link></p>}
             <button type="submit" disabled={loading} className="login-submit-btn">
               {loading ? (isRegister ? 'Enviando solicitud...' : 'Verificando...') : (isRegister ? 'Solicitar Cuenta' : 'Iniciar sesión')}
             </button>

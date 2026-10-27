@@ -9,12 +9,21 @@ CREATE TABLE IF NOT EXISTS usuarios (
   telefono VARCHAR(20),
   correo_personal VARCHAR(255),
   dni VARCHAR(20) UNIQUE,
+  codigo_recuperacion_hash VARCHAR(64),
+  session_version INTEGER NOT NULL DEFAULT 0,
   area VARCHAR(255),
   oculto BOOLEAN DEFAULT false,
   activo BOOLEAN DEFAULT true,
   estado_registro VARCHAR(20) CHECK (estado_registro IN ('pendiente', 'aprobada', 'rechazada')),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Límites para la recuperación de cuenta
+CREATE TABLE IF NOT EXISTS intentos_recuperacion (
+  clave VARCHAR(80) PRIMARY KEY,
+  intentos INTEGER NOT NULL DEFAULT 1,
+  inicio TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de inventario
