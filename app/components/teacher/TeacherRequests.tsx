@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FiArrowRight, FiCalendar, FiClock, FiMapPin, FiPackage, FiSearch, FiXCircle } from 'react-icons/fi';
 import { dateLabel, normalize } from '@/app/lib/teacher-utils';
+import { requestCategory, type RequestCategory } from '@/app/lib/request-category';
 import { useTeacher, type TeacherRequest, type TeacherLoan } from './TeacherContext';
 import { DataBoundary, EmptyState, Modal, Notice, PageHeading, Pagination, RefreshButton, Status } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
@@ -13,6 +14,7 @@ import s from './TeacherWorkspace.module.css';
 export default function TeacherRequests() {
   const { data, refresh } = useTeacher();
   const [tab, setTab] = useState('solicitudes');
+  const [category, setCategory] = useState<RequestCategory>('aula');
   const [status, setStatus] = useState('todas');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -24,19 +26,29 @@ export default function TeacherRequests() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setTab(params.get('tab') === 'prestamos' ? 'prestamos' : 'solicitudes');
+    setCategory(params.get('tipo') === 'equipos' ? 'equipos' : 'aula');
     setStatus(params.get('estado') || 'todas');
   }, []);
   useEffect(() => {
     if (!data) return;
     const id = Number(new URLSearchParams(window.location.search).get('solicitud'));
-    if (id) { setDetail(data.requests.find(row => row.id === id) || null); window.history.replaceState(null, '', '/profesor/solicitudes'); }
+    if (id) {
+      const request = data.requests.find(row => row.id === id);
+      setDetail(request || null);
+      if (request) { const kind = requestCategory(request); setCategory(kind); setTab('solicitudes'); setStatus('todas'); setPage(1); window.history.replaceState(null, '', `/profesor/solicitudes?tipo=${kind}`); }
+      else window.history.replaceState(null, '', '/profesor/solicitudes');
+    }
   }, [data]);
   const loans = tab === 'prestamos';
-  const rows = (loans ? data?.loans : data?.requests) || [];
+  const requests = data?.requests || [];
+  const rows = loans ? data?.loans || [] : requests.filter(row => requestCategory(row) === category);
   const filtered = rows.filter(row => (status === 'todas' || row.estado === status) && normalize(`${row.item_nombre} ${row.id} ${'motivo' in row ? row.motivo || '' : row.detalle || ''}`).includes(normalize(search)));
   const pageRows = filtered.slice((page - 1) * 8, page * 8);
   const options = loans ? [['todas', 'Todos'], ['pendiente', 'Por recoger'], ['prestado', 'En uso'], ['devuelto', 'Devueltos'], ['cancelado', 'Cancelados']] : [['todas', 'Todas'], ['pendiente', 'En revisión'], ['aprobada', 'Aprobadas'], ['rechazada', 'No aprobadas'], ['cancelada', 'Canceladas']];
-  const changeTab = (value: string) => { setTab(value); setStatus('todas'); setSearch(''); setPage(1); window.history.replaceState(null, '', value === 'prestamos' ? '/profesor/solicitudes?tab=prestamos' : '/profesor/solicitudes'); };
+  const changeTab = (value: string) => { setTab(value); setStatus('todas'); setSearch(''); setPage(1); window.history.replaceState(null, '', value === 'prestamos' ? '/profesor/solicitudes?tab=prestamos' : `/profesor/solicitudes?tipo=${category}`); };
+  const changeCategory = (value: RequestCategory) => { setCategory(value); setStatus('todas'); setSearch(''); setPage(1); window.history.replaceState(null, '', `/profesor/solicitudes?tipo=${value}`); };
+  const classroom = !loans && category === 'aula';
+  const createHref = classroom ? '/profesor/horario' : '/profesor/solicitar-articulo';
   async function cancelRequest() {
     if (!cancel || lock.current) return;
     lock.current = true; setBusy(true); setNotice(null);
@@ -50,15 +62,19 @@ export default function TeacherRequests() {
     finally { lock.current = false; setBusy(false); }
   }
   return <>
-    <PageHeading eyebrow="SEGUIMIENTO PERSONAL" title="Tus solicitudes, en orden" description="Consulta las respuestas de administración y los equipos que tienes a cargo." actions={<><RefreshButton /><Link className={s.button} href="/profesor/solicitar-articulo">Nueva solicitud <FiArrowRight size={15} /></Link></>} />
+    <PageHeading eyebrow="SEGUIMIENTO PERSONAL" title="Tus solicitudes, en orden" description="Consulta por separado tus reservas de sala y tus pedidos de equipos." actions={<><RefreshButton /><Link className={s.button} href={createHref}>{classroom ? 'Solicitar sala' : 'Nueva solicitud'} <FiArrowRight size={15} /></Link></>} />
     <DataBoundary>
       {notice && !cancel && <Notice tone={notice.tone}>{notice.message}</Notice>}
       <div className={s.tabs} role="tablist" aria-label="Tipo de actividad"><button role="tab" aria-selected={!loans} onClick={() => changeTab('solicitudes')}>Mis solicitudes <span className={s.badge}>{data?.requests.length || 0}</span></button><button role="tab" aria-selected={loans} onClick={() => changeTab('prestamos')}>Mis préstamos <span className={s.badge}>{data?.loans.length || 0}</span></button></div>
+      {!loans && <div className={s.chips} role="group" aria-label="Tipo de solicitud">
+        <button type="button" className="d-inline-flex align-items-center gap-2" aria-pressed={category === 'aula'} onClick={() => changeCategory('aula')}><FiCalendar size={16} />Sala de cómputo <span className={s.badge}>{requests.filter(row => requestCategory(row) === 'aula').length}</span></button>
+        <button type="button" className="d-inline-flex align-items-center gap-2" aria-pressed={category === 'equipos'} onClick={() => changeCategory('equipos')}><FiPackage size={16} />Equipos <span className={s.badge}>{requests.filter(row => requestCategory(row) === 'equipos').length}</span></button>
+      </div>}
       <div className={s.toolbar}><div className={s.search}><FiSearch size={16} /><input aria-label="Buscar en mi actividad" placeholder="Buscar por equipo, número o motivo…" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div></div>
       <div className={s.chips} aria-label="Filtrar por estado">{options.map(([value, label]) => <button key={value} aria-pressed={status === value} onClick={() => { setStatus(value); setPage(1); }}>{label} {value !== 'todas' && <span>({rows.filter(row => row.estado === value).length})</span>}</button>)}</div>
       {loans && <Notice><strong>Entregas y devoluciones en el centro de cómputo</strong>Cuando tu equipo esté listo, acércate a recogerlo. Administración confirma la entrega y registra la devolución después de recibirlo.</Notice>}
       <div className={s.list}>
-        {!pageRows.length ? <div className={s.card}><EmptyState title={search || status !== 'todas' ? 'No hay resultados con estos filtros' : loans ? 'Todavía no tienes préstamos' : 'Todavía no has enviado solicitudes'} description={search || status !== 'todas' ? 'Prueba otra búsqueda o consulta todos los estados.' : 'Solicita los recursos que necesitas y sigue aquí cada paso.'}>{search || status !== 'todas' ? <button className={s.secondary} onClick={() => { setSearch(''); setStatus('todas'); setPage(1); }}>Limpiar filtros</button> : <Link className={s.button} href="/profesor/solicitar-articulo">Explorar equipos</Link>}</EmptyState></div> : pageRows.map(row => {
+        {!pageRows.length ? <div className={s.card}><EmptyState title={search || status !== 'todas' ? 'No hay resultados con estos filtros' : loans ? 'Todavía no tienes préstamos' : classroom ? 'Todavía no has solicitado la sala' : 'Todavía no has solicitado equipos'} description={search || status !== 'todas' ? 'Prueba otra búsqueda o consulta todos los estados.' : 'Solicita los recursos que necesitas y sigue aquí cada paso.'}>{search || status !== 'todas' ? <button className={s.secondary} onClick={() => { setSearch(''); setStatus('todas'); setPage(1); }}>Limpiar filtros</button> : <Link className={s.button} href={createHref}>{classroom ? 'Consultar horario de la sala' : 'Explorar equipos'}</Link>}</EmptyState></div> : pageRows.map(row => {
           if ('fecha_prestamo' in row) {
             const loan = row as TeacherLoan;
             return <article className={`${s.card} ${s.requestCard}`} key={loan.id}><div className={s.requestTop}><span className={s.resourceIcon}><FiPackage size={22} /></span><div className={s.rowCopy}><span className={s.eyebrow}>PRÉSTAMO #{loan.id}</span><h2>{loan.item_nombre}</h2></div><Status value={loan.estado} loan /></div><div className={s.requestMeta}><span><FiPackage />{loan.cantidad} unidades</span><span><FiCalendar />Registrado el {dateLabel(loan.fecha_prestamo)}</span>{loan.fecha_devolucion && <span>Devuelto el {dateLabel(loan.fecha_devolucion)}</span>}</div><div className={s.requestFooter}><p>{loan.estado === 'pendiente' ? 'Tu equipo está reservado. Acércate a recogerlo.' : loan.estado === 'prestado' ? 'Equipo a tu cargo. Devuélvelo al terminar de utilizarlo.' : loan.estado === 'cancelado' ? 'Este préstamo fue cancelado por administración.' : 'Devolución registrada por administración.'}{loan.devolucion_observacion && ` Observación: ${loan.devolucion_observacion}`}</p></div></article>;

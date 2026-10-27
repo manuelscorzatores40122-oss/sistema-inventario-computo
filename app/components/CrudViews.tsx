@@ -7,8 +7,9 @@ import EquipmentRecord from './equipment/EquipmentRecord';
 import teacherStyles from './TeachersDirectory.module.css';
 import RequestListControls from './RequestListControls';
 import AdminQuickForm from './AdminQuickForm';
-import AccountRequestsInbox from './admin/AccountRequestsInbox';
+import TeacherManagementTabs from './admin/TeacherManagementTabs';
 import { compareRequests } from '@/app/lib/request-order';
+import { requestCategory, type RequestCategory } from '@/app/lib/request-category';
 import RequestSubmittedNotice from './RequestSubmittedNotice';
 import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
 import { optimizeImage, validateImageFile } from '@/app/lib/imageUtils';
@@ -138,6 +139,7 @@ type Solicitud = {
   id: number;
   profesor_id: number;
   inventario_id: number | null;
+  disponibilidad_id?: number | null;
   profesor_nombre: string;
   apellido: string;
   item_nombre: string | null;
@@ -1200,11 +1202,12 @@ export function AdminProfesoresView() {
   return (
     <section className={teacherStyles.page}>
       <header className={teacherStyles.header}>
-        <div><Link href="/admin/dashboard" className={teacherStyles.breadcrumb}><FiArrowLeft size={14} /> Administración</Link><h1>Gestión de profesores</h1><p>Tu equipo docente, organizado en un solo lugar.</p></div>
+        <div><Link href="/admin/dashboard" className={teacherStyles.breadcrumb}><FiArrowLeft size={14} /> Administración</Link><h1>Profesores y cuentas</h1><p>Tu equipo docente, organizado en un solo lugar.</p></div>
         <button className={teacherStyles.primary} onClick={() => { setEditingId(null); setForm(empty); setMessage(null); setShowForm(true); }}><FiPlus size={17} /> Nuevo usuario</button>
       </header>
       <Notice message={message} />
       <ConfirmComponent />
+      <TeacherManagementTabs />
       <div className="inventory-summary">
         {[{ label: 'Profesores', value: usuarios.filter(user => user.role === 'profesor').length, unit: 'docentes registrados', icon: FiUsers }, { label: 'Cuentas activas', value: usuarios.filter(user => user.activo).length, unit: 'con acceso al sistema', icon: FiUserCheck }, { label: 'Cuentas inactivas', value: usuarios.filter(user => !user.activo).length, unit: 'con acceso desactivado', icon: FiUserX }, { label: 'Administradores', value: usuarios.filter(user => user.role === 'admin').length, unit: 'usuarios de administración', icon: FiShield }].map(({ label, value, unit, icon: Icon }) => <div className="inventory-summary-card" key={label}><div><span>{label}</span><Icon size={20} /></div><strong>{loading ? '—' : value}</strong><small>{unit}</small></div>)}
       </div>
@@ -1491,6 +1494,7 @@ export function AdminSolicitudesView() {
   const [comentarios, setComentarios] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<Message>(null);
   const [user, setUser] = useState<Usuario | null>(null);
+  const [category, setCategory] = useState<RequestCategory>('aula');
 
   // Buscador y Filtro Inteligente
   const [search, setSearch] = useState('');
@@ -1543,8 +1547,10 @@ export function AdminSolicitudesView() {
     }
   };
 
+  const categoryRequests = useMemo(() => solicitudes.filter(row => requestCategory(row) === category), [solicitudes, category]);
+
   const filteredSolicitudes = useMemo(() => {
-    return solicitudes.filter((s) => {
+    return categoryRequests.filter((s) => {
       const matchEstado = selectedEstado === 'todas' ? true : s.estado === selectedEstado;
       const q = search.toLowerCase().trim();
       const matchSearch =
@@ -1565,17 +1571,17 @@ export function AdminSolicitudesView() {
       }
       return matchEstado && matchSearch && matchFecha;
     }).sort(compareRequests);
-  }, [solicitudes, selectedEstado, search, fechaInicio, fechaFin]);
+  }, [categoryRequests, selectedEstado, search, fechaInicio, fechaFin]);
 
   const counts = useMemo(() => {
     return {
-      todas: solicitudes.length,
-      pendiente: solicitudes.filter(s => s.estado === 'pendiente').length,
-      aprobada: solicitudes.filter(s => s.estado === 'aprobada').length,
-      rechazada: solicitudes.filter(s => s.estado === 'rechazada').length,
-      cancelada: solicitudes.filter(s => s.estado === 'cancelada').length,
+      todas: categoryRequests.length,
+      pendiente: categoryRequests.filter(s => s.estado === 'pendiente').length,
+      aprobada: categoryRequests.filter(s => s.estado === 'aprobada').length,
+      rechazada: categoryRequests.filter(s => s.estado === 'rechazada').length,
+      cancelada: categoryRequests.filter(s => s.estado === 'cancelada').length,
     };
-  }, [solicitudes]);
+  }, [categoryRequests]);
 
   const handleExportSolicitudes = () => {
     exportToCsv('solicitudes_secundaria', [
@@ -1590,14 +1596,21 @@ export function AdminSolicitudesView() {
       { key: 'estado', label: 'Estado' },
       { key: 'fecha_solicitud', label: 'Fecha Solicitud' },
       { key: 'comentarios', label: 'Comentarios' },
-    ], solicitudes);
+    ], categoryRequests);
   };
 
   return (
-    <PageShell title="Control de Solicitudes" subtitle="Revisa solicitudes de cuenta, pedidos de equipos y reservas de aula de los docentes.">
+    <PageShell title="Control de Solicitudes" subtitle="Revisa por separado los pedidos de equipos y las reservas de sala de cómputo de los docentes.">
       <Notice message={message} />
-      <AccountRequestsInbox />
-      <h2 className="h5 mb-3">Pedidos de equipos y reservas de aula</h2>
+      <div className="inventory-panel p-3 mb-4">
+        <div className="inventory-state-tabs m-0" role="group" aria-label="Tipo de solicitud">
+          {(['aula', 'equipos'] as const).map(kind => <button type="button" key={kind} className={category === kind ? 'active' : ''}
+            aria-pressed={category === kind} onClick={() => { setCategory(kind); setSelectedEstado('todas'); setSearch(''); setFechaInicio(''); setFechaFin(''); }}>
+            {kind === 'aula' ? <FiCalendar size={16} /> : <FiPackage size={16} />} {kind === 'aula' ? 'Sala de cómputo' : 'Equipos'} <span>{solicitudes.filter(row => requestCategory(row) === kind).length}</span>
+          </button>)}
+        </div>
+      </div>
+      <h2 className="h5 mb-3">{category === 'aula' ? 'Solicitudes de sala de cómputo' : 'Solicitudes de equipos'}</h2>
 
       {/* Métricas KPI Resumen */}
       <div className="inventory-summary mb-4">
@@ -1640,7 +1653,7 @@ export function AdminSolicitudesView() {
             ))}
           </div>
           <span className="text-xs font-semibold text-slate-500">
-            Mostrando <strong className="text-slate-800">{filteredSolicitudes.length}</strong> de {solicitudes.length} solicitudes
+            Mostrando <strong className="text-slate-800">{filteredSolicitudes.length}</strong> de {categoryRequests.length} solicitudes
           </span>
         </div>
 

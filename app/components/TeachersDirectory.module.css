@@ -104,3 +104,10 @@
 .tabs button[aria-pressed='true'] { color:#334687; border-color:#c3d0ed; background:#e9edff; }
 .tabs button[aria-pressed='true'] span { background:#d8e0fa; }
 @media(max-width:767px) { .header { padding:20px; } }
+
+.managementNav { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; }
+.managementNav a { display:flex; align-items:center; justify-content:center; gap:9px; min-height:48px; padding:12px 18px; border:1px solid #c3d0ed; border-radius:12px; background:#fff; color:#334687; font-size:14px; font-weight:600; text-decoration:none; }
+.managementNav svg { flex-shrink:0; }
+.managementNav a[aria-current=page] { background:#e1e8ff; border-color:#8c9ddd; color:#293e77; }
+.managementNav a:focus-visible { outline:3px solid #60bba7; outline-offset:3px; }
+@media(max-width:575px) { .managementNav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .managementNav a { padding:12px 10px; font-size:13px; line-height:1.4; } }

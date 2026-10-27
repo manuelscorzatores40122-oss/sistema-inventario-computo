@@ -12,7 +12,7 @@ function load(file, mocks = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, Date, Intl, require(name) {
     if (name === 'react' || name === 'react/jsx-runtime') return require(name);
-    if (name === 'next/link') return { default: ({ href, children }) => React.createElement('a', { href }, children) };
+    if (name === 'next/link') return { default: ({ children, ...props }) => React.createElement('a', props, children) };
     if (name === 'react-icons/fi') return new Proxy({}, { get: () => () => null });
     if (name.endsWith('.css')) return { default: new Proxy({}, { get: (_, key) => key }) };
     if (name in mocks) return mocks[name];
@@ -63,6 +63,7 @@ test('Mis solicitudes conserva la búsqueda y ya no ofrece Exportar CSV', () => 
   const Component = load('app/components/teacher/TeacherRequests.tsx', {
     '@/app/lib/time-label': { timeLabel: () => '' },
     '@/app/lib/teacher-utils': load('app/lib/teacher-utils.ts'),
+    '@/app/lib/request-category': load('app/lib/request-category.ts'),
     './TeacherContext': { useTeacher: () => ({ data: { requests: [], loans: [] }, refresh() {} }) },
     './TeacherUi': ui,
   }).default;
@@ -70,4 +71,22 @@ test('Mis solicitudes conserva la búsqueda y ya no ofrece Exportar CSV', () => 
   assert.ok(html.includes('Buscar en mi actividad'));
   assert.ok(html.includes('Mis solicitudes'));
   assert.ok(!html.includes('Exportar CSV'));
+});
+
+
+test('las notificaciones de nuevas cuentas abren la bandeja dentro de Profesores y cuentas', () => {
+  const item = presentation.presentNotification({ id:9, tipo:'registro_profesor', mensaje:'Un docente solicita acceso.', referencia_id:12, fecha_envio:'2026-10-27T15:00:00Z' }, true);
+  assert.equal(item.href, '/admin/profesores/cuentas');
+});
+
+test('la navegación entre directorio y solicitudes destaca la vista correspondiente', () => {
+  for (const path of ['/admin/profesores', '/admin/profesores/cuentas']) {
+    const Component = load('app/components/admin/TeacherManagementTabs.tsx', { 'next/navigation': { usePathname: () => path } }).default;
+    const html = renderToStaticMarkup(React.createElement(Component));
+    assert.ok(html.includes('Directorio de profesores'));
+    assert.ok(html.includes('Solicitudes de cuenta'));
+    const active = html.match(new RegExp('<a[^>]*href="'+path+'"[^>]*>'))[0];
+    assert.ok(active.includes('aria-current="page"'));
+    assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
+  }
 });

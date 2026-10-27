@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --incremental false",
-    "test": "node --test tests/notification-approval.test.cjs tests/equipment-request-form.test.cjs tests/classroom-cancellation.test.cjs tests/mobile-classroom-form.test.cjs tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs tests/admin-calendar.test.cjs tests/access-performance.test.cjs tests/account-inbox.test.cjs tests/equipment-tracking.test.cjs",
+    "test": "node --test tests/request-category.test.cjs tests/notification-approval.test.cjs tests/equipment-request-form.test.cjs tests/classroom-cancellation.test.cjs tests/mobile-classroom-form.test.cjs tests/request-location.test.cjs tests/request-decision.test.cjs tests/direct-loan-notifications.test.cjs tests/admin-cancellation-notifications.test.cjs tests/prestamos-cancel-devolution.test.cjs tests/teacher-security.test.cjs tests/account-registration.test.cjs tests/admin-calendar.test.cjs tests/access-performance.test.cjs tests/account-inbox.test.cjs tests/equipment-tracking.test.cjs",
     "test:teacher-ui": "node tests/teacher-browser-smoke.cjs",
     "test:admin-ui": "node tests/admin-browser-smoke.cjs",
     "test:admin-actions": "node tests/admin-actions-browser.cjs",

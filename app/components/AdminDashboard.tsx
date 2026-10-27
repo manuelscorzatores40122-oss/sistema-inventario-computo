@@ -271,7 +271,7 @@ export default function AdminDashboard() {
               </h3>
               <p>
                 {tab === "accounts"
-                  ? "Las solicitudes nuevas aparecen también en Solicitudes → Solicitudes de cuenta."
+                  ? "Las solicitudes nuevas aparecen también en Profesores y cuentas → Solicitudes de cuenta."
                   : "Las nuevas tareas aparecerán automáticamente."}
               </p>
             </div>
