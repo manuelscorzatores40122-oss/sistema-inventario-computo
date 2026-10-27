@@ -64,6 +64,11 @@ export async function DELETE(
       await client.query(`INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado)
         VALUES ($1, '-', $2, 'solicitud_cancelada', $3, 'pendiente')`, [row.profesor_id, `Administración liberó el turno de la solicitud #${row.id}. Consulta el calendario para elegir otra fecha.`, row.id]);
     }
+    if (!requests.rows.length && current.rows[0].reservado_por) {
+      const row = current.rows[0];
+      await client.query(`INSERT INTO notificaciones_whatsapp (usuario_id, numero_telefono, mensaje, tipo, referencia_id, estado)
+        VALUES ($1, '-', $2, 'reserva_cancelada', $3, 'pendiente')`, [row.reservado_por, `Administración canceló tu turno de sala de cómputo de ${String(row.hora_inicio).slice(0, 5)} a ${String(row.hora_fin).slice(0, 5)}${row.fecha_reserva ? '' : ` de los ${row.dia_semana}`}. Consulta el calendario para revisar la disponibilidad.`, row.id]);
+    }
     const result = await client.query(
       "UPDATE disponibilidad SET estado = 'disponible', reservado_por = NULL, motivo_reserva = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id",
       [params.id]

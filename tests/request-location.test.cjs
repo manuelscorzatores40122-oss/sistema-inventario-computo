@@ -86,3 +86,53 @@ test('genera avisos internos para todos los administradores activos sin exigir t
   assert.equal(notification.params[2], 10);
   assert.ok(calls.indexOf(notification) < calls.findIndex(call => call.sql === 'COMMIT'));
 });
+
+
+test('la reserva móvil guarda grado y sección y los incluye en la actividad del calendario', async () => {
+  const { post, calls } = route();
+  const response = await post({ tipo_solicitud: 'aula', inventario_id: null, grado: '3', seccion: 'B', fecha_reserva: '2099-10-20', hora_inicio: '09:10', hora_fin: '10:25' });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.solicitud.seccion, '3.º B');
+  const availability = calls.find(call => call.sql.startsWith('INSERT INTO disponibilidad'));
+  assert.equal(availability.params[6], '3.º B · Actividad docente');
+});
+
+test('la reserva móvil rechaza grados y secciones fuera de las opciones permitidas', async () => {
+  for (const group of [{ grado: '6', seccion: 'A' }, { grado: '2', seccion: 'C' }, { grado: '0', seccion: 'B' }, { grado: '3' }, { grado: 3, seccion: 'A' }]) {
+    const { post, calls } = route();
+    const response = await post({ tipo_solicitud: 'aula', inventario_id: null, fecha_reserva: '2099-10-20', hora_inicio: '09:10', hora_fin: '10:25', ...group });
+    assert.equal(response.status, 400);
+    assert.equal(calls.length, 0);
+  }
+});
+
+
+test('grado y mensaje respetan juntos los 255 caracteres del calendario', async () => {
+  for (const length of [247, 248]) {
+    const { post, calls } = route();
+    const response = await post({ tipo_solicitud: 'aula', inventario_id: null, grado: '3', seccion: 'A', motivo: 'x'.repeat(length), fecha_reserva: '2099-10-20', hora_inicio: '09:10', hora_fin: '10:25' });
+    assert.equal(response.status, length === 247 ? 200 : 400);
+    if (length === 247) assert.equal(calls.find(call => call.sql.startsWith('INSERT INTO disponibilidad')).params[6].length, 255);
+    else assert.equal(calls.length, 0);
+  }
+});
+
+
+test('la solicitud de equipos guarda grado y sección juntos sin número de aula', async () => {
+  const { post, calls } = route();
+  const response = await post({ grado: '4', seccion: 'B' });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.solicitud.seccion, '4.º B');
+  assert.equal(response.body.solicitud.numero_aula, null);
+  const insert = calls.find(call => call.sql.startsWith('INSERT INTO solicitudes'));
+  assert.equal(insert.params[5], '4.º B');
+  assert.equal(insert.params[6], null);
+});
+
+test('equipos: rechaza un grado inválido o una sección distinta de A/B antes de escribir', async () => {
+  for (const values of [{ grado: '6', seccion: 'A' }, { grado: '1', seccion: 'C' }, { grado: '3', seccion: '' }, { grado: '', seccion: 'A' }]) {
+    const { post, calls } = route();
+    assert.equal((await post(values)).status, 400);
+    assert.equal(calls.length, 0);
+  }
+});

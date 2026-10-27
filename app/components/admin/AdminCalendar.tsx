@@ -9,6 +9,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import MonthCalendar from "../teacher/MonthCalendar";
+import useMobileView from "../teacher/useMobileView";
 import { Modal } from "../teacher/TeacherUi";
 import {
   dateLabel,
@@ -31,6 +32,8 @@ type Edit = {
 };
 export default function AdminCalendar() {
   const { data, loading, refreshing, error, refresh } = useAdminData();
+  const mobile = useMobileView();
+  const [dayOpen, setDayOpen] = useState(false);
   const [date, setDate] = useState(schoolDate),
     [month, setMonth] = useState(() => schoolDate().slice(0, 7) + "-01");
   const [edit, setEdit] = useState<Edit | null>(null),
@@ -68,6 +71,7 @@ export default function AdminCalendar() {
     : [];
   const collision = !!edit && overlaps(edit.start, edit.end, conflicts);
   function open(row?: Reservation) {
+    setDayOpen(false);
     setFormError("");
     setEdit(
       row
@@ -159,6 +163,115 @@ export default function AdminCalendar() {
       setBusy(false);
     }
   }
+  const agendaPanel = (
+          <section className={s.panel}>
+            <header className={s.panelHead}>
+              <div>
+                <span className={s.eyebrow}>AGENDA DEL DÍA</span>
+                <h2 className={s.dateHeading}>
+                  {dateLabel(date, {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </h2>
+                <p>
+                  {agenda.length} turnos ·{" "}
+                  {date === schoolDate() ? "Hoy" : "Fecha seleccionada"}
+                </p>
+              </div>
+            </header>
+            {!agenda.length ? (
+              <div className={s.empty}>
+                <FiCalendar size={30} />
+                <h3>Este día está libre</h3>
+                <p>
+                  Asigna un docente y la actividad que realizará en la sala.
+                </p>
+                <button
+                  className={s.button}
+                  style={{ marginTop: 16 }}
+                  onClick={() => open()}
+                >
+                  <FiPlus />
+                  Asignar en este día
+                </button>
+              </div>
+            ) : (
+              agenda.map((row) => {
+                const linked = data?.requests.some(
+                  (r) =>
+                    r.disponibilidad_id === row.id && r.estado === "aprobada",
+                );
+                return (
+                  <article className={s.scheduleRow} key={row.id}>
+                    <span className={s.tag}>
+                      {row.estado === "pendiente"
+                        ? "POR REVISAR"
+                        : row.fecha_reserva
+                          ? "RESERVA POR FECHA"
+                          : "CLASE SEMANAL"}
+                    </span>
+                    <h3 className={s.agendaTime}>
+                      {row.hora_inicio.slice(0, 5)} – {row.hora_fin.slice(0, 5)}
+                    </h3>
+                    <strong>
+                      {row.motivo_reserva || "Clase en sala de cómputo"}
+                    </strong>
+                    <p>
+                      {row.reservado_por_nombre} {row.reservado_por_apellido}
+                    </p>
+                    <p>
+                      {!row.fecha_reserva
+                        ? `Se repite cada ${row.dia_semana.toLowerCase()}`
+                        : "Solo esta fecha"}
+                    </p>
+                    <div className={s.actions}>
+                      {row.estado === "pendiente" ? (
+                        <Link href="/admin/dashboard" className={s.button}>
+                          Revisar solicitud →
+                        </Link>
+                      ) : (
+                        <>
+                          {!linked && (
+                            <button
+                              className={s.secondary}
+                              onClick={() => open(row)}
+                            >
+                              Editar turno
+                            </button>
+                          )}
+                          <button
+                            className={s.danger}
+                            onClick={() => {
+                              setDayOpen(false);
+                              setRemove(row);
+                              setFormError("");
+                            }}
+                          >
+                            Liberar turno
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
+            )}
+            <div className={s.panelBody}>
+              <p className={s.caption}>
+                Las clases semanales se repiten en su día. Las reservas de
+                profesores ocupan únicamente la fecha solicitada.
+              </p>
+              {agenda.length > 0 && (
+                <button className={s.secondary} onClick={() => open()}>
+                  <FiPlus />
+                  Otro turno para este día
+                </button>
+              )}
+            </div>
+          </section>
+  );
   return (
     <div className={s.page}>
       <header className={s.heading}>
@@ -244,118 +357,14 @@ export default function AdminCalendar() {
               month={month}
               onMonthChange={setMonth}
               value={date}
-              onChange={setDate}
+              onChange={(next) => { setDate(next); if (mobile) setDayOpen(true); }}
               reservations={schedule}
             />
           </section>
-          <section className={s.panel}>
-            <header className={s.panelHead}>
-              <div>
-                <span className={s.eyebrow}>AGENDA DEL DÍA</span>
-                <h2 className={s.dateHeading}>
-                  {dateLabel(date, {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </h2>
-                <p>
-                  {agenda.length} turnos ·{" "}
-                  {date === schoolDate() ? "Hoy" : "Fecha seleccionada"}
-                </p>
-              </div>
-            </header>
-            {!agenda.length ? (
-              <div className={s.empty}>
-                <FiCalendar size={30} />
-                <h3>Este día está libre</h3>
-                <p>
-                  Asigna un docente y la actividad que realizará en la sala.
-                </p>
-                <button
-                  className={s.button}
-                  style={{ marginTop: 16 }}
-                  onClick={() => open()}
-                >
-                  <FiPlus />
-                  Asignar en este día
-                </button>
-              </div>
-            ) : (
-              agenda.map((row) => {
-                const linked = data.requests.some(
-                  (r) =>
-                    r.disponibilidad_id === row.id && r.estado === "aprobada",
-                );
-                return (
-                  <article className={s.scheduleRow} key={row.id}>
-                    <span className={s.tag}>
-                      {row.estado === "pendiente"
-                        ? "POR REVISAR"
-                        : row.fecha_reserva
-                          ? "RESERVA POR FECHA"
-                          : "CLASE SEMANAL"}
-                    </span>
-                    <h3 className={s.agendaTime}>
-                      {row.hora_inicio.slice(0, 5)} – {row.hora_fin.slice(0, 5)}
-                    </h3>
-                    <strong>
-                      {row.motivo_reserva || "Clase en sala de cómputo"}
-                    </strong>
-                    <p>
-                      {row.reservado_por_nombre} {row.reservado_por_apellido}
-                    </p>
-                    <p>
-                      {!row.fecha_reserva
-                        ? `Se repite cada ${row.dia_semana.toLowerCase()}`
-                        : "Solo esta fecha"}
-                    </p>
-                    <div className={s.actions}>
-                      {row.estado === "pendiente" ? (
-                        <Link href="/admin/dashboard" className={s.button}>
-                          Revisar solicitud →
-                        </Link>
-                      ) : (
-                        <>
-                          {!linked && (
-                            <button
-                              className={s.secondary}
-                              onClick={() => open(row)}
-                            >
-                              Editar turno
-                            </button>
-                          )}
-                          <button
-                            className={s.danger}
-                            onClick={() => {
-                              setRemove(row);
-                              setFormError("");
-                            }}
-                          >
-                            Liberar turno
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                );
-              })
-            )}
-            <div className={s.panelBody}>
-              <p className={s.caption}>
-                Las clases semanales se repiten en su día. Las reservas de
-                profesores ocupan únicamente la fecha solicitada.
-              </p>
-              {agenda.length > 0 && (
-                <button className={s.secondary} onClick={() => open()}>
-                  <FiPlus />
-                  Otro turno para este día
-                </button>
-              )}
-            </div>
-          </section>
+          {!mobile && agendaPanel}
         </div>
       )}
+      {mobile && dayOpen && <Modal title={dateLabel(date, { weekday: "long", day: "numeric", month: "long" })} onClose={() => setDayOpen(false)}>{agendaPanel}</Modal>}
       {edit && (
         <Modal
           title={
@@ -377,7 +386,7 @@ export default function AdminCalendar() {
                 <option value="weekly">Todas las semanas</option>
               </select>
             </label>
-            <MonthCalendar
+            {!mobile && <MonthCalendar
               admin
               compact
               month={(edit.date || date).slice(0, 7) + "-01"}
@@ -385,7 +394,7 @@ export default function AdminCalendar() {
               value={edit.date}
               onChange={(next) => setEdit({ ...edit, date: next })}
               reservations={schedule}
-            />
+            />}
             <label>
               {edit.recurring
                 ? "Fecha de referencia para elegir el día de la semana"

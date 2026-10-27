@@ -6531,5 +6531,13 @@ body {
 .pwa-notice button { border:0; border-radius:8px; background:#315779; color:white; padding:10px 14px; font-weight:600; min-height:44px; }
 .pwa-notice .pwa-dismiss { background:#eef2f6; color:#334155; padding:8px; min-width:40px; flex-shrink:0; }
 .pwa-notice button:focus-visible { outline:3px solid #315779; outline-offset:3px; }
-@media(max-width:991px) { .pwa-notice { bottom:calc(88px + env(safe-area-inset-bottom)); right:14px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+
+@keyframes spinRotation {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-animation {
+  animation: spinRotation 1s linear infinite;
+  display: inline-block;
+}

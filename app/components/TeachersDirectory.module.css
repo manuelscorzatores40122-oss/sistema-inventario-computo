@@ -91,3 +91,16 @@
   .result { padding: 18px 16px; }
   .directory > :global(.border-top) { margin-inline: 16px; }
 }
+
+/* Apariencia compartida con el espacio docente. */
+.page { color:#202c4c; }
+.header { background:#334789; border:1px solid #405798; border-radius:22px; padding:26px 28px; }
+.header h1 { color:#fff; }
+.header p,.breadcrumb { color:#e0e9ff; }
+.primary { background:#b4eee6; border-color:#b4eee6; color:#174f4c; border-radius:12px; min-height:44px; }
+.primary:hover { background:#c9f6ee; }
+.directory { border-color:#d2dcf0; border-radius:18px; }
+.directoryHeader { background:#e9eefc; padding:20px 24px; border-bottom:1px solid #d1dcf1; color:#293e77; }
+.tabs button[aria-pressed='true'] { color:#334687; border-color:#c3d0ed; background:#e9edff; }
+.tabs button[aria-pressed='true'] span { background:#d8e0fa; }
+@media(max-width:767px) { .header { padding:20px; } }

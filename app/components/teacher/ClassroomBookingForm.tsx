@@ -11,7 +11,7 @@ import Time12Input from './Time12Input';
 import MonthCalendar from './MonthCalendar';
 import s from './TeacherWorkspace.module.css';
 
-export type BookingSlot = { date: string; start: string; end: string };
+export type BookingSlot = { date: string; start: string; end: string; grade?: string; section?: string };
 export type TimeBlock = { hora_inicio: string; hora_fin: string };
 export default function ClassroomBookingForm({ slot, setSlot, reason, setReason, busy, error, blocks, onSubmit, onClose }: {
   slot: BookingSlot; setSlot: Dispatch<SetStateAction<BookingSlot | null>>; reason: string; setReason: (value: string) => void;

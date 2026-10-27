@@ -5,6 +5,7 @@ export type RequestRow = {
   id: number;
   profesor_nombre: string;
   apellido?: string;
+  profesor_dni?: string;
   item_nombre: string | null;
   cantidad_solicitada: number;
   estado: string;
@@ -18,6 +19,7 @@ export type LoanRow = {
   id: number;
   profesor_nombre: string;
   profesor_apellido?: string;
+  profesor_dni?: string;
   item_nombre: string;
   cantidad: number;
   estado: string;

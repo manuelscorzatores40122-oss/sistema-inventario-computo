@@ -1,45 +1,37 @@
-export async function optimizeImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // Validar tipo
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-      return reject(new Error('Formato no soportado. Usa JPG, PNG o WEBP.'));
-    }
-    // Validar peso max 5MB (5 * 1024 * 1024 = 5242880)
-    if (file.size > 5242880) {
-      return reject(new Error('La imagen excede el límite de 5MB.'));
-    }
+const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
+export function validateImageFile(file: File): void {
+  if (!imageTypes.includes(file.type)) throw new Error('Formato no soportado. Usa JPG, PNG o WEBP.');
+  if (!file.size) throw new Error('El archivo de imagen esta vacio.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('La foto supera 20 MB. Selecciona una imagen mas pequena.');
+}
+
+export async function optimizeImage(file: File): Promise<string> {
+  validateImageFile(file);
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onerror = () => reject(new Error('No se pudo leer la foto. Seleccionala nuevamente.'));
+    reader.onabort = () => reject(new Error('La lectura de la foto fue interrumpida.'));
+    reader.onload = () => {
       const img = new Image();
+      img.onerror = () => reject(new Error('La foto no se puede abrir. Prueba otra imagen JPG, PNG o WEBP.'));
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        
-        // Reducir si es mayor a 1000px
-        if (width > 1000 || height > 1000) {
-          if (width > height) {
-            height = Math.round((height * 1000) / width);
-            width = 1000;
-          } else {
-            width = Math.round((width * 1000) / height);
-            height = 1000;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('No se pudo procesar la imagen'));
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        // Exportar a webp con 75% de calidad
-        resolve(canvas.toDataURL('image/webp', 0.75));
+        try {
+          if (!img.width || !img.height) throw new Error('La imagen no tiene dimensiones validas.');
+          const scale = Math.min(1, 1000 / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('No se pudo procesar la foto.');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const result = canvas.toDataURL('image/webp', 0.75);
+          if (!result.startsWith('data:image/') || result.length > 2 * 1024 * 1024) throw new Error('La imagen sigue siendo demasiado grande. Prueba una foto mas pequena.');
+          resolve(result);
+        } catch (error) { reject(error); }
       };
-      img.onerror = () => reject(new Error('Error al cargar la imagen'));
-      img.src = e.target?.result as string;
+      img.src = reader.result as string;
     };
-    reader.onerror = () => reject(new Error('Error al leer el archivo'));
     reader.readAsDataURL(file);
   });
 }

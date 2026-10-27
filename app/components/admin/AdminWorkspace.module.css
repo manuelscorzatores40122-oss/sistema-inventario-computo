@@ -684,3 +684,40 @@
 .page button:disabled { opacity:1; background:#edf0f5; color:#64748b; border-color:#d6dfe9; box-shadow:none; }
 @media(max-width:1100px) { .metric { border-bottom:1px solid #dce2ea; } .metric:nth-child(2n) { border-right:0; } .metric:nth-last-child(-n+2) { border-bottom:0; } }
 @media(max-width:600px) { .metric { padding:14px 12px; grid-template-columns:1fr; } .metric strong { grid-column:1; grid-row:2; font-size:26px; } .metric small { font-size:9px; } .panelHead { padding:15px 16px; } }
+
+/* Paleta y superficies del espacio docente. */
+.page { --ink:#202c4c; --muted:#52617d; --brand:#4051ad; --soft:#e9edff; --line:#d2dcf0; background:#edf1fa; color:#202c4c; font-family:Arial,Helvetica,sans-serif; }
+.heading { background:#334789; border:1px solid #405798; border-radius:22px; padding:26px 28px; box-shadow:0 8px 22px #283c7012; }
+.heading h1 { color:#fff; }
+.heading p { color:#e0e9ff; }
+.heading .eyebrow { color:#b9f3e9; }
+.heading .secondary { background:#f3f6ff; border-color:#d4def5; color:#283c79; }
+.heading .button { background:#b4eee6; border-color:#b4eee6; color:#174f4c; }
+.sidebar { background:#202e56; border-color:#344471; color:#fff; }
+.brand,.brand:hover { color:#fff; }
+.brand small,.identity small,.navigation p,.sidebarFooter>span { color:#c9d8f7; }
+.identity,.sidebarFooter { border-color:#394c7c; }
+.avatar { background:#b4eee6; color:#174f4c; border-radius:50%; }
+.navigation a { color:#e0e8ff; border-radius:13px; min-height:44px; }
+.navigation a:hover { background:#2d406f; }
+.navigation a[aria-current=page] { background:#40548c; color:#fff; box-shadow:inset 3px 0 #83e0d5; }
+.sidebarFooter button { color:#e0e8ff; }
+.metrics { background:transparent; border:0; gap:12px; overflow:visible; }
+.metric { border:1px solid #d2dcf0; border-radius:16px; background:#e5edff; box-shadow:0 3px 9px #293e6308; }
+.metric:nth-child(3n+1) { background:#fff1d9; border-color:#efd6a7; color:#7e4b0d; }
+.metric:nth-child(3n+2) { background:#e9e5ff; border-color:#d5cdf5; color:#51418d; }
+.metric:nth-child(3n) { background:#dcf3ed; border-color:#b9e0d6; color:#195f54; }
+.metric small { color:inherit; }
+.panel { border-color:#d2dcf0; border-radius:18px; box-shadow:0 4px 14px #293e6308; }
+.panelHead { background:#e9eefc; border-bottom-color:#d1dcf1; }
+.panelHead h2 { color:#293e77; }
+.button { background:#4051ad; border-color:#4051ad; border-radius:12px; min-height:44px; }
+.button:hover { background:#303f8e; border-color:#303f8e; }
+.secondary { background:#edf1ff; color:#334687; border-color:#c3d0ed; border-radius:12px; min-height:44px; }
+.secondary:hover { background:#e1e8ff; color:#293e77; }
+.danger { border-radius:12px; min-height:44px; }
+.form :is(input,select,textarea),.search { background:#f8faff; border-color:#bdcce7; border-radius:12px; min-height:44px; }
+.tabs button[aria-pressed=true] { color:#334687; background:#e9edff; border-color:#4051ad; }
+.slots button[aria-pressed=true] { background:#4051ad; border-color:#4051ad; }
+.tag { background:#e4eaff; color:#4051ad; border-radius:8px; }
+@media(max-width:767px) { .heading { padding:20px; border-radius:18px; } }

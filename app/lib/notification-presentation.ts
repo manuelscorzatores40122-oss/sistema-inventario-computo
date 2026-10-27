@@ -4,6 +4,7 @@ export function presentNotification(row: { id: number; mensaje: string; tipo: st
     solicitud_aprobada: ['Tu solicitud fue aprobada', 'green', '/profesor/solicitudes', 'Ver respuesta'],
     solicitud_rechazada: ['Tu solicitud fue rechazada', 'red', '/profesor/solicitudes', 'Leer comentario'],
     solicitud_cancelada: ['Solicitud cancelada', 'amber', admin ? '/admin/solicitudes' : '/profesor/solicitudes', 'Ver solicitud'],
+    reserva_cancelada: ['Reserva de sala cancelada', 'amber', admin ? '/admin/horario' : '/profesor/horario', 'Ver calendario'],
     solicitud_creada: ['Nueva solicitud de recursos', 'blue', '/admin/solicitudes', 'Revisar solicitud'],
     registro_profesor: ['Un docente solicita acceso', 'amber', '/admin/solicitudes#cuentas', 'Revisar cuenta'],
     prestamo_registrado: ['Equipo asignado a tu cuenta', 'green', '/profesor/solicitudes?tab=prestamos', 'Ver préstamo'],

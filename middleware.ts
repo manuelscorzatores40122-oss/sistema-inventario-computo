@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
       (ownUser && ['GET', 'PUT'].includes(request.method)) ||
       (path === '/api/notificaciones/lecturas' && ['GET', 'POST'].includes(request.method)) ||
       (path === '/api/solicitudes' && request.method === 'POST') ||
-      (/^\/api\/solicitudes\/\d+\/cancelar$/.test(path) && request.method === 'POST');
+      (/^\/api\/(solicitudes|disponibilidad)\/\d+\/cancelar$/.test(path) && request.method === 'POST');
     if (!allowed) return NextResponse.json({ error: 'Esta acción requiere permisos de administración.' }, { status: 403 });
   }
   return NextResponse.next();

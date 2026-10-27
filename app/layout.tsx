@@ -8,7 +8,14 @@ export const metadata: Metadata = {
   description: 'Sistema de gestión de inventarios y disponibilidad para colegio',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, title: 'Inventario', statusBarStyle: 'default' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: {
+    icon: [
+      { url: '/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export const viewport: Viewport = {

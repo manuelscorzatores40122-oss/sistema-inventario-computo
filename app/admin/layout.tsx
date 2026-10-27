@@ -3,6 +3,8 @@ import AdminSidebar from '@/app/components/AdminSidebar';
 import AdminBottomNav from '@/app/components/AdminMobileNav';
 import MobileTopBar from '@/app/components/MobileTopBar';
 import './admin-workspace.css';
+import './admin-teacher-theme.css';
+import teacherStyles from '@/app/components/teacher/TeacherWorkspace.module.css';
 
 export default function AdminLayout({
   children,
@@ -10,7 +12,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="admin-workspace min-vh-100 bg-light pb-nav-mobile">
+    <div className={`${teacherStyles.shell} admin-workspace min-vh-100 bg-light pb-nav-mobile`}>
       <div className="d-lg-none">
         <MobileTopBar />
       </div>

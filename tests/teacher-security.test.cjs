@@ -29,6 +29,8 @@ test('middleware rechaza firmas falsas, vencidos, reset y acceso administrativo 
   assert.equal((await middleware(request('/api/usuarios/99', good, 'GET'))).status, 403);
   assert.equal((await middleware(request('/profesor/horario', good))).status, 200);
   assert.equal((await middleware(request('/api/solicitudes/12/cancelar', good, 'POST'))).status, 200);
+  assert.equal((await middleware(request('/api/disponibilidad/12/cancelar', good, 'POST'))).status, 200);
+  assert.equal((await middleware(request('/api/disponibilidad/12', good, 'DELETE'))).status, 403);
 });
 test('la sesión consulta el estado real y rechaza cuentas desactivadas o roles distintos', async () => {
   for (const dbUser of [null, { id: 4, role: 'profesor', activo: false }, { id: 4, role: 'admin', activo: true }]) {

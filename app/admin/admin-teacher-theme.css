@@ -1,0 +1,36 @@
+/* Misma paleta y superficies del espacio docente, limitadas a administración. */
+.admin-workspace { --color-primary:#4051ad; --color-primary-dark:#303f8e; --color-primary-light:#e9edff; --ink:#202c4c; --muted:#52617d; --brand:#4051ad; --soft:#e9edff; --line:#d2dcf0; background:#edf1fa!important; color:#202c4c; }
+.admin-workspace :is(.inventory-manager,.loans-manager,.profile-page) { background:#edf1fa; }
+.admin-workspace .min-h-screen.bg-slate-50 { background:#edf1fa; }
+.admin-workspace :is(.inventory-panel,.inventory-summary-card,.inventory-table-panel,.teachers-card,.loans-summary-card,.inventory-list-panel) { border-color:#d2dcf0; border-radius:18px; background:#fff; box-shadow:0 4px 14px #293e6308; }
+.admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) { background:#334789; border:1px solid #405798; border-radius:22px; padding:26px 28px; color:#fff; box-shadow:0 8px 22px #283c7012; }
+.admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) :is(h1,h2,p) { color:#fff; }
+.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button,.inventory-list-panel .btn-primary) { background:#4051ad; border-color:#4051ad; color:#fff; border-radius:12px; min-height:44px; }
+.admin-workspace :is(.btn-primary-custom,.inventory-add-button,.inventory-submit-button):hover { background:#303f8e; border-color:#303f8e; }
+.admin-workspace :is(.btn-secondary-custom,.inventory-list-panel .btn-outline-primary) { background:#edf1ff; color:#334687; border-color:#c3d0ed; border-radius:12px; min-height:44px; }
+.admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select) { background:#f8faff; border-color:#bdcce7; border-radius:12px; min-height:44px; }
+.admin-workspace table thead th { background:#e9eefc; color:#293e77; border-color:#d1dcf1; }
+.admin-workspace table tbody td { border-color:#e2e8f5; }
+.admin-workspace .inventory-summary-card:nth-child(3n+1) { background:#fff1d9; border-color:#efd6a7; }
+.admin-workspace .inventory-summary-card:nth-child(3n+2) { background:#e9e5ff; border-color:#d5cdf5; }
+.admin-workspace .inventory-summary-card:nth-child(3n) { background:#dcf3ed; border-color:#b9e0d6; }
+.admin-workspace .mobile-top-bar { background:#202e56; color:#fff; border-bottom:3px solid #55c3b8; }
+.admin-workspace .mobile-top-bar-title { color:#fff; }
+.admin-workspace .mobile-top-bar-logout { color:#e0e8ff; border-color:#536793; }
+.admin-workspace .admin-mobile-navigation { background:#202e56; border-top-color:#394c7c; box-shadow:0 -5px 20px #202e5618; }
+.admin-workspace .admin-mobile-navigation :is(a,button) { color:#e0e8ff; border-radius:13px; min-height:50px; }
+.admin-workspace .admin-mobile-navigation a[aria-current=page] { background:#b4eee6; color:#174f4c; }
+.admin-workspace .admin-navigation-dialog { border-color:#ccd8f1; border-radius:20px; background:#f8faff; }
+.admin-workspace .admin-navigation-dialog nav a[aria-current=page] { background:#e1e8ff; border-color:#bdcce7; color:#334687; }
+.admin-workspace .profile-toolbar { background:#334789; color:white; }
+.admin-workspace .profile-toolbar h1 { color:white; }
+.admin-workspace .profile-identity { background:#e4eafb; color:#293e77; }
+.admin-workspace .profile-identity p { color:#52617d; }
+.admin-workspace .profile-edit-button { background:#4051ad; border-radius:12px; }
+.admin-workspace .profile-editor-dialog-header { background:#e4ebfd; color:#293e77; }
+.admin-workspace .profile-editor-dialog-header h2 { color:#293e77; }
+.admin-workspace .profile-editor-close { color:#334687; background:white; border-color:#c3d0ed; }
+.admin-workspace .profile-editor-dialog .profile-edit-button { background:#4051ad; color:white; }
+.admin-workspace .profile-password-toggle { background:#edf1ff; border-color:#c3d0ed; color:#334687; }
+.admin-workspace .admin-history-header .badge { background:#e0f3ed!important; color:#245e52!important; }
+@media(max-width:767px) { .admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) { padding:20px; border-radius:18px; } }

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       COALESCE((SELECT json_agg(r ORDER BY r.fecha_solicitud) FROM (
         SELECT s.id, s.profesor_id, s.inventario_id, s.disponibilidad_id, s.cantidad_solicitada,
                s.motivo, s.seccion, s.numero_aula, s.estado, s.fecha_solicitud,
-               u.nombre AS profesor_nombre, u.apellido,
+               u.nombre AS profesor_nombre, u.apellido, u.dni AS profesor_dni,
                COALESCE(i.nombre, 'Sala de cómputo') AS item_nombre
         FROM solicitudes s JOIN usuarios u ON s.profesor_id = u.id
         LEFT JOIN inventario i ON s.inventario_id = i.id
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       ) r), '[]'::json) AS requests,
       COALESCE((SELECT json_agg(r ORDER BY r.fecha_prestamo) FROM (
         SELECT p.id, p.cantidad, p.estado, p.fecha_prestamo, i.nombre AS item_nombre,
-               u.nombre AS profesor_nombre, u.apellido AS profesor_apellido
+               u.nombre AS profesor_nombre, u.apellido AS profesor_apellido, u.dni AS profesor_dni
         FROM prestamos p JOIN inventario i ON p.inventario_id = i.id JOIN usuarios u ON p.profesor_id = u.id
         WHERE p.estado IN ('pendiente', 'prestado')
       ) r), '[]'::json) AS loans,

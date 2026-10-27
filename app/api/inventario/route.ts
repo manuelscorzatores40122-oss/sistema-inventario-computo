@@ -13,15 +13,21 @@ export async function GET(request: NextRequest) {
     const estado = searchParams.get('estado');
 
     const simple = searchParams.get('simple') === 'true';
+    const full = searchParams.get('full') === 'true';
 
     let sql = simple
       ? 'SELECT id, nombre, categoria, cantidad_disponible, estado FROM inventario WHERE 1=1'
-      : `SELECT id, nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
-                ubicacion, estado, imagen_url, codigo_patrimonial, marca, modelo,
-                condicion, numero_serie, color, nivel, observaciones, procedencia_entidad,
-                documento_sustentatorio, fecha_documento, situacion_administrativa,
-                situacion_detalle, fecha_creacion, updated_at
-         FROM inventario WHERE 1=1`;
+      : full
+        ? `SELECT id, nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
+                  ubicacion, estado, imagen_url, codigo_patrimonial, marca, modelo,
+                  condicion, numero_serie, color, nivel, observaciones, procedencia_entidad,
+                  documento_sustentatorio, fecha_documento, situacion_administrativa,
+                  situacion_detalle, fecha_creacion, updated_at
+           FROM inventario WHERE 1=1`
+        : `SELECT id, nombre, descripcion, categoria, cantidad_total, cantidad_disponible,
+                  ubicacion, estado, imagen_url, codigo_patrimonial, marca, modelo,
+                  condicion, numero_serie, color, nivel, situacion_administrativa
+           FROM inventario WHERE 1=1`;
     const params: any[] = [];
 
     if (categoria) {
@@ -125,6 +131,13 @@ export async function POST(request: NextRequest) {
     let imagen_public_id = null;
 
     if (imagen_base64) {
+      if (typeof imagen_base64 !== 'string' || imagen_base64.length > 2 * 1024 * 1024 || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(imagen_base64)) {
+        return NextResponse.json({ error: 'La foto no tiene un formato valido o supera el limite. Vuelve a seleccionarla.' }, { status: 400 });
+      }
+      const imageConfig = cloudinary.config();
+      if (!imageConfig.cloud_name || !imageConfig.api_key || !imageConfig.api_secret) {
+        return NextResponse.json({ error: 'La carga de fotos no esta configurada en este servidor. Administracion debe configurar Cloudinary; puedes quitar la foto para guardar el articulo.' }, { status: 503 });
+      }
       try {
         const uploadResponse = await cloudinary.uploader.upload(imagen_base64, {
           folder: 'inventario'
@@ -134,7 +147,7 @@ export async function POST(request: NextRequest) {
         uploadedPublicId = imagen_public_id;
       } catch (uploadError) {
         console.error('Error Cloudinary upload:', uploadError);
-        return NextResponse.json({ error: 'Error al subir la imagen' }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo subir la foto. Tus datos siguen en el formulario: reintenta o quita la imagen para guardar el articulo.' }, { status: 503 });
       }
     }
 

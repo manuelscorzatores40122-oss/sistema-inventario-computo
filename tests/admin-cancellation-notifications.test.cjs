@@ -24,17 +24,19 @@ test('cancelación notifica dentro de la transacción; fallo revierte la operaci
       return { rows: [] };
     }, release() {} };
     const helper = load('app/lib/admin-notifications.ts');
+    const dates = load('app/lib/reservation-start.ts');
     const route = load('app/api/solicitudes/[id]/cancelar/route.ts', name => {
       if (name === '@/app/lib/session') return { requireSession: async () => ({ user: { id: 3, role: 'profesor' }, response: null }) };
       if (name === 'next/server') return { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } };
       if (name === '@/app/lib/auth') return { verifyToken: () => ({ userId: 3 }) };
       if (name === '@/app/lib/db') return { getClient: async () => client };
       if (name === '@/app/lib/admin-notifications') return helper;
+      if (name === '@/app/lib/reservation-start') return dates;
       throw new Error(name);
     });
     const response = await route.POST({ cookies: { get: () => ({ value: 'test' }) } }, { params: { id: '9' } });
     assert.equal(response.status, fail ? 500 : 200);
-    assert.equal(calls[1].params[1], 3);
+    assert.equal(calls.find(call => call.sql.startsWith('SELECT * FROM solicitudes')).params[1], 3);
     const notification = calls.find(call => call.sql.includes('INSERT INTO notificaciones_whatsapp'));
     assert.equal(notification.params[1], 'solicitud_cancelada');
     assert.ok(notification.params[0].includes('Docente Prueba canceló'));

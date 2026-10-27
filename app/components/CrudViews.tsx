@@ -11,7 +11,7 @@ import AccountRequestsInbox from './admin/AccountRequestsInbox';
 import { compareRequests } from '@/app/lib/request-order';
 import RequestSubmittedNotice from './RequestSubmittedNotice';
 import RequestLocationFields, { emptyRequestLocation, formatRequestLocation } from './RequestLocationFields';
-import { optimizeImage } from '@/app/lib/imageUtils';
+import { optimizeImage, validateImageFile } from '@/app/lib/imageUtils';
 import {
   FiArrowLeft,
   FiArrowRight,
@@ -45,6 +45,7 @@ import {
   FiEye,
   FiKey,
   FiCheck,
+  FiRefreshCw,
   FiImage,
   FiDownload,
   FiPrinter,
@@ -274,7 +275,7 @@ function PageShell({ title, subtitle, backHref, children }: { title: string; sub
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
+        <div className="admin-crud-heading flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">{title}</h1>
             <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
@@ -346,6 +347,8 @@ function InventoryDeleteDialog({ name, deleting, error, onCancel, onConfirm }: {
   </dialog>;
 }
 
+let cachedInventoryMemory: Item[] | null = null;
+
 export function AdminInventarioView() {
   const empty = {
     nombre: '',
@@ -363,6 +366,12 @@ export function AdminInventarioView() {
     situacion_administrativa: 'activo',
   };
   const [items, setItems] = useState<Item[]>([]);
+  useEffect(() => {
+    try {
+      const cached = cachedInventoryMemory || JSON.parse(sessionStorage.getItem('cached_inventario_admin') || 'null');
+      if (Array.isArray(cached)) { setItems(cached); cachedInventoryMemory = cached; }
+    } catch { /* Una caché inválida no debe impedir la consulta al servidor. */ }
+  }, []);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -373,6 +382,7 @@ export function AdminInventarioView() {
 
   const [message, setMessage] = useState<Message>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedEstado, setSelectedEstado] = useState<string>('todos');
@@ -390,18 +400,26 @@ export function AdminInventarioView() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [categoryName, setCategoryName] = useState('');
 
+  useEffect(() => () => {
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   const handleFileSelection = (file: File | undefined | null) => {
-    if (file && file.type.startsWith('image/')) {
+    if (!file) return;
+    try {
+      validateImageFile(file);
       setImageFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setRemoveImagen(false);
+      setMessage(null);
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo abrir la foto.' });
     }
   };
 
   useEffect(() => {
     if (!showForm) return;
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const items = e.clipboardData?.items;
       if (items) {
         for (let i = 0; i < items.length; i++) {
@@ -441,19 +459,26 @@ export function AdminInventarioView() {
   const { confirmDialog, ConfirmComponent } = useConfirmDialog();
 
   const fetchItems = async (showLoader = false) => {
-    if (showLoader) setLoading(true);
+    if (showLoader && items.length === 0) setLoading(true);
+    else setRefreshing(true);
     try {
       const response = await fetch('/api/inventario?estado=todos');
       if (!response.ok) throw new Error(await readError(response));
       const data = await response.json();
-      setItems(data.items || []);
+      const newItems = data.items || [];
+      setItems(newItems);
+      cachedInventoryMemory = newItems;
+      try {
+        sessionStorage.setItem('cached_inventario_admin', JSON.stringify(newItems));
+      } catch {}
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchItems(true).catch(() => setMessage({ type: 'error', text: 'Error al cargar inventario' }));
+    fetchItems(items.length === 0).catch(() => setMessage({ type: 'error', text: 'Error al cargar inventario' }));
   }, []);
 
   const categoriasDisponibles = useMemo(() => {
@@ -535,13 +560,16 @@ export function AdminInventarioView() {
       setMessage({ type: 'success', text: editingId ? 'Artículo actualizado con éxito' : 'Artículo creado con éxito' });
 
       if (savedItem) {
-        setItems((prev) =>
-          editingId
+        setItems((prev) => {
+          const next = editingId
             ? prev.map((i) => (i.id === savedItem.id ? savedItem : i))
-            : [savedItem, ...prev]
-        );
+            : [savedItem, ...prev];
+          cachedInventoryMemory = next;
+          try { sessionStorage.setItem('cached_inventario_admin', JSON.stringify(next)); } catch {}
+          return next;
+        });
       } else {
-        await fetchItems();
+        await fetchItems(false);
       }
     } catch {
       setMessage({ type: 'error', text: 'No se pudo guardar el artículo. Intenta nuevamente.' });
@@ -598,7 +626,12 @@ export function AdminInventarioView() {
         setMessage({ type: 'error', text: await readError(response) });
         return;
       }
-      setItems(previous => previous.filter(item => item.id !== id));
+      setItems(previous => {
+        const next = previous.filter(item => item.id !== id);
+        cachedInventoryMemory = next;
+        try { sessionStorage.setItem('cached_inventario_admin', JSON.stringify(next)); } catch {}
+        return next;
+      });
       setMessage({ type: 'success', text: 'Artículo eliminado correctamente' });
       if (editingId === id) {
         setEditingId(null);
@@ -664,7 +697,7 @@ export function AdminInventarioView() {
                 )}
               </div>
 
-              {editingId !== null && message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
+              {message?.type === 'error' && <div className="inventory-edit-error" role="alert"><Notice message={message} /></div>}
 
               <div className="md:col-span-4 mb-3">
                 <label className={`${label} mb-2 d-block`}>Imagen del equipo (Opcional)</label>
@@ -680,7 +713,8 @@ export function AdminInventarioView() {
                     type="file"
                     accept="image/jpeg, image/png, image/webp"
                     className="d-none"
-                    onChange={(e) => handleFileSelection(e.target.files?.[0])}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => { handleFileSelection(e.target.files?.[0]); e.target.value = ''; }}
                   />
                   {previewUrl ? (
                     <div className="position-relative">
@@ -706,7 +740,7 @@ export function AdminInventarioView() {
                         <FiImage size={28} />
                       </div>
                       <p className="mb-1 fw-bold text-slate-700" style={{ fontSize: '0.95rem' }}>Arrastra y suelta o pega con Ctrl+V</p>
-                      <p className="text-xs text-slate-500 mb-0">o haz clic para explorar en tus archivos (JPG, PNG, WEBP)</p>
+                      <p className="text-xs text-slate-500 mb-0">o haz clic para elegir una foto (JPG, PNG, WEBP, hasta 20 MB). Se comprime antes de guardar.</p>
                     </div>
                   )}
                 </div>
@@ -818,8 +852,14 @@ export function AdminInventarioView() {
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900">Listado de Equipos</span>
-                <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold d-inline-flex align-items-center gap-1">
                   {filteredItems.length} equipos encontrados · {items.length} registrados
+                  {refreshing && (
+                    <span className="text-primary ms-1 d-inline-flex align-items-center gap-1" title="Actualizando en segundo plano">
+                      <FiRefreshCw size={11} className="spin-animation" />
+                      <small style={{ fontSize: '0.7rem' }}>Sincronizando…</small>
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -1027,10 +1067,11 @@ export function AdminProfesoresView() {
   const pendingCount = useMemo(() => usuarios.filter(u => !u.activo).length, [usuarios]);
 
   const filteredUsuarios = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const searchTokens = normalize(search.trim()).split(/\s+/).filter(Boolean);
     return usuarios.filter((u) => {
-      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       const full = normalize(`${u.nombre} ${u.apellido} ${u.email} ${u.dni || ''} ${u.correo_personal || ''} ${u.area || ''}`);
-      const matchSearch = !search.trim() || full.includes(normalize(search.trim()));
+      const matchSearch = searchTokens.length === 0 || searchTokens.every(token => full.includes(token));
       const matchTab = filterTab === 'todos' ? true : filterTab === 'activos' ? u.activo : !u.activo;
       const matchRole = !roleFilter || u.role === roleFilter;
       return matchSearch && matchTab && matchRole;
@@ -2569,11 +2610,12 @@ export function AdminPrestamosView() {
   const currentLoans = tab === 'pendiente' ? pendientes : tab === 'vencido' ? vencidos : tab === 'prestado' ? activos : tab === 'cancelado' ? cancelados : devueltos;
 
   const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const searchTokens = normalize(search.trim()).split(/\s+/).filter(Boolean);
   const list = currentLoans.filter(loan => {
     if (categoriaFiltro !== 'todas' && loan.categoria !== categoriaFiltro) return false;
-    if (!search.trim()) return true;
-    const searchable = `${loan.item_nombre || ''} ${loan.marca || ''} ${loan.modelo || ''} ${loan.numero_serie || ''} ${loan.codigo_patrimonial || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.profesor_dni || ''} ${loan.profesor_area || ''} ${loan.detalle || ''} PR-${loan.id} ${loan.id}`;
-    return normalize(searchable).includes(normalize(search.trim()));
+    if (searchTokens.length === 0) return true;
+    const searchable = normalize(`${loan.item_nombre || ''} ${loan.marca || ''} ${loan.modelo || ''} ${loan.numero_serie || ''} ${loan.codigo_patrimonial || ''} ${loan.profesor_nombre || ''} ${loan.apellido || ''} ${loan.profesor_dni || ''} ${loan.profesor_area || ''} ${loan.detalle || ''} PR-${loan.id} ${loan.id}`);
+    return searchTokens.every(token => searchable.includes(token));
   });
 
   const borrowedUnits = activos.reduce((sum, loan) => sum + Number(loan.cantidad), 0);

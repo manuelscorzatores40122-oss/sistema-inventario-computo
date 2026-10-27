@@ -219,7 +219,9 @@ export default function PerfilView() {
           </button>
         </header>
         <section className="profile-identity" aria-label="Información del usuario">
-          <div className="profile-avatar"><FiUser size={42} aria-hidden="true" /></div>
+          <div className="profile-avatar">
+            <img src="/logo.png" alt="Insignia Institucional" />
+          </div>
           <h2>{user.nombre} {user.apellido}</h2>
           <p>{isAdmin ? 'Administrador' : 'Profesor'}{user.area ? ` · ${user.area}` : ''}</p>
         </section>

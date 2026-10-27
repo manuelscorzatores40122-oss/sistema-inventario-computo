@@ -106,3 +106,23 @@ test("la edición directa de un turno asociado a una solicitud queda bloqueada p
     false,
   );
 });
+
+
+test('liberar un turno asignado directamente también notifica al docente sin solicitud previa', async () => {
+  const calls = [];
+  const client = { async query(sql, params) {
+    calls.push({ sql, params });
+    if (sql.startsWith('SELECT * FROM disponibilidad')) return { rows: [{ id: 22, reservado_por: 8, estado: 'separado', hora_inicio: '09:00', hora_fin: '10:00', fecha_reserva: '2099-10-20' }] };
+    if (sql.startsWith('UPDATE disponibilidad')) return { rows: [{ id: 22 }] };
+    return { rows: [] };
+  }, release() {} };
+  const route = load('app/api/disponibilidad/[id]/route.ts', {
+    '@/app/lib/session': { requireSession: async () => ({ user: { id: 1, role: 'admin' }, response: null }) },
+    '@/app/lib/db': { getClient: async () => client }, '@/app/lib/availability': {},
+  });
+  assert.equal((await route.DELETE({}, { params: { id: '22' } })).status, 200);
+  const notice = calls.find(call => call.sql.includes('INSERT INTO notificaciones_whatsapp'));
+  assert.equal(notice.params[0], 8);
+  assert.ok(notice.sql.includes('reserva_cancelada'));
+  assert.equal(calls.at(-1).sql, 'COMMIT');
+});

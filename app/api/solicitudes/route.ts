@@ -55,14 +55,24 @@ export async function POST(request: NextRequest) {
   try {
     const session = await requireSession(request);
     if (session.response) return session.response;
-    const { profesor_id: requestedTeacherId, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, seccion, numero_aula } = await request.json();
+    const { profesor_id: requestedTeacherId, inventario_id, cantidad_solicitada, motivo, tipo_solicitud, fecha_reserva, hora_inicio, hora_fin, grado, seccion, numero_aula } = await request.json();
     const profesor_id = session.user.role === 'admin' ? Number(requestedTeacherId || session.user.id) : session.user.id;
     const cantidad = inventario_id ? Number(cantidad_solicitada ?? 1) : 1;
     if (typeof motivo !== 'string' || !motivo.trim() || motivo.length > (tipo_solicitud === 'aula' ? 255 : 1000)) return NextResponse.json({ error: 'Describe la actividad con un motivo válido.' }, { status: 400 });
     let seccionLimpia: string | null = null;
     let aulaLimpia: string | null = null;
+    // Los formularios docentes identifican al grupo sin pedir un número de aula.
+    if (grado != null) {
+      if (typeof grado !== 'string' || !/^[1-5]$/.test(grado) || typeof seccion !== 'string' || !/^[AB]$/.test(seccion)) {
+        return NextResponse.json({ error: 'Selecciona un grado de 1.º a 5.º y una sección A o B.' }, { status: 400 });
+      }
+      seccionLimpia = `${grado}.º ${seccion}`;
+      if (tipo_solicitud === 'aula' && motivo.trim().length + seccionLimpia.length + 3 > 255) {
+        return NextResponse.json({ error: 'El mensaje de la reserva admite hasta 247 caracteres.' }, { status: 400 });
+      }
+    }
     // La reserva ya identifica el ambiente; la ubicación solo corresponde a equipos.
-    if (tipo_solicitud !== 'aula') {
+    if (tipo_solicitud !== 'aula' && grado == null) {
       if ((seccion != null && typeof seccion !== 'string') || (numero_aula != null && typeof numero_aula !== 'string')) {
         return NextResponse.json({ error: 'La sección y el número de aula deben ser texto.' }, { status: 400 });
       }
@@ -140,10 +150,10 @@ export async function POST(request: NextRequest) {
           `INSERT INTO disponibilidad (sala_nombre, dia_semana, hora_inicio, hora_fin, estado, reservado_por, motivo_reserva, fecha_reserva, es_recurrente)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)
            RETURNING id`,
-          ['Sala de Cómputo', dia_semana, hora_inicio, hora_fin, 'pendiente', profesor_id, motivo, fecha_reserva]
+          ['Sala de Cómputo', dia_semana, hora_inicio, hora_fin, 'pendiente', profesor_id, [seccionLimpia, motivo.trim()].filter(Boolean).join(' · '), fecha_reserva]
         );
         idDisponibilidad = resultDisp.rows[0].id;
-        itemNombre = `Aula de Cómputo (${dia_semana} ${fecha_reserva.split('-').reverse().join('/')} ${hora_inicio}-${hora_fin})`;
+        itemNombre = `Aula de Cómputo (${dia_semana} ${fecha_reserva.split('-').reverse().join('/')} ${hora_inicio}-${hora_fin})${seccionLimpia ? ` · ${seccionLimpia}` : ''}`;
       } else {
         const inventario = await client.query(
           'SELECT id, nombre, cantidad_disponible FROM inventario WHERE id = $1 AND estado = $2 AND situacion_administrativa = \'activo\' FOR UPDATE',

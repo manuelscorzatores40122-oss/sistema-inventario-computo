@@ -64,9 +64,23 @@ export default function AdminDashboard() {
     { key: "accounts", label: "Solicitudes de cuenta", rows: accounts },
   ];
   const current = tabs.find((t) => t.key === tab)!;
-  const filtered = current.rows.filter((row) =>
-    normalize(JSON.stringify(row)).includes(normalize(search)),
-  );
+  const searchTokens = normalize(search).split(/\s+/).filter(Boolean);
+  const filtered = current.rows.filter((row) => {
+    if (searchTokens.length === 0) return true;
+    let searchable = "";
+    if (tab === "accounts") {
+      const r = row as TeacherRow;
+      searchable = `${r.nombre} ${r.apellido} ${r.dni || ""} ${r.area || ""}`;
+    } else if (tab === "requests") {
+      const r = row as RequestRow;
+      searchable = `${r.profesor_nombre} ${r.apellido || ""} ${r.profesor_dni || ""} ${r.item_nombre || ""} ${r.motivo || ""} ${r.seccion || ""} ${r.numero_aula || ""} #${r.id}`;
+    } else {
+      const r = row as LoanRow;
+      searchable = `${r.profesor_nombre} ${r.profesor_apellido || ""} ${r.profesor_dni || ""} ${r.item_nombre || ""} #${r.id}`;
+    }
+    const target = normalize(searchable);
+    return searchTokens.every((token) => target.includes(token));
+  });
   function open(next: Action) {
     setAction(next);
     setComment("");

@@ -109,7 +109,7 @@ export default function AdminHistorialView() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header Superior */}
-      <div className="d-flex align-items-center justify-content-between gap-3 border-b border-slate-200 pb-4">
+      <div className="admin-history-header d-flex align-items-center justify-content-between gap-3 border-b border-slate-200 pb-4">
         <div className="d-flex align-items-center gap-3">
           <Link
             href="/admin/dashboard"
