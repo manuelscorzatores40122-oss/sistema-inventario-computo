@@ -155,6 +155,32 @@ Las variables de `.env.local` no se copian automáticamente a Vercel. Para utili
 
 Si aparece **«La carga de fotos no está configurada en este servidor»**, comprobar las tres variables en el entorno del despliegue y volver a desplegar. Si las variables ya existen y aparece un error al subir, revisar su validez y los registros del servidor. Las rutas de creación y edición conservan el error de carga para evitar guardar silenciosamente un artículo sin la foto elegida.
 
+## Referencias para mantenimiento
+
+| Ubicación | Responsabilidad |
+|---|---|
+| [`app/components/CrudViews.tsx`](app/components/CrudViews.tsx) | Inventario, solicitudes, préstamos y vistas administrativas compartidas. |
+| [`app/components/teacher/`](app/components/teacher/) | Espacio docente, solicitudes y componentes del calendario móvil. |
+| [`app/components/admin/AccountRequestsInbox.tsx`](app/components/admin/AccountRequestsInbox.tsx) | Bandeja y detalles de solicitudes de cuenta. |
+| [`app/lib/db.ts`](app/lib/db.ts) | Conexión y consultas PostgreSQL. |
+| [`app/lib/cloudinary.ts`](app/lib/cloudinary.ts) | Configuración del almacenamiento de fotos. |
+| [`app/api/`](app/api/) | Validaciones y operaciones del servidor. |
+| [`middleware.ts`](middleware.ts) | Protección inicial de rutas y API. |
+| [`db/migrations/`](db/migrations/) | Cambios incrementales del esquema. |
+
+### Diagnóstico rápido
+
+| Síntoma | Comprobación inicial |
+|---|---|
+| No se puede conectar a la base | Revisar `DATABASE_URL`, conectividad y registros del servidor. |
+| El despliegue informa configuración incompleta | Configurar `DATABASE_URL` y `JWT_SECRET` en el entorno correcto y volver a desplegar. |
+| Un docente registrado no puede entrar | Revisar si su solicitud de cuenta sigue pendiente o fue rechazada. |
+| La reserva indica que la hora ya pasó | Revisar fecha, a. m./p. m. y la hora actual de Lima. |
+| La reserva indica que el turno está ocupado | Consultar las reservas del día y elegir un intervalo sin cruces. |
+| Una foto no puede subirse | Revisar formato, tamaño y configuración de Cloudinary en el servidor utilizado. |
+
+Los cambios de documentación pueden revisarse con `git diff --check`. Para cambios funcionales, ejecutar las verificaciones descritas a continuación y elegir las pruebas de integración según el módulo afectado.
+
 ## Verificación
 
 ```sh
