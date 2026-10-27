@@ -64,7 +64,8 @@ export default function TeacherSchedule() {
     event.preventDefault();
     if (lock.current || !slot) return;
     setError('');
-    if (slot.start >= slot.end || !isFutureSlot(slot.date, slot.start)) { setError('Elige un horario futuro con una hora de fin posterior al inicio.'); return; }
+    if (!slot.start || !slot.end || slot.start >= slot.end) { setError('Selecciona una hora de inicio y una hora de fin posterior.'); return; }
+    if (!isFutureSlot(slot.date, slot.start)) { setError('La hora de inicio ya pasó. Selecciona una hora posterior a la actual o una fecha futura.'); return; }
     if (overlaps(slot.start, slot.end, reservationsForDate(schedule, slot.date))) { setError('Este horario se cruza con una clase o reserva existente. Elige otro turno.'); return; }
     if (!reason.trim()) { setError('Describe la actividad para la que necesitas la sala.'); return; }
     if (mobile && (!/^[1-5]$/.test(slot.grade || '') || !/^[AB]$/.test(slot.section || ''))) { setError('Selecciona el grado y la sección de tu clase.'); return; }

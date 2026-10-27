@@ -70,6 +70,26 @@ test('el almanaque ajusta las semanas al mes y conserva los días de años bisie
   assert.equal(october.at(-1), '2026-11-01');
   assert.equal(calendarMonthDays('fecha-invalida').length, 0);
 });
+
+test('la primera hora reservable avanza con el reloj de Lima y se reinicia para fechas futuras', () => {
+  const { minimumBookingTime } = load('app/lib/teacher-utils.ts', {}, { Intl });
+  const now = Date.parse('2026-10-27T09:48:30-05:00');
+  assert.equal(minimumBookingTime('2026-10-27', now), '09:49');
+  assert.equal(minimumBookingTime('2026-10-27', now + 60000), '09:50');
+  assert.equal(minimumBookingTime('2026-10-28', now), '00:00');
+  assert.equal(minimumBookingTime('2026-10-26', now), null);
+  assert.equal(minimumBookingTime('2026-10-27', Date.parse('2026-10-27T23:57:30-05:00')), '23:58');
+  assert.equal(minimumBookingTime('2026-10-27', Date.parse('2026-10-27T23:58:30-05:00')), null);
+  assert.equal(minimumBookingTime('2026-10-27', Date.parse('2026-10-27T23:59:30-05:00')), null);
+});
+
+test('validar turnos futuros admite las horas con segundos guardadas por PostgreSQL', () => {
+  const { isFutureSlot } = load('app/lib/teacher-utils.ts', {}, { Intl });
+  const now = Date.parse('2026-10-27T09:48:30-05:00');
+  assert.equal(isFutureSlot('2026-10-27', '10:30:00', now), true);
+  assert.equal(isFutureSlot('2026-10-27', '09:30:00', now), false);
+  assert.equal(isFutureSlot('2026-10-28', '08:30:00', now), true);
+});
 test('editar el perfil no permite elevar permisos y exige contraseña actual', async () => {
   let writes = 0;
   const route = load('app/api/usuarios/[id]/route.ts', { '@/app/lib/session': { requireSession: async () => ({ user: { id: 4, role: 'profesor' }, response: null }) }, '@/app/lib/auth': { hashPassword: async () => 'hash', comparePassword: async () => false }, '@/app/lib/db': { query: async sql => { if (sql.startsWith('UPDATE')) writes++; return { rows: [{ password: 'hash' }] }; } } });

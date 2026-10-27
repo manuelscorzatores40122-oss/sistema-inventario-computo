@@ -42,6 +42,22 @@ export function overlaps(start: string, end: string, rows: Reservation[]): boole
   return rows.some(row => row.hora_inicio.slice(0, 5) < end && row.hora_fin.slice(0, 5) > start);
 }
 export function isFutureSlot(date: string, time: string, now = Date.now()): boolean {
-  const start = new Date(`${date}T${time}:00-05:00`).getTime();
+  const clock = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(time);
+  if (!clock || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const start = new Date(`${date}T${clock[1]}:${clock[2]}:${clock[3] || '00'}-05:00`).getTime();
   return Number.isFinite(start) && start > now;
+}
+
+/** First whole minute still bookable on the selected school date (Lima). */
+export function minimumBookingTime(date: string, now = Date.now()): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const today = schoolDate(new Date(now));
+  if (date < today) return null;
+  if (date > today) return '00:00';
+  const next = new Date((Math.floor(now / 60000) + 1) * 60000);
+  if (schoolDate(next) !== today) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: SCHOOL_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(next);
+  const clock = `${parts.find(part => part.type === 'hour')!.value}:${parts.find(part => part.type === 'minute')!.value}`;
+  // Leave at least one minute for the end, within the same date.
+  return clock <= '23:58' ? clock : null;
 }

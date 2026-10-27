@@ -1,11 +1,13 @@
 'use client';
 
-import type { Dispatch, FormEvent, SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { FiSend } from 'react-icons/fi';
-import { isFutureSlot, overlaps, reservationsForDate, schoolDate } from '@/app/lib/teacher-utils';
+import { isFutureSlot, minimumBookingTime, overlaps, reservationsForDate, schoolDate } from '@/app/lib/teacher-utils';
+import { timeLabel } from '@/app/lib/time-label';
 import { useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
 import type { BookingSlot } from './ClassroomBookingForm';
+import Time12Input from './Time12Input';
 import s from './TeacherWorkspace.module.css';
 import m from './ScheduleMobile.module.css';
 
@@ -15,9 +17,28 @@ export default function MobileClassroomBookingForm({ slot, setSlot, reason, setR
   onSubmit: (event: FormEvent) => void; onClose: () => void;
 }) {
   const { data } = useTeacher();
+  const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60000));
+  useEffect(() => {
+    const tick = () => setMinute(Math.floor(Date.now() / 60000));
+    const timer = window.setInterval(tick, 1000);
+    window.addEventListener('focus', tick);
+    document.addEventListener('visibilitychange', tick);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', tick); document.removeEventListener('visibilitychange', tick); };
+  }, []);
+  const now = minute * 60000;
+  const today = schoolDate(new Date(now));
+  const earliest = minimumBookingTime(slot.date, now);
+  const startAllowed = !!earliest && !!slot.start && slot.start >= earliest && slot.start <= '23:58';
+  const endMinute = slot.start ? Number(slot.start.slice(0, 2)) * 60 + Number(slot.start.slice(3, 5)) + 1 : 0;
+  const earliestEnd = `${String(Math.floor(endMinute / 60)).padStart(2, '0')}:${String(endMinute % 60).padStart(2, '0')}`;
+  useEffect(() => {
+    if (slot.start && (!earliest || slot.start < earliest)) {
+      setSlot(current => current?.date === slot.date && current.start === slot.start ? { ...current, start: '', end: '' } : current);
+    }
+  }, [earliest, slot.date, slot.start, setSlot]);
   const occupied = reservationsForDate(data?.schedule || [], slot.date);
-  const validTime = !!slot.start && !!slot.end && slot.start < slot.end;
-  const future = isFutureSlot(slot.date, slot.start);
+  const validTime = startAllowed && !!slot.end && slot.start < slot.end;
+  const future = isFutureSlot(slot.date, slot.start, now);
   const conflict = validTime && overlaps(slot.start, slot.end, occupied);
   return <form className={m.booking} onSubmit={onSubmit}>
     {error && <Notice tone="error">{error}</Notice>}
@@ -25,16 +46,21 @@ export default function MobileClassroomBookingForm({ slot, setSlot, reason, setR
       <legend>Solicitar sala de cómputo</legend>
       <div className={m.booking}>
         <label htmlFor="mobile-reserve-date">Fecha
-          <input id="mobile-reserve-date" type="date" required min={schoolDate()} value={slot.date}
+          <input id="mobile-reserve-date" type="date" required min={today} value={slot.date}
             onChange={event => setSlot({ ...slot, date: event.target.value })} />
         </label>
-        <div className={m.pair}>
-          <label htmlFor="mobile-reserve-start">Desde
-            <input id="mobile-reserve-start" type="time" required step={60} value={slot.start} onChange={event => setSlot({ ...slot, start: event.target.value })} />
-          </label>
-          <label htmlFor="mobile-reserve-end">Hasta
-            <input id="mobile-reserve-end" type="time" required step={60} value={slot.end} onChange={event => setSlot({ ...slot, end: event.target.value })} />
-          </label>
+        <div>
+          <div className={s.field}>
+            <label htmlFor="mobile-reserve-start">Desde</label>
+            <Time12Input id="mobile-reserve-start" min={earliest || '00:00'} max="23:58" disabled={!earliest} periodLabel="Periodo de inicio" value={slot.start}
+              onChange={value => setSlot(current => current ? { ...current, start: value, end: current.end > value ? current.end : '' } : current)} />
+          </div>
+          <div className={s.field}>
+            <label htmlFor="mobile-reserve-end">Hasta</label>
+            <Time12Input id="mobile-reserve-end" min={earliestEnd} disabled={!startAllowed} periodLabel="Periodo de fin" value={slot.end}
+              onChange={value => setSlot(current => current ? { ...current, end: value } : current)} />
+          </div>
+          <small role="status">{!earliest ? 'Ya no hay horas disponibles en esta fecha. Elige un día futuro.' : slot.date === today ? `Hoy puedes comenzar desde las ${timeLabel(earliest)} (hora de Lima). Las horas anteriores están bloqueadas.` : 'Horario de Lima. Selecciona a. m. para la mañana o p. m. para la tarde.'}</small>
         </div>
         <div className={m.pair}>
           <label htmlFor="mobile-reserve-grade">Grado
