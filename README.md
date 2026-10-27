@@ -28,6 +28,21 @@ Las páginas de administración y del profesor comparten componentes, pero las r
 
 La migración `db/migrations/2026-10-16_centro-notificaciones.sql` crea la persistencia de avisos leídos; es aditiva e idempotente.
 
+## Variables de entorno
+
+Usar `.env.example` como plantilla y mantener los valores reales en `.env.local` o en la configuración del proveedor de alojamiento.
+
+| Variable | Uso |
+|---|---|
+| `DATABASE_URL` | Conexión PostgreSQL utilizada por `app/lib/db.ts`. |
+| `JWT_SECRET` | Firma y verificación de la sesión. |
+| `CLOUDINARY_CLOUD_NAME` | Cuenta de Cloudinary que almacena las fotos del inventario. |
+| `CLOUDINARY_API_KEY` | Identificador de la API de Cloudinary. |
+| `CLOUDINARY_API_SECRET` | Secreto del servidor para subir y eliminar fotos. |
+| `WHATSAPP_*` | Configuración del webhook y sus integraciones; consultar `.env.example` para los nombres disponibles. |
+
+La conexión usa `DATABASE_URL`, no `POSTGRES_URL`. Las claves de Cloudinary son variables del servidor y no deben llevar el prefijo `NEXT_PUBLIC_`. La base de datos y la sesión son necesarias para operar; las tres variables de Cloudinary son necesarias cuando se adjuntan fotos.
+
 ## Verificación
 
 ```sh
