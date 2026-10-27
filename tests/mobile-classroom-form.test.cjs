@@ -13,18 +13,22 @@ function form(schedule = [], slot = {}, now) {
   };
   const utils = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/lib/teacher-utils.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: utils, Date: Clock, Intl });
-  const timeInput = {};
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/teacher/Time12Input.tsx', 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText, { exports: timeInput, require });
   const labels = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/lib/time-label.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: labels });
+  const timeInput = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/teacher/MobileTimeInput.tsx', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText, { exports: timeInput, require(name) {
+    if (name === '@/app/lib/time-label') return labels;
+    if (name.endsWith('.css')) return { default: new Proxy({}, { get: (_, key) => key }) };
+    return require(name);
+  } });
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/teacher/MobileClassroomBookingForm.tsx', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, Date: Clock, require(name) {
     if (name === 'react' || name === 'react/jsx-runtime') return require(name);
-    if (name === './Time12Input') return timeInput;
+    if (name === './MobileTimeInput') return timeInput;
     if (name === '@/app/lib/time-label') return labels;
     if (name === 'react-icons/fi') return { FiSend: () => null };
     if (name === '@/app/lib/teacher-utils') return utils;
@@ -41,11 +45,29 @@ function form(schedule = [], slot = {}, now) {
 
 function submitDisabled(html) { return /\sdisabled(?:=|\s|>)/.test(html.match(/<button\b[^>]*type="submit"[^>]*>/)[0]); }
 
+test('el reloj móvil conserva minutos exactos y convierte mediodía y medianoche sin aceptar valores inválidos', () => {
+  const clock = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/teacher/MobileTimeInput.tsx', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText, { exports: clock, require(name) {
+    if (name.endsWith('.css') || name === '@/app/lib/time-label') return {};
+    return require(name);
+  } });
+  assert.equal(clock.mobileClockValue('12', '00', 'am'), '00:00');
+  assert.equal(clock.mobileClockValue('12', '00', 'pm'), '12:00');
+  assert.equal(clock.mobileClockValue('2', '07', 'pm'), '14:07');
+  assert.equal(clock.mobileClockValue('11', '59', 'pm'), '23:59');
+  for (const [h, m] of [['0', '30'], ['13', '00'], ['8', '60'], ['', '20'], ['8', ''], ['-1', '00']]) {
+    assert.equal(clock.mobileClockValue(h, m, 'am'), null);
+  }
+});
+
 test('el formulario móvil presenta fecha, horas exactas, grados 1 a 5, secciones A/B y mensaje sin un segundo calendario', () => {
   const html = form();
   assert.equal((html.match(/type="date"/g) || []).length, 1);
   assert.ok(html.includes('id="mobile-reserve-start"') && html.includes('id="mobile-reserve-end"'));
-  assert.equal((html.match(/<select/g) || []).length, 8);
+  assert.equal((html.match(/<select/g) || []).length, 2);
+  assert.ok(html.includes('Desde: 9:10 a. m.') && html.includes('Hasta: 10:25 a. m.'));
   const gradeOptions = html.match(/<select[^>]*id="mobile-reserve-grade"[^>]*>([\s\S]*?)<\/select>/)[1];
   const sectionOptions = html.match(/<select[^>]*id="mobile-reserve-section"[^>]*>([\s\S]*?)<\/select>/)[1];
   for (const grade of [1, 2, 3, 4, 5]) assert.ok(gradeOptions.includes(`value="${grade}"`));
@@ -67,13 +89,8 @@ test('sin grado o sección el formulario impide enviar una solicitud incompleta'
 });
 
 
-test('hoy bloquea horas y minutos anteriores a la hora de Lima y muestra la primera hora posible', () => {
+test('hoy muestra la primera hora futura de Lima y conserva un rango válido', () => {
   const html = form([], { date: '2026-10-27', start: '09:50', end: '10:30' }, Date.parse('2026-10-27T09:48:30-05:00'));
-  const hour = html.match(/<select[^>]*id="mobile-reserve-start"[^>]*>([\s\S]*?)<\/select>/)[1];
-  const minutes = html.match(/<select[^>]*aria-label="Minutos de inicio"[^>]*>([\s\S]*?)<\/select>/)[1];
-  assert.ok(/<option[^>]*value="8"[^>]*disabled/.test(hour));
-  assert.ok(/<option[^>]*value="48"[^>]*disabled/.test(minutes));
-  assert.ok(!/<option[^>]*value="49"[^>]*disabled/.test(minutes));
   assert.ok(html.includes('9:49 a. m.'));
   assert.ok(!submitDisabled(html));
 });

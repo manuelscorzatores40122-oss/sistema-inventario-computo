@@ -111,3 +111,12 @@
 .managementNav a[aria-current=page] { background:#e1e8ff; border-color:#8c9ddd; color:#293e77; }
 .managementNav a:focus-visible { outline:3px solid #60bba7; outline-offset:3px; }
 @media(max-width:575px) { .managementNav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .managementNav a { padding:12px 10px; font-size:13px; line-height:1.4; } }
+
+.header { border-radius:var(--workspace-header-radius); }
+.directory { border-color:var(--workspace-border); border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.directoryHeader { border-bottom-color:var(--workspace-divider); }
+.search { border-color:var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.primary,.managementNav a,.actions button { border-radius:var(--workspace-control-radius); }
+.tabs button { border-radius:var(--workspace-chip-radius); }
+.row { border-bottom-color:var(--workspace-divider); }
+@media(max-width:767px) { .row { border-color:var(--workspace-border); border-radius:12px; } }

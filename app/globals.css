@@ -46,6 +46,20 @@
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
   --radius-full: 9999px;
+
+  /* Acabados compartidos por los paneles, formularios y ventanas. */
+  --workspace-border: #d5dfed;
+  --workspace-divider: #e6ebf3;
+  --workspace-control-border: #bbc9dd;
+  --workspace-active-border: #899bd6;
+  --workspace-panel-radius: 16px;
+  --workspace-header-radius: 18px;
+  --workspace-dialog-radius: 20px;
+  --workspace-control-radius: 10px;
+  --workspace-chip-radius: 8px;
+  --workspace-panel-shadow: 0 3px 12px rgba(35, 55, 90, .035);
+  --workspace-dialog-shadow: 0 22px 70px rgba(24, 42, 73, .22);
+  --workspace-focus-shadow: 0 0 0 3px rgba(64, 81, 173, .12);
 }
 
 /* Profesor experience: teal app styling and desktop navigation */

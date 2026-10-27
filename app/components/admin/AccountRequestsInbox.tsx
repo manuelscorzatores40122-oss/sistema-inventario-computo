@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiRefreshCw, FiSearch, FiUserPlus } from "react-icons/fi";
+import { FiEye, FiRefreshCw, FiSearch, FiUserPlus } from "react-icons/fi";
 import { dateLabel, normalize } from "@/app/lib/teacher-utils";
-import { Modal, Pagination } from "../teacher/TeacherUi";
+import { Modal, Pagination, Status } from "../teacher/TeacherUi";
 import { adminWrite } from "./useAdminData";
 import s from "./AdminWorkspace.module.css";
 
@@ -19,6 +19,23 @@ type Account = {
   fecha_creacion: string;
   updated_at: string;
 };
+
+function AccountDetails({ row }: { row: Account }) {
+  return (
+    <div className={s.detail} style={{ overflowWrap: "anywhere" }}>
+      <strong>{row.nombre} {row.apellido}</strong>
+      <p><b>DNI / usuario:</b> {row.dni || row.email}</p>
+      <p><b>Área o curso:</b> {row.area || "No indicada"}</p>
+      <p><b>Teléfono / WhatsApp:</b> {row.telefono || "No indicado"}</p>
+      <p><b>Correo personal:</b> {row.correo_personal || "No indicado"}</p>
+      <p><b>Fecha de solicitud:</b> {dateLabel(row.fecha_creacion, {
+        day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+      })}</p>
+      <p><b>Estado:</b> <Status value={row.estado_registro} /></p>
+    </div>
+  );
+}
+
 export default function AccountRequestsInbox() {
   const [rows, setRows] = useState<Account[] | null>(null);
   const [error, setError] = useState(""),
@@ -33,6 +50,8 @@ export default function AccountRequestsInbox() {
     estado: "aprobada" | "rechazada";
   } | null>(null);
   const [decisionError, setDecisionError] = useState("");
+  const [detailsId, setDetailsId] = useState<number | null>(null);
+  const details = rows?.find((row) => row.id === detailsId);
   const inFlight = useRef(false),
     mounted = useRef(false);
   const refresh = useCallback(async () => {
@@ -241,8 +260,15 @@ export default function AccountRequestsInbox() {
                 })}
               </small>
             </div>
-            {row.estado_registro === "pendiente" && (
               <div className={s.actions}>
+                <button
+                  className={s.secondary}
+                  onClick={() => setDetailsId(row.id)}
+                  aria-label={`Ver detalles de la cuenta de ${row.nombre} ${row.apellido}`}
+                >
+                  <FiEye /> Ver detalles
+                </button>
+                {row.estado_registro === "pendiente" && <>
                 <button
                   className={s.button}
                   onClick={() => {
@@ -263,8 +289,8 @@ export default function AccountRequestsInbox() {
                 >
                   Rechazar
                 </button>
+                </>}
               </div>
-            )}
           </article>
         ))
       )}
@@ -276,6 +302,28 @@ export default function AccountRequestsInbox() {
           onChange={setPage}
         />
       </div>
+      {details && (
+        <Modal title="Detalles de la solicitud de cuenta" onClose={() => setDetailsId(null)}>
+          <div className={s.form}>
+            <AccountDetails row={details} />
+            <footer>
+              <button className={s.secondary} onClick={() => setDetailsId(null)}>Cerrar</button>
+              {details.estado_registro === "pendiente" && <>
+                <button className={s.danger} onClick={() => {
+                  setDecision({ row: details, estado: "rechazada" });
+                  setDecisionError("");
+                  setDetailsId(null);
+                }}>Rechazar</button>
+                <button className={s.button} onClick={() => {
+                  setDecision({ row: details, estado: "aprobada" });
+                  setDecisionError("");
+                  setDetailsId(null);
+                }}>Aprobar cuenta</button>
+              </>}
+            </footer>
+          </div>
+        </Modal>
+      )}
       {decision && (
         <Modal
           title={
@@ -287,15 +335,7 @@ export default function AccountRequestsInbox() {
           onClose={() => setDecision(null)}
         >
           <div className={s.form}>
-            <div className={s.detail}>
-              <strong>
-                {decision.row.nombre} {decision.row.apellido}
-              </strong>
-              <p>DNI: {decision.row.dni || decision.row.email}</p>
-              <p>Área: {decision.row.area || "No indicada"}</p>
-              <p>Teléfono: {decision.row.telefono || "No indicado"}</p>
-              <p>Correo: {decision.row.correo_personal || "No indicado"}</p>
-            </div>
+            <AccountDetails row={decision.row} />
             <p>
               {decision.estado === "aprobada"
                 ? "El docente podrá ingresar con su DNI y la contraseña que eligió al solicitar su cuenta."

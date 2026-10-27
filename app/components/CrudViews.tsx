@@ -277,12 +277,12 @@ function PageShell({ title, subtitle, backHref, children }: { title: string; sub
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="admin-crud-heading flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
+        <div className="admin-crud-heading d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">{title}</h1>
             <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
           </div>
-          <Link className={`${secondaryButton} d-inline-flex align-items-center gap-2 text-decoration-none`} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
+          <Link className={`${secondaryButton} d-inline-flex align-items-center gap-2 text-decoration-none align-self-start align-self-md-center flex-shrink-0`} href={backHref || (title.startsWith('Profesor') || title.startsWith('Mis') ? '/profesor/dashboard' : '/admin/dashboard')}>
             <FiArrowLeft size={15} />
             Volver al panel
           </Link>
@@ -1583,22 +1583,6 @@ export function AdminSolicitudesView() {
     };
   }, [categoryRequests]);
 
-  const handleExportSolicitudes = () => {
-    exportToCsv('solicitudes_secundaria', [
-      { key: 'id', label: 'ID Solicitud' },
-      { key: 'profesor_nombre', label: 'Nombre Docente' },
-      { key: 'apellido', label: 'Apellidos' },
-      { key: 'item_nombre', label: 'Artículo / Aula' },
-      { key: 'cantidad_solicitada', label: 'Cantidad' },
-      { key: 'seccion', label: 'Sección' },
-      { key: 'numero_aula', label: 'Aula' },
-      { key: 'motivo', label: 'Motivo' },
-      { key: 'estado', label: 'Estado' },
-      { key: 'fecha_solicitud', label: 'Fecha Solicitud' },
-      { key: 'comentarios', label: 'Comentarios' },
-    ], categoryRequests);
-  };
-
   return (
     <PageShell title="Control de Solicitudes" subtitle="Revisa por separado los pedidos de equipos y las reservas de sala de cómputo de los docentes.">
       <Notice message={message} />
@@ -1717,14 +1701,6 @@ export function AdminSolicitudesView() {
                 <FiX size={14} /> Limpiar
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 fw-bold text-xs"
-              onClick={handleExportSolicitudes}
-              title="Descargar solicitudes en Excel"
-            >
-              <FiDownload size={14} /> Excel
-            </button>
           </div>
         </div>
       </div>

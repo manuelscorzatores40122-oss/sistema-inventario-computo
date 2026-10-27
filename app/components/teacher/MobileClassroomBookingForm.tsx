@@ -7,7 +7,7 @@ import { timeLabel } from '@/app/lib/time-label';
 import { useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
 import type { BookingSlot } from './ClassroomBookingForm';
-import Time12Input from './Time12Input';
+import MobileTimeInput from './MobileTimeInput';
 import s from './TeacherWorkspace.module.css';
 import m from './ScheduleMobile.module.css';
 
@@ -17,6 +17,7 @@ export default function MobileClassroomBookingForm({ slot, setSlot, reason, setR
   onSubmit: (event: FormEvent) => void; onClose: () => void;
 }) {
   const { data } = useTeacher();
+  const [editingTime, setEditingTime] = useState<'start' | 'end' | null>(null);
   const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60000));
   useEffect(() => {
     const tick = () => setMinute(Math.floor(Date.now() / 60000));
@@ -47,17 +48,13 @@ export default function MobileClassroomBookingForm({ slot, setSlot, reason, setR
       <div className={m.booking}>
         <label htmlFor="mobile-reserve-date">Fecha
           <input id="mobile-reserve-date" type="date" required min={today} value={slot.date}
-            onChange={event => setSlot({ ...slot, date: event.target.value })} />
+            onChange={event => { setEditingTime(null); setSlot({ ...slot, date: event.target.value }); }} />
         </label>
         <div>
-          <div className={s.field}>
-            <label htmlFor="mobile-reserve-start">Desde</label>
-            <Time12Input id="mobile-reserve-start" min={earliest || '00:00'} max="23:58" disabled={!earliest} periodLabel="Periodo de inicio" value={slot.start}
+          <div className={m.timeRange}>
+            <MobileTimeInput id="mobile-reserve-start" label="Desde" expanded={editingTime === 'start'} onToggle={open => setEditingTime(open ? 'start' : null)} min={earliest || '00:00'} max="23:58" disabled={!earliest} value={slot.start}
               onChange={value => setSlot(current => current ? { ...current, start: value, end: current.end > value ? current.end : '' } : current)} />
-          </div>
-          <div className={s.field}>
-            <label htmlFor="mobile-reserve-end">Hasta</label>
-            <Time12Input id="mobile-reserve-end" min={earliestEnd} disabled={!startAllowed} periodLabel="Periodo de fin" value={slot.end}
+            <MobileTimeInput id="mobile-reserve-end" label="Hasta" expanded={editingTime === 'end'} onToggle={open => setEditingTime(open ? 'end' : null)} min={earliestEnd} disabled={!startAllowed} value={slot.end}
               onChange={value => setSlot(current => current ? { ...current, end: value } : current)} />
           </div>
           <small role="status">{!earliest ? 'Ya no hay horas disponibles en esta fecha. Elige un día futuro.' : slot.date === today ? `Hoy puedes comenzar desde las ${timeLabel(earliest)} (hora de Lima). Las horas anteriores están bloqueadas.` : 'Horario de Lima. Selecciona a. m. para la mañana o p. m. para la tarde.'}</small>
@@ -89,7 +86,7 @@ export default function MobileClassroomBookingForm({ slot, setSlot, reason, setR
     </fieldset>
     <div className={m.actions}>
       <button type="button" className={s.secondary} disabled={busy} onClick={onClose}>Volver al día</button>
-      <button type="submit" className={s.button} disabled={busy || !validTime || !future || conflict || !slot.grade || !slot.section || !reason.trim()}><FiSend size={15} />{busy ? 'Enviando…' : 'Solicitar sala'}</button>
+      <button type="submit" className={s.button} disabled={busy || editingTime !== null || !validTime || !future || conflict || !slot.grade || !slot.section || !reason.trim()}><FiSend size={15} />{busy ? 'Enviando…' : 'Solicitar sala'}</button>
     </div>
   </form>;
 }

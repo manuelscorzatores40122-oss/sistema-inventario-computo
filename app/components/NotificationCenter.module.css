@@ -87,3 +87,10 @@
   .close { width:44px; height:44px; }
 }
 @media(max-width:360px) { .approvalDialog { padding:24px 18px 20px; } .approvalDialog h2 { font-size:25px; } }
+
+.panel,.toast { border-color:var(--workspace-border); border-radius:var(--workspace-panel-radius); font-family:var(--font-family-base); }
+.header,.tools,.item { border-bottom-color:var(--workspace-divider); }
+.trigger,.close { border-color:var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.approvalDialog { border-radius:var(--workspace-dialog-radius); box-shadow:var(--workspace-dialog-shadow); font-family:var(--font-family-base); }
+.approvalAccept { border-radius:var(--workspace-control-radius); }
+.approvalMessage { border-radius:12px; }

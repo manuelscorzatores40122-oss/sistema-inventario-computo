@@ -26,7 +26,7 @@
 .admin-workspace .profile-toolbar h1 { color:white; }
 .admin-workspace .profile-identity { background:#e4eafb; color:#293e77; }
 .admin-workspace .profile-identity p { color:#52617d; }
-.admin-workspace .profile-edit-button { background:#4051ad; border-radius:12px; }
+.admin-workspace .profile-edit-button { background:#4051ad; color:#fff; border-radius:var(--workspace-control-radius); }
 .admin-workspace .profile-editor-dialog-header { background:#e4ebfd; color:#293e77; }
 .admin-workspace .profile-editor-dialog-header h2 { color:#293e77; }
 .admin-workspace .profile-editor-close { color:#334687; background:white; border-color:#c3d0ed; }
@@ -34,3 +34,22 @@
 .admin-workspace .profile-password-toggle { background:#edf1ff; border-color:#c3d0ed; color:#334687; }
 .admin-workspace .admin-history-header .badge { background:#e0f3ed!important; color:#245e52!important; }
 @media(max-width:767px) { .admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) { padding:20px; border-radius:18px; } }
+
+/* Bordes discretos y una misma escala de esquinas en los módulos antiguos. */
+.admin-workspace { --line:var(--workspace-border); }
+.admin-workspace :is(.inventory-panel,.inventory-summary-card,.inventory-table-panel,.teachers-card,.loans-summary-card,.inventory-list-panel) { border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.admin-workspace :is(.inventory-panel,.inventory-table-panel,.teachers-card,.inventory-list-panel) { border-color:var(--workspace-border); }
+.admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) { border-radius:var(--workspace-header-radius); }
+.admin-workspace :is(.inventory-manager-header,.loans-manager-header,.admin-history-header,.admin-crud-heading) h1 { font-weight:700; letter-spacing:-.035em; line-height:1.2; }
+.admin-workspace :is(.btn-primary-custom,.btn-secondary-custom,.inventory-add-button,.inventory-submit-button) { border-radius:var(--workspace-control-radius); }
+.admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select) { border:1px solid var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.admin-workspace :is(.inventory-form-input,.inventory-form-select,.form-control,.form-select):focus { border-color:var(--workspace-active-border); box-shadow:var(--workspace-focus-shadow); }
+.admin-workspace .inventory-state-tabs { border-bottom:0; padding-bottom:0; gap:8px; }
+.admin-workspace .inventory-state-tabs button { min-height:40px; border:1px solid transparent; border-radius:var(--workspace-chip-radius); color:#52617d; }
+.admin-workspace .inventory-state-tabs button.active { background:#e9edff; color:#334687; border-color:#c3d0ed; font-weight:650; }
+.admin-workspace .inventory-state-tabs button span { border-radius:6px; background:#eef2f8; color:inherit; }
+.admin-workspace .inventory-state-tabs button.active span { background:#dbe3fa; }
+.admin-workspace :is(.inventory-list-panel,.inventory-table-panel) table td { border-color:var(--workspace-divider); }
+.admin-workspace :is(.inventory-editor-dialog,.inventory-delete-dialog,.admin-navigation-dialog,.profile-editor-dialog) { border:1px solid var(--workspace-border); border-radius:var(--workspace-dialog-radius); box-shadow:var(--workspace-dialog-shadow); }
+.admin-workspace .profile-card { border:1px solid var(--workspace-border); border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.admin-workspace .profile-editor-dialog .inventory-form-input { border-color:var(--workspace-control-border); border-radius:var(--workspace-control-radius); }

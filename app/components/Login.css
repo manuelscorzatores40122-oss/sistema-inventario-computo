@@ -205,6 +205,9 @@
 .login-password-toggle:hover { background:#ffffff18; }
 .login-password-toggle:focus-visible { outline:2px solid #a6ceff; outline-offset:1px; }
 .input-with-icon input#password { padding-right:56px; }
+
+.login-form-wrapper { border-radius:var(--workspace-panel-radius); }
+.input-with-icon input,.login-submit-btn { border-radius:var(--workspace-control-radius); }
 .login-field-help { display:block; margin-top:7px; color:#c2ccda; line-height:1.5; }
 .login-alert { overflow-wrap:anywhere; }
 @media(max-width:767px) { .login-form .input-with-icon input { font-size:16px; } }

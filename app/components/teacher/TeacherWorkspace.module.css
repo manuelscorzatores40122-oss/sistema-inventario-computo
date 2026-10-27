@@ -556,3 +556,27 @@
   .shell .bottomNav { padding:8px 8px max(8px,env(safe-area-inset-bottom)); }
   .shell .almanacHeader { padding:12px; }
 }
+
+/* Una escala de bordes para el espacio docente y sus componentes compartidos. */
+.shell { --line:var(--workspace-border); font-family:var(--font-family-base); }
+.shell .pageHeading { border-radius:var(--workspace-header-radius); }
+.shell .card,.shell .requestCard,.shell .profileSummary { border-radius:var(--workspace-panel-radius); border-color:var(--workspace-border); box-shadow:var(--workspace-panel-shadow); }
+.shell .cardHead { border-bottom-color:var(--workspace-divider); }
+.shell .card>.cardHead:first-child { border-radius:calc(var(--workspace-panel-radius) - 1px) calc(var(--workspace-panel-radius) - 1px) 0 0; }
+.shell .stat,.shell .taskLauncher,.shell .equipment { border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.shell .button,.shell .secondary,.shell .danger { border-radius:var(--workspace-control-radius); }
+.shell .input,.shell .field input,.shell .field select,.shell .field textarea,.shell .search input { border:1px solid var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.shell .field :is(input,select,textarea):focus,.shell .search input:focus { border-color:var(--workspace-active-border); outline:none; box-shadow:var(--workspace-focus-shadow); }
+.shell .field :is(input,select,textarea):focus-visible { outline:2px solid #4051ad; outline-offset:2px; box-shadow:none; }
+.shell .chips button,.shell .timeChoices button,.shell .almanacDate { border-radius:var(--workspace-chip-radius); }
+.shell .equipment[aria-pressed=true] { border:1px solid #4051ad; box-shadow:inset 0 0 0 1px #4051ad,var(--workspace-panel-shadow); }
+.shell .requestCard { border-left-width:3px; }
+.shell .row,.shell .divider { border-color:var(--workspace-divider); }
+.shell .field :global(.input-group) { border:1px solid var(--workspace-control-border); border-radius:var(--workspace-control-radius); background:#f8faff; }
+.shell .field :global(.input-group):focus-within { border-color:var(--workspace-active-border); box-shadow:var(--workspace-focus-shadow); }
+.shell .field :global(.input-group)>input { border:0; border-radius:var(--workspace-control-radius) 0 0 var(--workspace-control-radius); box-shadow:none; outline:none; }
+.shell .field :global(.input-group)>button { border:0; border-left:1px solid var(--workspace-divider); border-radius:0 var(--workspace-control-radius) var(--workspace-control-radius) 0; min-width:44px; color:#52617d; background:transparent; }
+.shell .field :global(.input-group)>button:focus-visible { outline:2px solid #4051ad; outline-offset:-4px; box-shadow:none; }
+.dialog { border-color:var(--workspace-border); border-radius:var(--workspace-dialog-radius); box-shadow:var(--workspace-dialog-shadow); font-family:var(--font-family-base); }
+.shell .dialog { border-radius:var(--workspace-dialog-radius); }
+.dialogHead { border-radius:calc(var(--workspace-dialog-radius) - 1px) calc(var(--workspace-dialog-radius) - 1px) 0 0; border-bottom-color:var(--workspace-divider); }

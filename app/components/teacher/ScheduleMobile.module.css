@@ -18,3 +18,29 @@
 @media (max-width: 767px) {
   .desktopAgenda { display: none; }
 }
+
+.booking input,.booking select,.booking textarea { border-color:var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.occupied li { border-color:var(--workspace-border); }
+
+.timeRange { display:grid; gap:10px; margin-bottom:10px; min-width:0; }
+.timeField { min-width:0; }
+.timeTrigger { display:flex; align-items:center; gap:12px; width:100%; min-height:64px; padding:12px 14px; border:1px solid var(--workspace-control-border); border-radius:var(--workspace-control-radius); background:#fff; color:#334687; text-align:left; }
+.timeTrigger>span { flex:1; min-width:0; }
+.timeTrigger strong { display:block; font-size:18px; font-variant-numeric:tabular-nums; line-height:1.4; }
+.timeLabel { display:block; font-size:11px; color:#52617d; }
+.timeTrigger[aria-expanded=true] { border-color:#4051ad; background:#f4f6ff; border-radius:10px 10px 0 0; }
+.timeTrigger:disabled { opacity:.5; }
+.clockPanel { display:grid; gap:12px; min-width:0; padding:14px 12px; border:1px solid #4051ad; border-top:0; border-radius:0 0 10px 10px; background:#f4f6ff; }
+.clockDigits { display:grid; grid-template-columns:minmax(0,1fr) 8px minmax(0,1fr) minmax(54px,.85fr); align-items:end; gap:7px; }
+.clockDigits label { text-align:center; font-size:11px; }
+.booking .clockDigits input { min-width:0; height:56px; padding:6px 2px; text-align:center; font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; background:#fff; }
+.clockColon { align-self:end; line-height:56px; text-align:center; font-size:25px; color:#4051ad; }
+.clockPeriod { display:grid; gap:4px; }
+.clockPeriod button { min-height:44px; padding:3px; border:1px solid #c3d0ed; border-radius:6px; background:white; color:#52617d; font-size:12px; }
+.clockPeriod button[aria-pressed=true] { background:#4051ad; color:white; border-color:#4051ad; }
+.clockPeriod button:disabled { opacity:.4; }
+.clockActions { display:flex; gap:8px; }
+.clockActions button { flex:1; min-height:44px; border:1px solid #c3d0ed; border-radius:8px; background:white; color:#334687; font-size:12px; }
+.clockActions button:last-child { background:#4051ad; border-color:#4051ad; color:#fff; }
+.clockActions button:disabled { opacity:.45; }
+.timeField button:focus-visible,.booking .clockDigits input:focus-visible { outline:2px solid #4051ad; outline-offset:2px; }

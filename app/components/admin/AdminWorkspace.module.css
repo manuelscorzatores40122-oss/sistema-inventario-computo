@@ -721,3 +721,21 @@
 .slots button[aria-pressed=true] { background:#4051ad; border-color:#4051ad; }
 .tag { background:#e4eaff; color:#4051ad; border-radius:8px; }
 @media(max-width:767px) { .heading { padding:20px; border-radius:18px; } }
+
+/* Acabados compartidos: conservar los colores que indican cada estado. */
+.page { --line:var(--workspace-border); font-family:var(--font-family-base); }
+.heading { border-radius:var(--workspace-header-radius); }
+.panel { border-color:var(--workspace-border); border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.panelHead { border-bottom-color:var(--workspace-divider); }
+.panel>.panelHead:first-child { border-radius:calc(var(--workspace-panel-radius) - 1px) calc(var(--workspace-panel-radius) - 1px) 0 0; }
+.metric { border-radius:var(--workspace-panel-radius); box-shadow:var(--workspace-panel-shadow); }
+.button,.secondary,.danger { border-radius:var(--workspace-control-radius); }
+.form :is(input,select,textarea),.search { border:1px solid var(--workspace-control-border); border-radius:var(--workspace-control-radius); }
+.form :is(input,select,textarea):focus { border-color:var(--workspace-active-border); outline:none; box-shadow:var(--workspace-focus-shadow); }
+.form :is(input,select,textarea):focus-visible { outline:2px solid #4051ad; outline-offset:2px; box-shadow:none; }
+.tabs { border-bottom-color:var(--workspace-divider); }
+.tabs button { border-radius:var(--workspace-chip-radius) var(--workspace-chip-radius) 0 0; }
+.row,.scheduleRow { border-color:var(--workspace-divider); }
+.search input { border:0; box-shadow:none; }
+.detail { border-color:var(--workspace-border); border-radius:12px; }
+.slots button { border-radius:var(--workspace-chip-radius); min-height:40px; }
