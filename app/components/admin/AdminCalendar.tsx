@@ -10,9 +10,12 @@ import {
 } from "react-icons/fi";
 import MonthCalendar from "../teacher/MonthCalendar";
 import useMobileView from "../teacher/useMobileView";
+import Time12Input from "../teacher/Time12Input";
 import { Modal } from "../teacher/TeacherUi";
 import {
   dateLabel,
+  isFutureSlot,
+  minimumBookingTime,
   overlaps,
   reservationsForDate,
   schoolDate,
@@ -42,6 +45,26 @@ export default function AdminCalendar() {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [formError, setFormError] = useState("");
+  const [clockMinute, setClockMinute] = useState(() => Math.floor(Date.now() / 60000));
+  const editing = !!edit;
+  useEffect(() => {
+    if (!editing) return;
+    const tick = () => setClockMinute(Math.floor(Date.now() / 60000));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    window.addEventListener('focus', tick);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', tick); };
+  }, [editing]);
+  const earliest = edit?.recurring ? '00:00' : edit ? minimumBookingTime(edit.date, clockMinute * 60000) : null;
+  const expired = !!edit && !edit.recurring && (!earliest || (!!edit.start && edit.start < earliest));
+  const endMinute = edit?.start ? Number(edit.start.slice(0, 2)) * 60 + Number(edit.start.slice(3, 5)) + 1 : 0;
+  const earliestEnd = `${String(Math.floor(endMinute / 60)).padStart(2, '0')}:${String(endMinute % 60).padStart(2, '0')}`;
+  const editDate = edit?.date, editStart = edit?.start, recurring = edit?.recurring;
+  useEffect(() => {
+    if (!recurring && editStart && (!earliest || editStart < earliest)) {
+      setEdit(current => current && current.date === editDate && current.start === editStart ? { ...current, start: '', end: '' } : current);
+    }
+  }, [earliest, editDate, editStart, recurring]);
   const schedule = data?.schedule || [],
     agenda = reservationsForDate(schedule, date);
   const openedReservation = useRef(false);
@@ -73,6 +96,7 @@ export default function AdminCalendar() {
   function open(row?: Reservation) {
     setDayOpen(false);
     setFormError("");
+    const free = data?.template.find(slot => isFutureSlot(date, slot.hora_inicio) && !overlaps(slot.hora_inicio, slot.hora_fin, reservationsForDate(schedule, date)));
     setEdit(
       row
         ? {
@@ -88,8 +112,8 @@ export default function AdminCalendar() {
             date,
             teacher: "",
             reason: "",
-            start: data?.template[0]?.hora_inicio || "08:00",
-            end: data?.template[0]?.hora_fin || "08:45",
+            start: free?.hora_inicio || "",
+            end: free?.hora_fin || "",
             recurring: false,
           },
     );
@@ -97,6 +121,8 @@ export default function AdminCalendar() {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!edit) return;
+    if (!edit.start || !edit.end || edit.start >= edit.end) { setFormError('Selecciona una hora de inicio y una hora de fin posterior.'); return; }
+    if (!edit.recurring && !isFutureSlot(edit.date, edit.start)) { setFormError('Este turno ya comenzó o corresponde a una fecha pasada. Selecciona un horario futuro.'); return; }
     setBusy(true);
     setFormError("");
     try {
@@ -394,6 +420,7 @@ export default function AdminCalendar() {
               value={edit.date}
               onChange={(next) => setEdit({ ...edit, date: next })}
               reservations={schedule}
+              futureOnly={!edit.recurring}
             />}
             <label>
               {edit.recurring
@@ -402,6 +429,7 @@ export default function AdminCalendar() {
               <input
                 required
                 type="date"
+                min={edit.recurring ? undefined : schoolDate(new Date(clockMinute * 60000))}
                 value={edit.date}
                 onChange={(e) => setEdit({ ...edit, date: e.target.value })}
               />
@@ -451,7 +479,7 @@ export default function AdminCalendar() {
                   <button
                     key={slot.hora_inicio}
                     type="button"
-                    disabled={overlaps(
+                    disabled={(!edit.recurring && !isFutureSlot(edit.date, slot.hora_inicio, clockMinute * 60000)) || overlaps(
                       slot.hora_inicio,
                       slot.hora_fin,
                       conflicts,
@@ -473,26 +501,19 @@ export default function AdminCalendar() {
                 ))}
               </div>
             </div>
-            <div className={s.formPair}>
-              <label>
-                Hora de inicio
-                <input
-                  required
-                  type="time"
-                  value={edit.start}
-                  onChange={(e) => setEdit({ ...edit, start: e.target.value })}
-                />
-              </label>
-              <label>
-                Hora de fin
-                <input
-                  required
-                  type="time"
-                  value={edit.end}
-                  onChange={(e) => setEdit({ ...edit, end: e.target.value })}
-                />
-              </label>
+            <div className={s.form}>
+              <div>
+                <label htmlFor="admin-reserve-start">Hora de inicio</label>
+                <Time12Input id="admin-reserve-start" value={edit.start} min={earliest || '00:00'} max="23:58" disabled={!earliest} periodLabel="Periodo de inicio"
+                  onChange={start => setEdit(current => current ? { ...current, start, end: current.end > start ? current.end : '' } : current)} />
+              </div>
+              <div>
+                <label htmlFor="admin-reserve-end">Hora de fin</label>
+                <Time12Input id="admin-reserve-end" value={edit.end} min={earliestEnd} disabled={!edit.start || expired} periodLabel="Periodo de fin"
+                  onChange={end => setEdit(current => current ? { ...current, end } : current)} />
+              </div>
             </div>
+            {!edit.recurring && <p role="status">{!earliest ? 'No quedan horas disponibles en esta fecha. Elige un día futuro.' : `Para esta fecha puedes comenzar desde las ${earliest} (hora de Lima). Las horas anteriores están bloqueadas.`}</p>}
             {collision && (
               <div className={s.notice} data-error role="alert">
                 Ese horario ya está ocupado. Selecciona otro turno.
@@ -515,7 +536,7 @@ export default function AdminCalendar() {
               <button
                 className={s.button}
                 disabled={
-                  busy || collision || edit.start >= edit.end || !edit.date
+                  busy || collision || expired || !edit.start || !edit.end || edit.start >= edit.end || !edit.date
                 }
               >
                 {busy ? "Guardando…" : "Guardar turno"}

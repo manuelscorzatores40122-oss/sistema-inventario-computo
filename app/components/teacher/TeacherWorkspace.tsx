@@ -10,6 +10,7 @@ import { presentNotification } from '@/app/lib/notification-presentation';
 import NotificationCenter, { ActivityToast } from '../NotificationCenter';
 import { TeacherProvider, useTeacher } from './TeacherContext';
 import { Notice } from './TeacherUi';
+import useMobileView from './useMobileView';
 import s from './TeacherWorkspace.module.css';
 
 const links = [
@@ -23,6 +24,7 @@ function Workspace({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { data, error, refresh } = useTeacher();
   const [leaving, setLeaving] = useState(false);
+  const mobile = useMobileView();
   const current = links.find(link => pathname.startsWith(link.href)) || links[0];
   const user = data?.user;
   const notices = data?.notifications.map(row => presentNotification(row, false)) || [];
@@ -48,7 +50,7 @@ function Workspace({ children }: { children: ReactNode }) {
         {children}
       </main>
     </div>
-    {data && <ActivityToast items={notices} />}
+    {data && <ActivityToast items={notices} userId={data.user.id} prominentApprovals={mobile} />}
     <nav className={s.bottomNav} aria-label="Navegación móvil del docente">{links.map(item => <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined}><item.icon size={20} /><span>{item.short}</span></Link>)}</nav>
   </div>;
 }

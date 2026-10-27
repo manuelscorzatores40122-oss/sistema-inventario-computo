@@ -53,6 +53,7 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
   // Los avisos se consultan por separado para no descargar todo el catálogo cada pocos segundos.
   const userId = data?.user.id;
+  const awaitingResponse = data?.requests.some(row => row.estado === 'pendiente') || false;
   useEffect(() => {
     if (!userId) return;
     let stopped = false;
@@ -69,12 +70,18 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
         const notifications: TeacherNotice[] = body.notificaciones;
         const changed = notifications.some(notice => !noticeIds.current.has(notice.id) && ['solicitud_aprobada', 'solicitud_rechazada', 'solicitud_cancelada'].includes(notice.tipo));
         notifications.forEach(notice => noticeIds.current.add(notice.id));
-        setData(previous => previous ? { ...previous, notifications } : previous);
+        setData(previous => {
+          if (!previous) return previous;
+          const unchanged = previous.notifications.length === notifications.length && previous.notifications.every((notice, index) =>
+            notice.id === notifications[index].id && notice.tipo === notifications[index].tipo && notice.mensaje === notifications[index].mensaje && notice.fecha_envio === notifications[index].fecha_envio);
+          return unchanged ? previous : { ...previous, notifications };
+        });
         if (changed) void refresh();
       } catch { /* Se reintenta sin interrumpir el formulario del profesor. */ }
       finally { checking = false; }
     };
-    const timer = window.setInterval(() => void checkNotices(), 3000);
+    void checkNotices();
+    const timer = window.setInterval(() => void checkNotices(), awaitingResponse ? 1000 : 3000);
     window.addEventListener('focus', checkNotices);
     document.addEventListener('visibilitychange', checkNotices);
     return () => {
@@ -82,7 +89,7 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', checkNotices);
       document.removeEventListener('visibilitychange', checkNotices);
     };
-  }, [userId, refresh]);
+  }, [userId, refresh, awaitingResponse]);
   return <TeacherContext.Provider value={{ data, loading, refreshing, error, refresh }}>{children}</TeacherContext.Provider>;
 }
 export function useTeacher() {

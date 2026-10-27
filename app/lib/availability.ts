@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from './db';
 import { requireSession } from './session';
-import { WEEKDAYS } from './teacher-utils';
+import { isFutureSlot, WEEKDAYS } from './teacher-utils';
 
 export async function saveAvailability(request: NextRequest, id?: string) {
   let client;
@@ -37,6 +37,9 @@ export async function saveAvailability(request: NextRequest, id?: string) {
     if (typeof date === 'string') date = date.slice(0, 10);
     if (!recurrent && (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date)) {
       await client.query('ROLLBACK'); return NextResponse.json({ error: 'Indica una fecha válida para la reserva puntual.' }, { status: 400 });
+    }
+    if (!recurrent && !isFutureSlot(date, row.hora_inicio)) {
+      await client.query('ROLLBACK'); return NextResponse.json({ error: 'No puedes guardar un turno que ya comenzó o cuya fecha ya pasó. Elige una hora futura (hora de Lima).' }, { status: 400 });
     }
     if (date) row.dia_semana = WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
     if (row.estado === 'disponible') { row.reservado_por = null; row.motivo_reserva = null; }

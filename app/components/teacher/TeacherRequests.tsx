@@ -4,9 +4,8 @@ import { timeLabel } from '@/app/lib/time-label';
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiArrowRight, FiCalendar, FiClock, FiDownload, FiMapPin, FiPackage, FiSearch, FiXCircle } from 'react-icons/fi';
+import { FiArrowRight, FiCalendar, FiClock, FiMapPin, FiPackage, FiSearch, FiXCircle } from 'react-icons/fi';
 import { dateLabel, normalize } from '@/app/lib/teacher-utils';
-import { exportToCsv } from '@/app/lib/exportCsv';
 import { useTeacher, type TeacherRequest, type TeacherLoan } from './TeacherContext';
 import { DataBoundary, EmptyState, Modal, Notice, PageHeading, Pagination, RefreshButton, Status } from './TeacherUi';
 import s from './TeacherWorkspace.module.css';
@@ -50,18 +49,12 @@ export default function TeacherRequests() {
     } catch (err) { setNotice({ message: err instanceof Error ? err.message : 'No hay conexión. Intenta nuevamente.', tone: 'error' }); }
     finally { lock.current = false; setBusy(false); }
   }
-  function download() {
-    exportToCsv(loans ? 'mis_prestamos' : 'mis_solicitudes', [
-      { key: 'id', label: 'Número' }, { key: 'item_nombre', label: 'Recurso' }, { key: 'cantidad', label: 'Cantidad' },
-      { key: 'estado', label: 'Estado' }, { key: 'fecha', label: 'Fecha' }, { key: 'detalle', label: 'Detalle' },
-    ], filtered.map(row => ({ id: row.id, item_nombre: row.item_nombre, cantidad: 'cantidad' in row ? row.cantidad : row.cantidad_solicitada, estado: row.estado, fecha: dateLabel('fecha_prestamo' in row ? row.fecha_prestamo : row.fecha_solicitud, { year: 'numeric', month: '2-digit', day: '2-digit' }), detalle: 'motivo' in row ? row.motivo : row.detalle })));
-  }
   return <>
     <PageHeading eyebrow="SEGUIMIENTO PERSONAL" title="Tus solicitudes, en orden" description="Consulta las respuestas de administración y los equipos que tienes a cargo." actions={<><RefreshButton /><Link className={s.button} href="/profesor/solicitar-articulo">Nueva solicitud <FiArrowRight size={15} /></Link></>} />
     <DataBoundary>
       {notice && !cancel && <Notice tone={notice.tone}>{notice.message}</Notice>}
       <div className={s.tabs} role="tablist" aria-label="Tipo de actividad"><button role="tab" aria-selected={!loans} onClick={() => changeTab('solicitudes')}>Mis solicitudes <span className={s.badge}>{data?.requests.length || 0}</span></button><button role="tab" aria-selected={loans} onClick={() => changeTab('prestamos')}>Mis préstamos <span className={s.badge}>{data?.loans.length || 0}</span></button></div>
-      <div className={s.toolbar}><div className={s.search}><FiSearch size={16} /><input aria-label="Buscar en mi actividad" placeholder="Buscar por equipo, número o motivo…" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div><button className={s.secondary} onClick={download} disabled={!filtered.length}><FiDownload size={15} />Exportar CSV</button></div>
+      <div className={s.toolbar}><div className={s.search}><FiSearch size={16} /><input aria-label="Buscar en mi actividad" placeholder="Buscar por equipo, número o motivo…" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div></div>
       <div className={s.chips} aria-label="Filtrar por estado">{options.map(([value, label]) => <button key={value} aria-pressed={status === value} onClick={() => { setStatus(value); setPage(1); }}>{label} {value !== 'todas' && <span>({rows.filter(row => row.estado === value).length})</span>}</button>)}</div>
       {loans && <Notice><strong>Entregas y devoluciones en el centro de cómputo</strong>Cuando tu equipo esté listo, acércate a recogerlo. Administración confirma la entrega y registra la devolución después de recibirlo.</Notice>}
       <div className={s.list}>

@@ -59,3 +59,31 @@
 .item[data-unread=true] { background:#f2f6ff; }
 .dot,.count { background:#315779; }
 .trigger { color:#365980; border-color:#d6dfec; }
+
+/* Confirmación destacada: se muestra solo en el espacio docente móvil. */
+.approvalDialog { position:fixed; inset:0; margin:auto; width:min(480px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; border:1px solid #bcded3; border-radius:26px; padding:30px 22px 24px; background:#fff; color:#202c4c; text-align:center; font-family:Arial,Helvetica,sans-serif; box-shadow:0 24px 90px #152b4940; }
+.approvalDialog::backdrop { background:#17253699; backdrop-filter:blur(5px); }
+.approvalIcon { display:grid; place-items:center; width:96px; height:96px; margin:0 auto 22px; border-radius:50%; background:#dcf3ed; color:#24745b; border:8px solid #f0faf6; }
+.approvalEyebrow { font-size:11px; font-weight:750; letter-spacing:.08em; color:#24745b; }
+.approvalDialog h2 { margin:14px 0; font-size:28px; font-weight:750; line-height:1.2; color:#202c4c; }
+.approvalDialog>p { margin:0; font-size:16px; line-height:1.6; color:#52617d; }
+.approvalMessage { background:#f0faf6; border:1px solid #c6e5d9; border-radius:16px; padding:18px; margin:22px 0; text-align:left; font-size:16px; line-height:1.65; color:#245e52; overflow-wrap:anywhere; }
+.approvalAccept { display:block; width:100%; min-height:54px; border:1px solid #4051ad; border-radius:14px; background:#4051ad; color:#fff; font-size:17px; font-weight:700; cursor:pointer; }
+.approvalLink { display:flex; justify-content:center; align-items:center; gap:8px; min-height:48px; margin-top:10px; color:#334687; font-size:15px; font-weight:700; text-decoration:none; }
+.approvalDialog>small { display:block; margin-top:10px; color:#52617d; font-size:13px; }
+.approvalDialog :is(button,a):focus-visible { outline:3px solid #60bba7; outline-offset:3px; }
+@media(max-width:767px) {
+  .panel { border-radius:18px; }
+  .header { padding:20px; flex-wrap:wrap; }
+  .headerActions { margin-left:auto; }
+  .header h2 { font-size:21px; }
+  .header p { font-size:13px; }
+  .item { padding:20px; gap:13px; }
+  .icon { width:42px; height:42px; border-radius:12px; }
+  .copy h3 { font-size:16px; line-height:1.4; }
+  .copy p { font-size:14px; line-height:1.6; }
+  .copy time { font-size:12px; }
+  .actions a,.actions button,.readButton { font-size:12px; min-height:44px; }
+  .close { width:44px; height:44px; }
+}
+@media(max-width:360px) { .approvalDialog { padding:24px 18px 20px; } .approvalDialog h2 { font-size:25px; } }

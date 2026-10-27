@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { FiArrowRight, FiBell, FiCheck, FiCheckCircle, FiClock, FiInbox, FiTrash2, FiX } from 'react-icons/fi';
 import type { InboxItem } from '@/app/lib/notification-presentation';
+import { activeInboxItem, newInboxItems } from '@/app/lib/notification-presentation';
+import MobileApprovalNotice from './MobileApprovalNotice';
 import { dateLabel } from '@/app/lib/teacher-utils';
 import s from './NotificationCenter.module.css';
 
@@ -148,16 +150,30 @@ export default function NotificationCenter({ items, userId }: { items: InboxItem
   </>;
 }
 
-export function ActivityToast({ items }: { items: InboxItem[] }) {
+export function ActivityToast({ items, prominentApprovals = false, userId }: { items: InboxItem[]; prominentApprovals?: boolean; userId?: number }) {
   const seen = useRef<Set<string> | null>(null);
-  const [current, setCurrent] = useState<InboxItem | null>(null);
+  const [queue, setQueue] = useState<InboxItem[]>([]);
+  const current = activeInboxItem(queue, prominentApprovals);
+  const prominent = prominentApprovals && current?.notificationType === 'solicitud_aprobada';
   useEffect(() => {
     if (seen.current === null) { seen.current = new Set(items.map(item => item.key)); return; }
-    const fresh = items.find(item => !seen.current!.has(item.key));
-    items.forEach(item => seen.current!.add(item.key));
-    if (fresh) setCurrent(fresh);
+    const fresh = newInboxItems(items, seen.current);
+    if (fresh.length) setQueue(previous => [...previous, ...fresh]);
   }, [items]);
-  useEffect(() => { if (!current) return; const timer = setTimeout(() => setCurrent(null), 12000); return () => clearTimeout(timer); }, [current]);
+  useEffect(() => { if (!current || prominent) return; const timer = setTimeout(() => setQueue(previous => previous.filter(item => item.key !== current.key)), 12000); return () => clearTimeout(timer); }, [current, prominent]);
+  const close = () => setQueue(previous => previous.filter(item => item.key !== current?.key));
+  const acknowledge = () => {
+    if (current && userId) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(`inbox:${userId}`) || '[]');
+        localStorage.setItem(`inbox:${userId}`, JSON.stringify(Array.from(new Set([...(Array.isArray(stored) ? stored : []), current.key]))));
+      } catch { /* La lectura se sincroniza con el servidor. */ }
+      window.dispatchEvent(new CustomEvent('inbox-read', { detail: { userId, keys: [current.key] } }));
+      void fetch('/api/notificaciones/lecturas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys: [current.key] }) }).catch(() => {});
+    }
+    close();
+  };
   if (!current) return null;
-  return createPortal(<aside className={s.toast} role="status"><span className={s.icon} data-tone={current.tone}><FiBell size={17} /></span><div style={{ flex: 1 }}><strong>{current.title}</strong><p>{current.message}</p><Link href={current.href} onClick={() => setCurrent(null)}>{current.action}<FiArrowRight size={13} /></Link></div><button className={s.close} aria-label="Cerrar aviso" onClick={() => setCurrent(null)}><FiX size={15} /></button></aside>, document.body);
+  if (prominent) return createPortal(<MobileApprovalNotice item={current} remaining={queue.length - 1} onAcknowledge={acknowledge} />, document.body);
+  return createPortal(<aside className={s.toast} role="status"><span className={s.icon} data-tone={current.tone}><FiBell size={17} /></span><div style={{ flex: 1 }}><strong>{current.title}</strong><p>{current.message}</p><Link href={current.href} onClick={close}>{current.action}<FiArrowRight size={13} /></Link></div><button className={s.close} aria-label="Cerrar aviso" onClick={close}><FiX size={15} /></button></aside>, document.body);
 }
