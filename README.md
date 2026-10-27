@@ -70,6 +70,22 @@ El desarrollo guarda sus archivos generados en `.next-dev/`; la compilación de 
 
 El puerto 3011 está fijado en el comando de desarrollo. Para servir la compilación local en ese mismo puerto se puede ejecutar `npm start -- -p 3011`.
 
+## Navegación por rol
+
+| Función | Administración | Profesor |
+|---|---|---|
+| Resumen | `/admin/dashboard` | `/profesor/dashboard` |
+| Inventario y catálogo | `/admin/inventario` | `/profesor/solicitar-articulo` |
+| Solicitudes de sala y equipos | `/admin/solicitudes` | `/profesor/solicitudes` |
+| Calendario de sala | `/admin/horario` | `/profesor/horario` |
+| Directorio docente | `/admin/profesores` | — |
+| Solicitudes de cuenta | `/admin/profesores/cuentas` | — |
+| Entregas y devoluciones | `/admin/prestamos` | Seguimiento desde el panel docente |
+| Historial | `/admin/historial` | — |
+| Perfil | `/admin/perfil` | `/profesor/perfil` |
+
+El ingreso se realiza en `/auth/login`. Las rutas de cada rol están protegidas por `middleware.ts`; los endpoints vuelven a comprobar la sesión y los permisos.
+
 ## Verificación
 
 ```sh
