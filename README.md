@@ -43,6 +43,17 @@ Usar `.env.example` como plantilla y mantener los valores reales en `.env.local`
 
 La conexión usa `DATABASE_URL`, no `POSTGRES_URL`. Las claves de Cloudinary son variables del servidor y no deben llevar el prefijo `NEXT_PUBLIC_`. La base de datos y la sesión son necesarias para operar; las tres variables de Cloudinary son necesarias cuando se adjuntan fotos.
 
+## Preparación de la base de datos
+
+1. Crear una base PostgreSQL y establecer su conexión en `DATABASE_URL`.
+2. En una instalación nueva, revisar y ejecutar `db/schema.sql`.
+3. En una instalación existente, revisar el esquema y aplicar las migraciones que todavía no estén incorporadas. No ejecutar semillas para actualizar una base con información real.
+4. Verificar las tablas de usuarios, inventario, solicitudes, disponibilidad, préstamos y notificaciones antes de iniciar los flujos del sistema.
+
+Las migraciones están en `db/migrations/`. Entre ellas se encuentran las de préstamos, ubicación de solicitudes, importaciones, bandeja de cuentas y lecturas de notificaciones. Revisar su contenido e historial antes de aplicarlas.
+
+`db/seed.sql` contiene datos de prueba. Los scripts antiguos `setup-db.js`, `fix-db.js` y `fix-login-dni.js` modifican datos y deben revisarse antes de usarlos. El esquema incluye usuarios de ejemplo con contraseñas que requieren tratamiento previo antes de habilitar cuentas reales.
+
 ## Verificación
 
 ```sh
