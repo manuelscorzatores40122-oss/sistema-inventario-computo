@@ -54,6 +54,22 @@ Las migraciones están en `db/migrations/`. Entre ellas se encuentran las de pr�
 
 `db/seed.sql` contiene datos de prueba. Los scripts antiguos `setup-db.js`, `fix-db.js` y `fix-login-dni.js` modifican datos y deben revisarse antes de usarlos. El esquema incluye usuarios de ejemplo con contraseñas que requieren tratamiento previo antes de habilitar cuentas reales.
 
+## Comandos de ejecución
+
+| Comando | Resultado |
+|---|---|
+| `npm ci` | Instala las dependencias según el archivo de bloqueo. |
+| `npm run dev` | Inicia desarrollo en el puerto 3011. |
+| `npm run typecheck` | Comprueba los tipos sin generar archivos. |
+| `npm run lint` | Ejecuta el análisis estático de Next.js. |
+| `npm test` | Ejecuta la batería de pruebas unitarias configurada. |
+| `npm run build` | Genera la compilación de producción. |
+| `npm start` | Sirve la compilación de producción existente. |
+
+El desarrollo guarda sus archivos generados en `.next-dev/`; la compilación de producción utiliza `.next/`. Esto permite compilar sin sobrescribir los archivos que usa el servidor de desarrollo.
+
+El puerto 3011 está fijado en el comando de desarrollo. Para servir la compilación local en ese mismo puerto se puede ejecutar `npm start -- -p 3011`.
+
 ## Verificación
 
 ```sh
