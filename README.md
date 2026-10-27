@@ -112,6 +112,22 @@ La administración revisa los pedidos en `/admin/solicitudes`. Las pestañas **S
 
 El servidor valida la disponibilidad al solicitar y al aprobar. Las operaciones de stock y movimientos se realizan en transacciones para evitar que una aprobación repetida descuente existencias dos veces. Las entregas y devoluciones se gestionan desde **Préstamos y devoluciones**.
 
+## Registro y revisión de cuentas docentes
+
+El registro público crea una solicitud pendiente y mantiene la cuenta sin acceso hasta que administración la apruebe. La revisión está en **Profesores y cuentas → Solicitudes de cuenta** (`/admin/profesores/cuentas`), junto al acceso al directorio docente.
+
+Cada solicitud ofrece **Ver detalles**, tanto en pendientes como en cuentas revisadas. La ficha muestra:
+
+- Nombre y apellido.
+- DNI o usuario.
+- Área o curso.
+- Teléfono y correo personal, cuando se proporcionaron.
+- Fecha de solicitud y estado de la revisión.
+
+Desde la ficha se puede pasar a aprobar o rechazar una cuenta pendiente. La decisión requiere confirmación; aprobar habilita el acceso con la contraseña que eligió el docente durante el registro. Rechazar conserva la revisión y mantiene la cuenta sin acceso.
+
+La recuperación de contraseña actual remite a administración. Conocer el DNI de otra persona no constituye un mecanismo de recuperación automática.
+
 ## Verificación
 
 ```sh
