@@ -86,6 +86,21 @@ El puerto 3011 está fijado en el comando de desarrollo. Para servir la compilac
 
 El ingreso se realiza en `/auth/login`. Las rutas de cada rol están protegidas por `middleware.ts`; los endpoints vuelven a comprobar la sesión y los permisos.
 
+## Reservas de la sala de cómputo
+
+Desde `/profesor/horario`, el docente puede consultar quién ocupa la sala y solicitar un turno. En celular, al pulsar un día se abre una ventana con las reservas de esa fecha y la opción de solicitar la sala.
+
+El formulario móvil incluye:
+
+- Fecha de uso.
+- Campos **Desde** y **Hasta** con un reloj compacto, hora de 1 a 12, minutos exactos y selección de a. m. o p. m.
+- Grado de 1.º a 5.º y sección A o B.
+- Mensaje con la actividad prevista.
+
+Al editar una hora, **Usar hora** aplica el valor y **Cancelar** descarta la edición. La solicitud solo se puede enviar cuando la edición de la hora está cerrada y los datos son válidos.
+
+Los límites de las reservas usan la hora de Lima: el inicio debe ser futuro y el fin posterior al inicio. El sistema comprueba cruces con turnos existentes; la aprobación administrativa confirma la reserva. Las cancelaciones de reservas propias futuras avisan a administración, y las cancelaciones administrativas avisan al docente.
+
 ## Verificación
 
 ```sh
