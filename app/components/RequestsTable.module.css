@@ -1,0 +1,64 @@
+.panel { min-width:0; }
+.wrap { width:100%; min-width:0; }
+.panel .table { width:100%; table-layout:fixed; font-family:var(--font-family-base); }
+.panel .table th { padding:13px 10px; font-size:12px; line-height:1.5; letter-spacing:0; text-transform:none; }
+.panel .table td { padding:18px 10px; font-size:13px; line-height:1.55; vertical-align:top; white-space:normal; overflow-wrap:anywhere; }
+.table th:nth-child(1) { width:19%; }
+.table th:nth-child(2) { width:22%; }
+.table th:nth-child(3) { width:5%; }
+.table th:nth-child(4) { width:15%; }
+.table th:nth-child(5) { width:13%; }
+.table th:nth-child(6) { width:12%; }
+.table th:nth-child(7) { width:14%; }
+.table[data-actions=false] th:nth-child(1) { width:22%; }
+.table[data-actions=false] th:nth-child(2) { width:25%; }
+.table[data-actions=false] th:nth-child(4) { width:18%; }
+.table[data-actions=false] th:nth-child(5) { width:16%; }
+.table[data-actions=false] th:nth-child(6) { width:14%; }
+.teacher { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+.teacher>div,.resource>div { min-width:0; }
+.teacher strong,.resource strong { display:block; font-size:14px; line-height:1.5; font-weight:600; color:#24364e; }
+.teacher small,.resource small,.dateCell small { display:block; margin-top:4px; color:#63738a; font-size:12px; line-height:1.5; }
+.avatar { display:grid; place-items:center; flex:0 0 34px; width:34px; height:34px; border:1px solid var(--workspace-border); border-radius:50%; background:#f1f4fb; color:#334687; font-weight:650; }
+.panel .resource { align-items:flex-start; gap:10px; }
+.reservationDate { display:block; margin-top:5px; color:#52617d; font-size:12px; }
+.hours { display:block; margin-top:3px; color:#334687; font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; }
+.dateCell time { display:block; color:#52617d; font-size:12px; }
+.panel .reasonCell :global(.badge) { max-width:100%; white-space:normal; text-align:left; line-height:1.5; }
+.panel .stateCell :global(.status-badge) { width:max-content; max-width:none; white-space:nowrap; line-height:1.5; font-size:12px; }
+.actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+.actions button { min-height:36px; white-space:nowrap; }
+.panel .actionCell input { width:100%; max-width:none!important; font-size:12px; }
+
+/* Mantener la lectura cuando la barra lateral reduce el espacio disponible. */
+@media(max-width:1399px) {
+  .panel.panel { padding:0!important; border:0; background:transparent; box-shadow:none; }
+  .panel .table { display:block; }
+  .table thead { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
+  .table tbody { display:grid; gap:16px; }
+  .panel .table tbody tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--workspace-border); border-radius:var(--workspace-panel-radius); background:#fff; overflow:hidden; }
+  .panel .table tbody td { display:block; min-width:0; border:0; padding:12px 18px; font-size:14px; }
+  .table td[data-label]::before { content:attr(data-label); display:block; margin-bottom:5px; color:#63738a; font-size:11px; line-height:1.5; font-weight:600; }
+  .panel .table .teacherCell { grid-column:1/-1; padding:16px 18px; background:#f3f6ff; border-bottom:1px solid var(--workspace-divider); }
+  .table td.teacherCell::before { display:none; }
+  .teacher strong { font-size:15px; }
+  .panel .table .reasonCell { grid-column:1/-1; }
+  .panel .table tr[data-classroom=true] .quantityCell { display:none; }
+  .panel .table tr[data-classroom=true] .resourceCell { grid-column:1/-1; }
+  .panel .table .actionCell { grid-column:1/-1; border-top:1px solid var(--workspace-divider); padding:14px 18px; }
+  .panel .table .actionCell[data-empty=true] { display:none; }
+  .table td.actionCell::before { display:none; }
+  .actions { justify-content:flex-start; }
+  .actions button { min-height:44px; }
+  .panel .actionCell input { min-height:44px; font-size:14px; }
+  .panel .table tbody tr:hover td { background:transparent; }
+  .panel .table tbody tr:hover .teacherCell { background:#f3f6ff; }
+}
+@media(min-width:768px) and (max-width:1399px) {
+  .panel .table tr[data-classroom=true] .resourceCell,
+  .panel .table tr[data-classroom=true] .reasonCell { grid-column:auto; }
+}
+@media(max-width:399px) {
+  .panel .table tbody tr { grid-template-columns:minmax(0,1fr); }
+  .panel .table tbody td { grid-column:1/-1; }
+}

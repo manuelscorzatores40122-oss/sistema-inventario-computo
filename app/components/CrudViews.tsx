@@ -5,6 +5,9 @@ import Link from 'next/link';
 import EquipmentTools from './equipment/EquipmentTools';
 import EquipmentRecord from './equipment/EquipmentRecord';
 import teacherStyles from './TeachersDirectory.module.css';
+import requestsStyles from './RequestsTable.module.css';
+import { dateLabel } from '@/app/lib/teacher-utils';
+import { timeLabel } from '@/app/lib/time-label';
 import RequestListControls from './RequestListControls';
 import AdminQuickForm from './AdminQuickForm';
 import TeacherManagementTabs from './admin/TeacherManagementTabs';
@@ -150,6 +153,9 @@ type Solicitud = {
   estado: string;
   comentarios: string | null;
   fecha_solicitud: string;
+  fecha_reserva?: string | null;
+  hora_inicio?: string | null;
+  hora_fin?: string | null;
 };
 
 type Message = { type: 'success' | 'error'; text: string } | null;
@@ -1724,6 +1730,7 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
   onReject?: (id: number) => void;
   onCancel?: (id: number) => void;
 }) {
+  const hasActions = solicitudes.some(row => row.estado === 'pendiente') && !!(onApprove || onReject || onCancel);
   if (solicitudes.length === 0) {
     return (
       <div className="inventory-panel p-5 text-center bg-white rounded-3 border">
@@ -1735,49 +1742,52 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
   }
 
   return (
-    <div className="inventory-panel inventory-list-panel p-3">
-      <div className="overflow-x-auto">
-        <table className="inventory-table">
+    <div className={`inventory-panel inventory-list-panel p-3 ${requestsStyles.panel}`}>
+      <div className={requestsStyles.wrap}>
+        <table className={`inventory-table ${requestsStyles.table}`} data-actions={hasActions} aria-label="Solicitudes de docentes">
           <thead>
             <tr>
-              <th>Docente</th>
-              <th>Artículo / Recurso</th>
-              <th>Cant.</th>
-              <th>Motivo y Ubicación</th>
-              <th>Fecha Solicitud</th>
-              <th>Estado</th>
-              <th className="text-right">Acciones</th>
+              <th scope="col">Docente</th>
+              <th scope="col">Artículo / recurso</th>
+              <th scope="col">Cant.</th>
+              <th scope="col">Motivo y ubicación</th>
+              <th scope="col">Fecha de solicitud</th>
+              <th scope="col">Estado</th>
+              {hasActions && <th scope="col" className="text-right">Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {solicitudes.map((solicitud) => {
               const isClassroom = !solicitud.inventario_id;
               return (
-                <tr key={solicitud.id}>
-                  <td>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="rounded-circle bg-slate-100 text-slate-700 font-bold d-inline-flex align-items-center justify-content-center border" style={{ width: '32px', height: '32px', fontSize: '13px' }}>
+                <tr key={solicitud.id} data-classroom={isClassroom}>
+                  <td data-label="Docente" className={requestsStyles.teacherCell}>
+                    <div className={requestsStyles.teacher}>
+                      <span className={requestsStyles.avatar} aria-hidden="true">
                         {solicitud.profesor_nombre?.charAt(0).toUpperCase() || 'P'}
                       </span>
                       <div>
-                        <strong className="d-block text-slate-900 font-semibold text-sm">{solicitud.profesor_nombre} {solicitud.apellido}</strong>
-                        <small className="text-slate-500 text-xs">SOL-{String(solicitud.id).padStart(3, '0')}</small>
+                        <strong>{solicitud.profesor_nombre} {solicitud.apellido}</strong>
+                        <small>SOL-{String(solicitud.id).padStart(3, '0')}</small>
                       </div>
                     </div>
                   </td>
-                  <td>
-                    <div className="inventory-item-name">
+                  <td data-label="Artículo / recurso" className={requestsStyles.resourceCell}>
+                    <div className={`inventory-item-name ${requestsStyles.resource}`}>
                       <span className="inventory-item-icon">
                         {isClassroom ? <FiCalendar size={17} /> : <FiPackage size={17} />}
                       </span>
                       <div>
-                        <strong>{solicitud.item_nombre || 'Aula de Cómputo'}</strong>
-                        <small>{isClassroom ? 'Reserva de aula' : 'Préstamo de equipo'}</small>
+                        <strong>{isClassroom ? 'Sala de cómputo' : solicitud.item_nombre || 'Equipo'}</strong>
+                        {isClassroom && solicitud.fecha_reserva ? <>
+                          <span className={requestsStyles.reservationDate}>{dateLabel(solicitud.fecha_reserva, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          {solicitud.hora_inicio && solicitud.hora_fin && <span className={requestsStyles.hours}>{timeLabel(solicitud.hora_inicio)} – {timeLabel(solicitud.hora_fin)}</span>}
+                        </> : <small>{isClassroom ? 'Reserva de aula' : 'Préstamo de equipo'}</small>}
                       </div>
                     </div>
                   </td>
-                  <td className="font-semibold text-slate-800">{isClassroom ? '-' : solicitud.cantidad_solicitada}</td>
-                  <td className="loans-detail text-xs">
+                  <td data-label="Cantidad" className={requestsStyles.quantityCell}>{isClassroom ? '—' : solicitud.cantidad_solicitada}</td>
+                  <td data-label="Motivo y ubicación" className={requestsStyles.reasonCell}>
                     <div className="font-medium text-slate-800">{solicitud.motivo || 'Uso docente en clase'}</div>
                     {formatRequestLocation(solicitud) && (
                       <span className="badge bg-slate-100 text-slate-600 border font-normal mt-1 d-inline-flex align-items-center gap-1">
@@ -1785,21 +1795,25 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
                       </span>
                     )}
                   </td>
-                  <td className="text-xs text-slate-500">
-                    {new Date(solicitud.fecha_solicitud).toLocaleString('es-PE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <td data-label="Fecha de solicitud" className={requestsStyles.dateCell}>
+                    <time dateTime={solicitud.fecha_solicitud}>
+                      {dateLabel(solicitud.fecha_solicitud, { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <small>{new Date(solicitud.fecha_solicitud).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: 'numeric', minute: '2-digit' })}</small>
+                    </time>
                   </td>
-                  <td><StatusBadge value={solicitud.estado} /></td>
-                  <td className="text-right">
+                  <td data-label="Estado" className={requestsStyles.stateCell}><StatusBadge value={solicitud.estado} /></td>
+                  {hasActions && <td data-label="Acciones" className={requestsStyles.actionCell} data-empty={solicitud.estado !== 'pendiente'}>
                     {solicitud.estado === 'pendiente' && setComentarios && (
                       <input
                         className="form-control form-control-sm text-xs mb-2 ms-auto"
                         style={{ maxWidth: '220px' }}
                         placeholder="Nota u observación para el docente..."
+                        aria-label={`Observación para ${solicitud.profesor_nombre} ${solicitud.apellido}`}
                         value={comentarios?.[solicitud.id] || ''}
                         onChange={(e) => setComentarios({ ...(comentarios || {}), [solicitud.id]: e.target.value })}
                       />
                     )}
-                    <div className="d-flex justify-content-end gap-1 flex-wrap">
+                    <div className={requestsStyles.actions}>
                       {solicitud.estado === 'pendiente' && onApprove && (
                         <button className={`${primaryButton} btn-sm d-inline-flex align-items-center gap-1`} onClick={() => onApprove(solicitud.id)}>
                           <FiCheckCircle size={13} /> Aprobar
@@ -1816,7 +1830,7 @@ function SolicitudesTable({ solicitudes, comentarios, setComentarios, onApprove,
                         </button>
                       )}
                     </div>
-                  </td>
+                  </td>}
                 </tr>
               );
             })}
