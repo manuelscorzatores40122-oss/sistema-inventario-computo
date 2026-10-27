@@ -128,6 +128,16 @@ Desde la ficha se puede pasar a aprobar o rechazar una cuenta pendiente. La deci
 
 La recuperación de contraseña actual remite a administración. Conocer el DNI de otra persona no constituye un mecanismo de recuperación automática.
 
+## Notificaciones y seguimiento
+
+El centro de notificaciones permite consultar avisos y abrir sus acciones relacionadas. Las lecturas se guardan por usuario mediante `/api/notificaciones/lecturas`; la migración `2026-10-16_centro-notificaciones.sql` incorpora su persistencia.
+
+En la vista docente, los avisos se consultan periódicamente mientras la página está visible: aproximadamente cada segundo si hay solicitudes pendientes y cada tres segundos en el resto de casos. El resumen general tiene su propio refresco. Estos intervalos describen consultas del navegador, no una conexión permanente con el servidor.
+
+En celular, las aprobaciones se presentan en una ventana destacada. Los avisos pendientes se mantienen en cola para no perder varias respuestas recibidas juntas.
+
+Los avisos internos usan la tabla histórica `notificaciones_whatsapp`. La existencia de una fila en esa tabla no demuestra por sí sola que un mensaje externo de WhatsApp se haya entregado.
+
 ## Verificación
 
 ```sh
