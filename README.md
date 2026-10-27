@@ -101,6 +101,17 @@ Al editar una hora, **Usar hora** aplica el valor y **Cancelar** descarta la edi
 
 Los límites de las reservas usan la hora de Lima: el inicio debe ser futuro y el fin posterior al inicio. El sistema comprueba cruces con turnos existentes; la aprobación administrativa confirma la reserva. Las cancelaciones de reservas propias futuras avisan a administración, y las cancelaciones administrativas avisan al docente.
 
+## Solicitudes de equipos
+
+1. Abrir **Solicitar artículo** en el panel docente.
+2. Seleccionar un equipo del catálogo; el formulario de solicitud aparece después de esa selección.
+3. Indicar la cantidad, el grado (1.º–5.º), la sección (A/B) y la actividad o motivo.
+4. Enviar la solicitud y revisar su estado en **Mis solicitudes**.
+
+La administración revisa los pedidos en `/admin/solicitudes`. Las pestañas **Sala de cómputo** y **Equipos** separan ambos tipos de solicitud y sus contadores; la vista docente también mantiene esta separación.
+
+El servidor valida la disponibilidad al solicitar y al aprobar. Las operaciones de stock y movimientos se realizan en transacciones para evitar que una aprobación repetida descuente existencias dos veces. Las entregas y devoluciones se gestionan desde **Préstamos y devoluciones**.
+
 ## Verificación
 
 ```sh
