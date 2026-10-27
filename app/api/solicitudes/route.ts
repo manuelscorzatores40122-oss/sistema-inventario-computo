@@ -15,9 +15,6 @@ export async function GET(request: NextRequest) {
     let sql = `SELECT s.*,
                       u.nombre as profesor_nombre,
                       u.apellido,
-                      d.fecha_reserva::text AS fecha_reserva,
-                      d.hora_inicio,
-                      d.hora_fin,
                       COALESCE(i.nombre, 'Aula de Cómputo (' || d.dia_semana || ' ' || TO_CHAR(d.fecha_reserva, 'DD/MM/YYYY') || ' ' || d.hora_inicio || '-' || d.hora_fin || ')') as item_nombre
                FROM solicitudes s
                INNER JOIN usuarios u ON s.profesor_id = u.id
