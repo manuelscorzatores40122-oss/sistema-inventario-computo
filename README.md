@@ -138,6 +138,23 @@ En celular, las aprobaciones se presentan en una ventana destacada. Los avisos p
 
 Los avisos internos usan la tabla histórica `notificaciones_whatsapp`. La existencia de una fila en esa tabla no demuestra por sí sola que un mensaje externo de WhatsApp se haya entregado.
 
+## Fotos del inventario y despliegue en Vercel
+
+Las fotos se suben desde el servidor a Cloudinary. Se aceptan archivos JPG, PNG y WEBP; el navegador valida archivos de hasta 20 MB y reduce la imagen a un máximo de 1000 píxeles en su lado mayor. La imagen procesada enviada a la API debe respetar el límite de 2 MB del contenido codificado.
+
+Para habilitar las fotos en producción:
+
+1. Abrir el proyecto en Vercel y entrar en **Environment Variables**.
+2. Añadir `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` como secretos del entorno **Production**.
+3. Confirmar que `DATABASE_URL` y `JWT_SECRET` también existen en ese entorno.
+4. Guardar las variables y ejecutar **Redeploy** sobre la versión de producción que se desea publicar.
+5. Completar la verificación de identidad si Vercel la solicita y esperar a que el despliegue esté en **Ready**.
+6. Abrir el sistema publicado, seleccionar una foto desde Inventario y guardar el artículo.
+
+Las variables de `.env.local` no se copian automáticamente a Vercel. Para utilizar fotos en despliegues de vista previa, configurar también las variables en **Preview**.
+
+Si aparece **«La carga de fotos no está configurada en este servidor»**, comprobar las tres variables en el entorno del despliegue y volver a desplegar. Si las variables ya existen y aparece un error al subir, revisar su validez y los registros del servidor. Las rutas de creación y edición conservan el error de carga para evitar guardar silenciosamente un artículo sin la foto elegida.
+
 ## Verificación
 
 ```sh
