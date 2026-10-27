@@ -8,6 +8,16 @@ Aplicación de recursos educativos con Next.js 14, React 18, TypeScript, Bootstr
 - **Administración:** inventario patrimonial e importación Excel, cuentas de docentes, aprobación de solicitudes, entregas y devoluciones, horario semanal e historial.
 - **Notificaciones:** centro de avisos con acciones directas, filtros y lecturas persistentes por usuario. Las altas públicas requieren aprobación administrativa.
 
+## Requisitos y arquitectura
+
+- Node.js compatible con Next.js 14 (mínimo 18.17) y npm.
+- PostgreSQL accesible desde el servidor de la aplicación; el proyecto utiliza Neon mediante el controlador `pg`, sin ORM.
+- Next.js App Router, React 18 y TypeScript con modo estricto.
+- Bootstrap 5, iconos de `react-icons/fi` y estilos compartidos en `app/globals.css`.
+- Autenticación propia mediante JWT y bcrypt; el flujo de sesión no utiliza NextAuth.
+
+Las páginas de administración y del profesor comparten componentes, pero las rutas y API comprueban sus permisos por separado.
+
 ## Desarrollo
 
 1. Instalar dependencias con `npm ci`.
